@@ -1,0 +1,11 @@
+Options -Indexes
+RewriteEngine On
+
+RewriteRule ^backend/config\.php$ - [F,L,NC]
+RewriteRule ^api(?:/.*)?$ backend/api/index.php [QSA,L]
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^ index.html [L]

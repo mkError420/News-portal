@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Live database credentials are entered on the hosting account only.
+backend/config.php
+cpanel-deploy/backend/config.php

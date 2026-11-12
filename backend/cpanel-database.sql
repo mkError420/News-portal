@@ -1,10 +1,4 @@
-CREATE DATABASE IF NOT EXISTS mknews_portal CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-CREATE USER IF NOT EXISTS 'mknews_user'@'localhost' IDENTIFIED BY 'StrongPassword123!';
-GRANT ALL PRIVILEGES ON mknews_portal.* TO 'mknews_user'@'localhost';
-FLUSH PRIVILEGES;
-
-USE mknews_portal;
+USE if0_43421817_newsportal;
 
 CREATE TABLE IF NOT EXISTS admins (
   id INT AUTO_INCREMENT PRIMARY KEY,

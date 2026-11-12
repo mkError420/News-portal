@@ -18,7 +18,6 @@ import {
 import { Link, NavLink, Route, Routes, useParams } from 'react-router-dom'
 
 const STORAGE_KEY = 'mk-news-portal-data'
-const AUTH_KEY = 'mk-news-admin-auth'
 const API_BASE = '/api'
 
 const categoryList = [
@@ -251,21 +250,20 @@ function getStoredNews() {
 }
 
 async function fetchPortalData() {
-  try {
-    const [categoriesRes, breakingRes, articlesRes] = await Promise.all([
-      axios.get(`${API_BASE}/categories`),
-      axios.get(`${API_BASE}/breaking-news`),
-      axios.get(`${API_BASE}/articles`),
-    ])
+  const [categoriesRes, breakingRes, articlesRes] = await Promise.all([
+    axios.get(`${API_BASE}/categories`),
+    axios.get(`${API_BASE}/breaking-news`),
+    axios.get(`${API_BASE}/articles`),
+  ])
+  const { categories } = categoriesRes.data
+  const { breakingNews } = breakingRes.data
+  const { articles } = articlesRes.data
 
-    const categories = categoriesRes.data?.categories?.length ? categoriesRes.data.categories : defaultNews.categories
-    const breakingNews = breakingRes.data?.breakingNews?.length ? breakingRes.data.breakingNews : defaultNews.breakingNews
-    const articles = (articlesRes.data?.articles ?? []).map(normalizeArticle)
-
-    return { categories, breakingNews, articles: articles.length ? articles : defaultNews.articles }
-  } catch {
-    return getStoredNews()
+  if (!Array.isArray(categories) || !Array.isArray(breakingNews) || !Array.isArray(articles)) {
+    throw new Error('The news API returned an invalid response.')
   }
+
+  return { categories, breakingNews, articles: articles.map(normalizeArticle) }
 }
 
 function formatReadableDate(dateString) {
@@ -297,7 +295,8 @@ function App() {
   const [newsData, setNewsData] = useState(getStoredNews)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [adminAuthenticated, setAdminAuthenticated] = useState(() => localStorage.getItem(AUTH_KEY) === 'true')
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false)
+  const [apiError, setApiError] = useState('')
 
   useEffect(() => {
     let ignore = false
@@ -305,7 +304,18 @@ function App() {
     fetchPortalData().then((data) => {
       if (!ignore) {
         setNewsData(data)
+        setApiError('')
       }
+    }).catch(() => {
+      if (!ignore) {
+        setApiError('Could not load live news from the server. Check the API and database setup.')
+      }
+    })
+
+    axios.get(`${API_BASE}/me`).then(({ data }) => {
+      if (!ignore) setAdminAuthenticated(Boolean(data.authenticated))
+    }).catch(() => {
+      if (!ignore) setAdminAuthenticated(false)
     })
 
     return () => {
@@ -316,10 +326,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newsData))
   }, [newsData])
-
-  useEffect(() => {
-    localStorage.setItem(AUTH_KEY, adminAuthenticated ? 'true' : 'false')
-  }, [adminAuthenticated])
 
   const articles = newsData.articles
   const featuredArticle = articles.find((article) => article.featured) || articles[0]
@@ -349,14 +355,13 @@ function App() {
   const handleDeleteArticle = async (id) => {
     try {
       await axios.delete(`${API_BASE}/articles`, { params: { id } })
+      setNewsData((prev) => ({
+        ...prev,
+        articles: prev.articles.filter((article) => article.id !== id),
+      }))
     } catch {
-      // Ignore backend errors; the UI still removes the article locally to keep the demo usable.
+      setApiError('Could not delete the article. The server did not save this change.')
     }
-
-    setNewsData((prev) => ({
-      ...prev,
-      articles: prev.articles.filter((article) => article.id !== id),
-    }))
   }
 
   return (
@@ -368,6 +373,11 @@ function App() {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
       />
+      {apiError && (
+        <div role="alert" className="mx-auto mt-4 max-w-7xl px-4">
+          <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{apiError}</p>
+        </div>
+      )}
       <Routes>
         <Route
           path="/"
@@ -511,6 +521,15 @@ function Header({ categories, mobileMenuOpen, setMobileMenuOpen, searchTerm, set
 
 function HomePage({ featuredArticle, latestArticles, topStories, articles, newsData, searchTerm }) {
   const categories = newsData.categories || []
+
+  if (!featuredArticle) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-16 text-center">
+        <h1 className="text-3xl font-black text-brand-text">No stories published yet</h1>
+        <p className="mt-2 text-brand-muted">News articles will appear here after they are added to the database.</p>
+      </main>
+    )
+  }
 
   return (
     <>
@@ -750,10 +769,11 @@ function AdminDashboard({ adminAuthenticated, setAdminAuthenticated, articles, c
         return
       }
     } catch {
-      // Fall through to backend validation message below.
+      setFormError('Could not sign in. Check the server configuration and try again.')
+      return
     }
 
-    setFormError('Invalid admin credentials. Use admin@mknews.com / MKNews@2026')
+    setFormError('Invalid email or password.')
   }
 
   const handleDraftChange = (field, value) => {
@@ -792,9 +812,11 @@ function AdminDashboard({ adminAuthenticated, setAdminAuthenticated, articles, c
       const savedArticle = normalizeArticle(response.data.article || article)
       onSaveArticle(savedArticle)
     } catch {
-      onSaveArticle(article)
+      setFormError('Could not save the article. Check the server connection and required fields.')
+      return
     }
 
+    setFormError('')
     setDraft({
       id: '',
       slug: '',
@@ -810,6 +832,15 @@ function AdminDashboard({ adminAuthenticated, setAdminAuthenticated, articles, c
       tags: 'news, update',
       content: '<p>Write your story here...</p>',
     })
+  }
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${API_BASE}/logout`)
+      setAdminAuthenticated(false)
+    } catch {
+      setFormError('Could not end the admin session. Please try again.')
+    }
   }
 
   if (!adminAuthenticated) {
@@ -862,7 +893,7 @@ function AdminDashboard({ adminAuthenticated, setAdminAuthenticated, articles, c
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand-blue">Dashboard</p>
           <h1 className="text-3xl font-black text-brand-text">MK News Admin</h1>
         </div>
-        <button type="button" onClick={() => setAdminAuthenticated(false)} className="rounded border border-brand-border px-3 py-2 text-sm font-semibold text-brand-text">
+        <button type="button" onClick={handleLogout} className="rounded border border-brand-border px-3 py-2 text-sm font-semibold text-brand-text">
           Logout
         </button>
       </div>
@@ -870,6 +901,7 @@ function AdminDashboard({ adminAuthenticated, setAdminAuthenticated, articles, c
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="rounded border border-brand-border bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-2xl font-black text-brand-text">Create update</h2>
+          {formError && <p role="alert" className="mb-4 text-sm text-red-600">{formError}</p>}
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Title" value={draft.title} onChange={(value) => handleDraftChange('title', value)} />
             <Field label="Slug" value={draft.slug} onChange={(value) => handleDraftChange('slug', value)} />

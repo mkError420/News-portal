@@ -17,10 +17,9 @@ npm run dev -- --host 0.0.0.0 --port 4173
 
 Then open http://localhost:4173/
 
-## Admin credentials
+## Admin access
 
-- Email: admin@mknews.com
-- Password: MKNews@2026
+The database seed creates the admin account `admin@mknews.com`. Change its password before launch by replacing the seeded password hash in `backend/cpanel-database.sql` with a hash generated locally using PHP's `password_hash()`.
 
 ## Production build
 
@@ -28,25 +27,14 @@ Then open http://localhost:4173/
 npm run build
 ```
 
-## cPanel MySQL setup
+## Live hosting setup
 
-1. In cPanel, open MySQL Database Wizard.
-2. Create a database such as `mknews_portal`.
-3. Create a MySQL user such as `mknews_user`.
-4. Assign the user full privileges to that database.
-5. Import the SQL file at `backend/cpanel-database.sql` from phpMyAdmin or the cPanel SQL import tool.
-6. In `backend/config.php`, update the values to match your cPanel database credentials:
+The deployable web root is `cpanel-deploy/`. For InfinityFree, upload its contents into `htdocs/`; on standard cPanel hosting, use the domain's document root (usually `public_html/`).
 
-```php
-<?php
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'mknews_portal');
-define('DB_USER', 'mknews_user');
-define('DB_PASS', 'StrongPassword123!');
-define('CORS_ORIGIN', 'https://yourdomain.com');
-define('ADMIN_EMAIL', 'admin@mknews.com');
-define('ADMIN_PASSWORD', 'MKNews@2026');
-```
+1. Import `backend/cpanel-database.sql` into the database already created in your hosting panel.
+2. Before upload, edit `cpanel-deploy/backend/config.php` and enter the database host, database name, user, and password in the matching constants.
+3. Upload the contents of `cpanel-deploy/` (not the folder itself) into the web root.
+4. Confirm HTTPS is enabled, then check `https://YOUR-DOMAIN/api/health`.
+5. Change the seeded admin password before publishing. See [CPANEL_DEPLOYMENT.md](./CPANEL_DEPLOYMENT.md) for the upload map and full checklist.
 
-7. Upload the contents of the `backend` folder to your cPanel document root or a subfolder and make sure Apache rewrites to the PHP router.
-
+Do not publish database credentials in GitHub or source control. Rotate the database password before deployment because it was shared in this conversation.
