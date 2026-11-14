@@ -36,11 +36,19 @@ export default function HomePage({
   const [activePhoto, setActivePhoto] = useState(null)
   const [activeVideo, setActiveVideo] = useState(null)
 
-  // Segregate articles
-  const leadArticle = articles.find((a) => a.featured) || articles[0]
-  const otherLeadArticles = articles.filter((a) => a.id !== leadArticle?.id).slice(0, 3)
+  // Segregate articles (sorted latest first)
+  const sortedArticles = [...articles].sort(
+    (a, b) => new Date(b.date || 0) - new Date(a.date || 0)
+  )
+  const leadArticle = articles.find((a) => a.featured) || sortedArticles[0] || articles[0]
+  const otherLeadArticles = sortedArticles.filter((a) => a.id !== leadArticle?.id).slice(0, 3)
   const leadIds = new Set([leadArticle?.id, ...otherLeadArticles.map((article) => article.id)])
-  const topStories = articles.filter((article) => !leadIds.has(article.id)).slice(0, 4)
+
+  // Dynamic Last 20 News for "আজকের নির্বাচিত সংবাদ"
+  const availableAfterHero = sortedArticles.filter((article) => !leadIds.has(article.id))
+  const topStories = availableAfterHero.length >= 20
+    ? availableAfterHero.slice(0, 20)
+    : sortedArticles.filter((a) => a.id !== leadArticle?.id).slice(0, 20)
 
   // Categorized articles helper
   const getCatArticles = (slug) => {
@@ -118,14 +126,14 @@ export default function HomePage({
         </div>
       </section>
 
-      {/* ================= 2. FOUR-COLUMN CURATED HIGHLIGHTS (আজকের নির্বাচিত) ================= */}
+      {/* ================= 2. FOUR-COLUMN CURATED HIGHLIGHTS (আজকের নির্বাচিত - ২০টি সংবাদ) ================= */}
       <section className="mb-8">
         <SectionHeader
           title_bn="আজকের নির্বাচিত সংবাদ"
           title_en="Today's Curated Stories"
           lang={lang}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
           {topStories.map((art) => (
             <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
           ))}
