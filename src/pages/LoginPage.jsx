@@ -1,0 +1,199 @@
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Home, KeyRound } from 'lucide-react'
+import { api } from '../api.js'
+
+export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+  const navigate = useNavigate()
+
+  // If already logged in, redirect to admin
+  useEffect(() => {
+    api.checkAuth().then((user) => {
+      if (user) {
+        navigate('/admin', { replace: true })
+      }
+    })
+  }, [navigate])
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setErrorMsg('')
+    setSuccessMsg('')
+    setLoading(true)
+
+    try {
+      const res = await api.login(email, password)
+      if (res && res.success) {
+        setSuccessMsg(lang === 'bn' ? 'লগইন সফল হয়েছে! ড্যাশবোর্ডে প্রবেশ করা হচ্ছে...' : 'Login successful! Redirecting to dashboard...')
+        if (onLoginSuccess) onLoginSuccess(res.user)
+        setTimeout(() => {
+          navigate('/admin', { replace: true })
+        }, 800)
+      } else {
+        setErrorMsg(res?.message || (lang === 'bn' ? 'ভুল ইমেইল বা পাসওয়ার্ড' : 'Invalid email or password'))
+      }
+    } catch (err) {
+      setErrorMsg(err.message || (lang === 'bn' ? 'লগইন ব্যর্থ হয়েছে। পুনরায় চেষ্টা করুন।' : 'Login failed. Please try again.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Quick autofill demo credentials
+  const handleAutoFill = () => {
+    setEmail('admin@mknews.com')
+    setPassword('admin123')
+  }
+
+  return (
+    <div className="min-h-[80vh] flex flex-col justify-center items-center px-4 py-12 font-bengali">
+      {/* Return to Home link */}
+      <div className="w-full max-w-md mb-4 flex justify-between items-center text-xs text-gray-500">
+        <Link to="/" className="flex items-center gap-1 hover:text-red-600 transition-colors">
+          <Home size={13} />
+          <span>{lang === 'bn' ? '← প্রচ্ছদে ফিরে যান' : '← Back to Homepage'}</span>
+        </Link>
+        <span className="text-gray-400">
+          {lang === 'bn' ? 'নিরাপদ অ্যাডমিন পোর্টাল' : 'Secure Admin Portal'}
+        </span>
+      </div>
+
+      {/* Main Login Card */}
+      <div className="w-full max-w-md bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        {/* Header Strip with Prothom Alo Red Top Border */}
+        <div className="bg-[#1a3a5c] p-6 text-white text-center border-b-4 border-[#e30613]">
+          <Link to="/" className="inline-block mb-1">
+            <span
+              className="text-3xl font-extrabold tracking-tight text-white block"
+              style={{ color: '#ff4d4d', fontFamily: "'Hind Siliguri', 'Noto Serif Bengali', serif" }}
+            >
+              {lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo'}
+            </span>
+          </Link>
+          <h2 className="text-sm font-semibold text-gray-200 mt-1">
+            {lang === 'bn' ? 'অ্যাডমিন কন্ট্রোল প্যানেল লগইন' : 'Admin Control Panel Sign In'}
+          </h2>
+        </div>
+
+        <div className="p-6 sm:p-8">
+          {/* Success Message Banner */}
+          {successMsg && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded-lg text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* Error Message Banner */}
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+              <AlertCircle size={16} className="text-red-600 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                {lang === 'bn' ? 'অ্যাডমিন ইমেইল বা ইউজারনেম' : 'Admin Email or Username'}
+              </label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@mknews.com"
+                  className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-sans"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-xs font-bold text-gray-700">
+                  {lang === 'bn' ? 'গোপন পাসওয়ার্ড' : 'Secret Password'}
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAutoFill}
+                  className="text-[11px] font-semibold text-blue-600 hover:text-red-600 flex items-center gap-0.5"
+                >
+                  <KeyRound size={11} />
+                  <span>{lang === 'bn' ? 'অটো-ফিল ডেমো ক্রেডেনশিয়াল' : 'Auto-fill Demo'}</span>
+                </button>
+              </div>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-sans"
+                />
+              </div>
+            </div>
+
+            {/* Remember & Notice */}
+            <div className="flex items-center justify-between text-xs text-gray-600 pt-1">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" defaultChecked className="rounded text-red-600 focus:ring-red-500" />
+                <span>{lang === 'bn' ? 'লগইন মনে রাখুন' : 'Remember me'}</span>
+              </label>
+              <span className="text-[11px] text-gray-400">
+                {lang === 'bn' ? 'রক্ষণাবেক্ষণ পোর্টাল' : 'CMS Portal'}
+              </span>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 bg-[#e30613] hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-lg text-sm transition-colors shadow flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <span>{lang === 'bn' ? 'যাচাই করা হচ্ছে...' : 'Verifying...'}</span>
+              ) : (
+                <>
+                  <span>{lang === 'bn' ? 'লগইন করে ড্যাশবোর্ডে প্রবেশ করুন' : 'Sign In to Dashboard'}</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Quick Demo Access Box */}
+          <div className="mt-6 pt-5 border-t border-gray-100 bg-gray-50/80 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-5 text-center text-xs text-gray-500">
+            <p className="font-semibold text-gray-700 mb-1 flex items-center justify-center gap-1">
+              <ShieldCheck size={14} className="text-green-600" />
+              <span>{lang === 'bn' ? 'ডেমো অ্যাডমিন তথ্য (এক ক্লিকে লগইন):' : 'Demo Credentials (1-click test):'}</span>
+            </p>
+            <div className="font-mono text-[11px] bg-white p-2 rounded border border-gray-200 inline-block text-gray-700 shadow-2xs">
+              <span>Email: <strong>admin@mknews.com</strong> | Password: <strong>admin123</strong></span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('admin@mknews.com')
+                setPassword('admin123')
+              }}
+              className="mt-2 block mx-auto text-red-600 font-bold hover:underline"
+            >
+              {lang === 'bn' ? 'এখানে ক্লিক করে পূরণ করুন' : 'Click here to apply demo credentials'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+

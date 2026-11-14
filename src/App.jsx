@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 
 // Components
@@ -17,21 +17,25 @@ import VideoPage from './pages/VideoPage.jsx'
 import SearchPage from './pages/SearchPage.jsx'
 import EPaperPage from './pages/EPaperPage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
 import StaticPage from './pages/StaticPage.jsx'
 
-// Data
+// Data & API
 import { defaultData } from './data.js'
+import { api } from './api.js'
 
 const STORAGE_KEY = 'prothom_alo_portal_data'
 const LANG_STORAGE_KEY = 'prothom_alo_portal_lang'
 
 export default function App() {
+  const location = useLocation()
+  const isAdminOrLoginPage = location.pathname.startsWith('/admin') || location.pathname === '/login'
+
   // 1. Language State ('bn' | 'en')
   const [lang, setLang] = useState(() => {
     return localStorage.getItem(LANG_STORAGE_KEY) || 'bn'
   })
 
-  // Save language preference
   const handleLangChange = (newLang) => {
     setLang(newLang)
     localStorage.setItem(LANG_STORAGE_KEY, newLang)
@@ -42,14 +46,17 @@ export default function App() {
     document.documentElement.lang = lang
   }, [lang])
 
-  // 2. Data State (Loaded from LocalStorage with default fallback)
+  // 2. Data State (Loaded from LocalStorage with fallback to defaultData)
   const [newsData, setNewsData] = useState(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
         if (parsed && Array.isArray(parsed.articles) && parsed.articles.length > 0) {
-          return parsed
+          return {
+            ...defaultData,
+            ...parsed,
+          }
         }
       }
     } catch (err) {
@@ -57,6 +64,29 @@ export default function App() {
     }
     return defaultData
   })
+
+  // 3. Sync with backend API if connected
+  useEffect(() => {
+    // Check if backend API has articles
+    api.getArticles().then((serverArticles) => {
+      if (serverArticles && serverArticles.length > 0) {
+        setNewsData((prev) => ({
+          ...prev,
+          articles: serverArticles,
+        }))
+      }
+    })
+
+    // Check if backend API has breaking news
+    api.getBreakingNews().then((serverBreaking) => {
+      if (serverBreaking && serverBreaking.length > 0) {
+        setNewsData((prev) => ({
+          ...prev,
+          breakingNews: serverBreaking,
+        }))
+      }
+    })
+  }, [])
 
   // Persist data updates to LocalStorage
   const persistData = (updated) => {
@@ -126,17 +156,23 @@ export default function App() {
         </title>
       </Helmet>
 
-      {/* Top Header */}
-      <Header
-        lang={lang}
-        onLangChange={handleLangChange}
-      />
+      {/* Top Header (Hide only on admin dashboard for clean CMS view) */}
+      {!location.pathname.startsWith('/admin') && (
+        <>
+          <Header
+            lang={lang}
+            onLangChange={handleLangChange}
+          />
 
-      {/* Breaking News Ticker */}
-      <BreakingTicker
-        items={newsData.breakingNews}
-        lang={lang}
-      />
+          {/* Breaking News Ticker (Hide on login page) */}
+          {location.pathname !== '/login' && (
+            <BreakingTicker
+              items={newsData.breakingNews}
+              lang={lang}
+            />
+          )}
+        </>
+      )}
 
       {/* Main Multi-page Routes */}
       <main className="flex-1">
@@ -155,7 +191,17 @@ export default function App() {
             }
           />
 
-          {/* 2. Category Pages */}
+          {/* 2. Login Page */}
+          <Route
+            path="/login"
+            element={
+              <LoginPage
+                lang={lang}
+              />
+            }
+          />
+
+          {/* 3. Category Pages */}
           <Route
             path="/category/:slug"
             element={
@@ -166,7 +212,7 @@ export default function App() {
             }
           />
 
-          {/* 3. Article Details Page */}
+          {/* 4. Article Details Page */}
           <Route
             path="/article/:slug"
             element={
@@ -177,7 +223,7 @@ export default function App() {
             }
           />
 
-          {/* 4. Opinion & Editorial Page */}
+          {/* 5. Opinion & Editorial Page */}
           <Route
             path="/opinion"
             element={
@@ -188,7 +234,7 @@ export default function App() {
             }
           />
 
-          {/* 5. Photo Gallery Page */}
+          {/* 6. Photo Gallery Page */}
           <Route
             path="/photos"
             element={
@@ -199,7 +245,7 @@ export default function App() {
             }
           />
 
-          {/* 6. Video News Page */}
+          {/* 7. Video News Page */}
           <Route
             path="/video"
             element={
@@ -210,7 +256,7 @@ export default function App() {
             }
           />
 
-          {/* 7. Search Page */}
+          {/* 8. Search Page */}
           <Route
             path="/search"
             element={
@@ -221,19 +267,22 @@ export default function App() {
             }
           />
 
-          {/* 8. ePaper Digital Reader */}
+          {/* 9. ePaper Digital Reader */}
           <Route
             path="/epaper"
             element={<EPaperPage lang={lang} />}
           />
 
-          {/* 9. Admin CMS Dashboard */}
+          {/* 10. Admin CMS Dashboard */}
           <Route
             path="/admin"
             element={
               <AdminPage
                 articles={newsData.articles}
                 breakingNews={newsData.breakingNews}
+                opinions={newsData.opinions}
+                photos={newsData.photos}
+                videos={newsData.videos}
                 onAddArticle={handleAddArticle}
                 onUpdateArticle={handleUpdateArticle}
                 onDeleteArticle={handleDeleteArticle}
@@ -245,7 +294,7 @@ export default function App() {
             }
           />
 
-          {/* 10. Static Pages */}
+          {/* 11. Static Pages */}
           <Route path="/about" element={<StaticPage lang={lang} />} />
           <Route path="/privacy" element={<StaticPage lang={lang} />} />
           <Route path="/terms" element={<StaticPage lang={lang} />} />
@@ -257,8 +306,8 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Footer */}
-      <Footer lang={lang} />
+      {/* Footer (Hide on admin dashboard) */}
+      {!location.pathname.startsWith('/admin') && <Footer lang={lang} />}
     </div>
   )
 }

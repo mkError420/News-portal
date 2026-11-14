@@ -1,20 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Search, Globe, User, Bell, ChevronDown, Sparkles } from 'lucide-react'
+import { Menu, X, Search, Globe, User, Bell, Sparkles } from 'lucide-react'
 import { NAV_ITEMS, formatBengaliDate, formatEnglishDate, UI_TEXT } from '../utils.js'
+import { api } from '../api.js'
 
 export default function Header({ lang = 'bn', onLangChange, onSearch }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [loginModalOpen, setLoginModalOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' })
-  const [loginMsg, setLoginMsg] = useState('')
+  const [isAuth, setIsAuth] = useState(false)
   const searchInputRef = useRef(null)
   const navigate = useNavigate()
 
   const t = UI_TEXT[lang] || UI_TEXT.bn
   const todayStr = lang === 'bn' ? formatBengaliDate(new Date().toISOString()) : formatEnglishDate(new Date().toISOString())
+
+  useEffect(() => {
+    api.checkAuth().then((user) => setIsAuth(!!user))
+  }, [])
 
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
@@ -37,17 +40,6 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
     }
   }
 
-  const handleQuickLogin = (e) => {
-    e.preventDefault()
-    if (loginForm.username && loginForm.password) {
-      setLoginMsg(lang === 'bn' ? 'সফলভাবে লগইন হয়েছে!' : 'Logged in successfully!')
-      setTimeout(() => {
-        setLoginModalOpen(false)
-        setLoginMsg('')
-      }, 1000)
-    }
-  }
-
   return (
     <>
       {/* 1. TOP UTILITY BAR (Prothom Alo Navy Blue #1a3a5c) */}
@@ -63,7 +55,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
             </span>
           </div>
 
-          {/* Right: Edition, Language Switcher, Notifications, Login */}
+          {/* Right: Language Switcher, Notifications, Login */}
           <div className="flex items-center gap-3">
             {/* Language Switch Pill */}
             <button
@@ -87,22 +79,31 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
 
             <span className="text-gray-500 hidden sm:inline">|</span>
 
-            {/* Login / Profile */}
-            <button
-              onClick={() => setLoginModalOpen(true)}
-              className="flex items-center gap-1 text-gray-200 hover:text-yellow-300 transition-colors"
-            >
-              <User size={12} />
-              <span>{t.login}</span>
-            </button>
+            {/* Dedicated Login Link */}
+            {isAuth ? (
+              <Link
+                to="/admin"
+                className="flex items-center gap-1 text-yellow-300 hover:text-white font-bold transition-colors"
+              >
+                <Sparkles size={12} />
+                <span>{lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}</span>
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-1 text-gray-200 hover:text-yellow-300 transition-colors font-medium"
+              >
+                <User size={12} />
+                <span>{t.login}</span>
+              </Link>
+            )}
 
             {/* Admin shortcut */}
             <Link
               to="/admin"
-              className="hidden md:inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded text-[11px] font-semibold transition-colors"
+              className="hidden md:inline-flex items-center gap-1 bg-[#e30613] hover:bg-red-700 text-white px-2.5 py-0.5 rounded text-[11px] font-semibold transition-colors"
             >
-              <Sparkles size={11} />
-              <span>{lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
+              <span>{lang === 'bn' ? 'অ্যাডমিন প্যানেল' : 'Admin'}</span>
             </Link>
           </div>
         </div>
@@ -233,78 +234,6 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
         </div>
       )}
 
-      {/* LOGIN QUICK MODAL */}
-      {loginModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={(e) => { if (e.target === e.currentTarget) setLoginModalOpen(false) }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative border border-gray-100 font-bengali">
-            <button
-              onClick={() => setLoginModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1"
-            >
-              <X size={20} />
-            </button>
-            <div className="text-center mb-5">
-              <span className="text-2xl font-bold text-[#e30613] block">
-                {lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo'}
-              </span>
-              <p className="text-sm text-gray-500 mt-1">
-                {lang === 'bn' ? 'আপনার অ্যাকাউন্টে প্রবেশ করুন' : 'Sign in to your account'}
-              </p>
-            </div>
-
-            {loginMsg && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm text-center">
-                {loginMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleQuickLogin} className="space-y-4 text-sm">
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">
-                  {lang === 'bn' ? 'ইমেইল বা ফোন নম্বর' : 'Email or Phone'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                  placeholder="user@example.com"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">
-                  {lang === 'bn' ? 'পাসওয়ার্ড' : 'Password'}
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-[#e30613] hover:bg-red-700 text-white font-bold py-2.5 rounded-lg transition-colors shadow-sm"
-              >
-                {t.login}
-              </button>
-            </form>
-
-            <div className="mt-4 pt-4 border-t text-center text-xs text-gray-500">
-              <Link to="/admin" onClick={() => setLoginModalOpen(false)} className="text-red-600 font-semibold hover:underline">
-                {lang === 'bn' ? 'অ্যাডমিন প্যানেলে প্রবেশ করুন →' : 'Go to Admin CMS →'}
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MOBILE DRAWER */}
       <div
         className={`fixed inset-0 z-50 bg-black/50 transition-opacity lg:hidden ${
@@ -366,7 +295,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
             onClick={() => setMobileOpen(false)}
             className="block px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
           >
-            ⚡ {lang === 'bn' ? 'অ্যাডমিন প্যানেল (সংবাদ পরিচালনা)' : 'Admin CMS Portal'}
+            ⚡ {lang === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Admin CMS Portal'}
           </NavLink>
         </div>
 
@@ -382,9 +311,13 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
             <Globe size={13} />
             <span>{lang === 'bn' ? 'Switch to English' : 'বাংলা সংস্করণ'}</span>
           </button>
-          <button onClick={() => { setMobileOpen(false); setLoginModalOpen(true) }} className="text-gray-700 font-medium">
-            {t.login}
-          </button>
+          <Link
+            to="/login"
+            onClick={() => setMobileOpen(false)}
+            className="text-red-600 font-bold hover:underline"
+          >
+            {isAuth ? (lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : t.login}
+          </Link>
         </div>
       </aside>
     </>
