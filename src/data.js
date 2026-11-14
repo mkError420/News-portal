@@ -1,12 +1,12 @@
 // Comprehensive bilingual sample dataset for Prothom Alo clone
 
 export const breakingNews = [
-  { id: 1, title_bn: 'ঢাকায় আজ থেকে মেট্রোরেলের মতিঝিল-উত্তরা পূর্ণাঙ্গ সেবা চালু', title_en: 'Full Motijheel-Uttara Metro Rail service begins in Dhaka today', slug: 'dhaka-metro-full-service' },
-  { id: 2, title_bn: 'এশিয়া কাপের ফাইনালে শ্বাসরুদ্ধকর ম্যাচে বাংলাদেশ চ্যাম্পিয়ন', title_en: 'Bangladesh crowned Asia Cup champions in thrilling final', slug: 'bangladesh-asia-cup-champions' },
-  { id: 3, title_bn: 'রেমিট্যান্স প্রবাহে নতুন রেকর্ড, রিজার্ভ আবারও ঊর্ধ্বমুখী', title_en: 'Remittance hits new record as foreign reserves climb again', slug: 'remittance-record-reserves' },
-  { id: 4, title_bn: 'আগামী তিন দিন সারাদেশে ভারী বৃষ্টির সতর্কতা জারি করেছে আবহাওয়া অধিদপ্তর', title_en: 'Meteorological department issues heavy rain warning across country for next 3 days', slug: 'rain-alert-bangladesh' },
-  { id: 5, title_bn: 'জাতীয় অর্থনৈতিক পরিষদের সভায় নতুন ৫০টি মেগা প্রকল্প অনুমোদন', title_en: 'National Economic Council approves 50 new mega projects', slug: 'economic-council-mega-projects' },
-  { id: 6, title_bn: 'পদ্মা সেতুতে ২৪ ঘণ্টায় সর্বোচ্চ টোল আদায়ের নতুন ইতিহাস', title_en: 'Padma Bridge records historic 24-hour toll collection', slug: 'padma-bridge-toll-record' },
+  { id: 1, title_bn: 'ঢাকায় আজ থেকে মেট্রোরেলের মতিঝিল-উত্তরা পূর্ণাঙ্গ সেবা চালু', title_en: 'Full Motijheel-Uttara Metro Rail service begins in Dhaka today', slug: 'dhaka-traffic-smart-system', url: '/article/dhaka-traffic-smart-system', active: 1 },
+  { id: 2, title_bn: 'এশিয়া কাপের ফাইনালে শ্বাসরুদ্ধকর ম্যাচে বাংলাদেশ চ্যাম্পিয়ন', title_en: 'Bangladesh crowned Asia Cup champions in thrilling final', slug: 'bangladesh-cricket-asia-cup-prep', url: '/article/bangladesh-cricket-asia-cup-prep', active: 1 },
+  { id: 3, title_bn: 'রেমিট্যান্স প্রবাহে নতুন রেকর্ড, রিজার্ভ আবারও ঊর্ধ্বমুখী', title_en: 'Remittance hits new record as foreign reserves climb again', slug: 'economic-policy-export-boost', url: '/article/economic-policy-export-boost', active: 1 },
+  { id: 4, title_bn: 'আগামী তিন দিন সারাদেশে ভারী বৃষ্টির সতর্কতা জারি করেছে আবহাওয়া অধিদপ্তর', title_en: 'Meteorological department issues heavy rain warning across country for next 3 days', slug: 'bangladesh-flood-relief-grows', url: '/article/bangladesh-flood-relief-grows', active: 1 },
+  { id: 5, title_bn: 'জাতীয় অর্থনৈতিক পরিষদের সভায় নতুন ৫০টি মেগা প্রকল্প অনুমোদন', title_en: 'National Economic Council approves 50 new mega projects', slug: 'national-infrastructure-bridge', url: '/article/national-infrastructure-bridge', active: 1 },
+  { id: 6, title_bn: 'প্রযুক্তি খাতে রেকর্ড ভেঞ্চার ফান্ডিং ও স্টার্টআপ সাফল্য', title_en: 'Tech Sector records historic venture capital funding surge', slug: 'tech-startups-funding-rise', url: '/article/tech-startups-funding-rise', active: 1 },
 ]
 
 export const opinions = [

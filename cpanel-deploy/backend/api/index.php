@@ -800,52 +800,137 @@ if ($resource === 'settings') {
 if ($resource === 'breaking-news') {
     $dbConn = require_db();
 
-    if ($method === 'GET') {
-        $hasActive = has_column($dbConn, 'breaking_news', 'active');
-        $hasTitleBn = has_column($dbConn, 'breaking_news', 'title_bn');
+    // Auto-migrate breaking_news table columns if missing
+    try {
+        if (!has_column($dbConn, 'breaking_news', 'title_bn')) {
+            $dbConn->exec("ALTER TABLE `breaking_news` ADD COLUMN `title_bn` VARCHAR(500) NOT NULL DEFAULT '' AFTER `title`");
+        }
+        if (!has_column($dbConn, 'breaking_news', 'title_en')) {
+            $dbConn->exec("ALTER TABLE `breaking_news` ADD COLUMN `title_en` VARCHAR(500) NOT NULL DEFAULT '' AFTER `title_bn`");
+        }
+        if (!has_column($dbConn, 'breaking_news', 'article_id')) {
+            $dbConn->exec("ALTER TABLE `breaking_news` ADD COLUMN `article_id` INT NULL DEFAULT NULL AFTER `slug`");
+        }
+        if (!has_column($dbConn, 'breaking_news', 'url')) {
+            $dbConn->exec("ALTER TABLE `breaking_news` ADD COLUMN `url` VARCHAR(500) NULL DEFAULT '' AFTER `article_id`");
+        }
+        if (!has_column($dbConn, 'breaking_news', 'active')) {
+            $dbConn->exec("ALTER TABLE `breaking_news` ADD COLUMN `active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `url`");
+        }
+    } catch (Throwable $e) {}
 
-        $where = $hasActive ? 'WHERE active = 1' : '';
+    $hasActive = has_column($dbConn, 'breaking_news', 'active');
+    $hasTitleBn = has_column($dbConn, 'breaking_news', 'title_bn');
+    $hasArticleId = has_column($dbConn, 'breaking_news', 'article_id');
+    $hasUrl = has_column($dbConn, 'breaking_news', 'url');
+
+    // GET
+    if ($method === 'GET') {
+        $forAdmin = !empty($_GET['all']) || !empty($_GET['admin']);
+        $where = ($hasActive && !$forAdmin) ? 'WHERE active = 1' : '';
         $stmt = $dbConn->query("SELECT * FROM breaking_news $where ORDER BY id DESC");
-        $items = array_map(function ($r) use ($hasTitleBn) {
+        $items = array_map(function ($r) use ($hasTitleBn, $hasArticleId, $hasUrl, $hasActive) {
             $titleBn = $hasTitleBn ? ($r['title_bn'] ?? '') : ($r['title'] ?? '');
             $titleEn = $hasTitleBn ? ($r['title_en'] ?? $titleBn) : ($r['title'] ?? '');
             return [
                 'id' => (int) $r['id'],
-                'title_bn' => $titleBn,
-                'title_en' => $titleEn,
+                'title_bn' => $titleBn ?: ($r['title'] ?? ''),
+                'title_en' => $titleEn ?: ($r['title'] ?? ''),
                 'slug' => $r['slug'] ?? ('breaking-' . $r['id']),
+                'article_id' => $hasArticleId && !empty($r['article_id']) ? (int) $r['article_id'] : null,
+                'url' => $hasUrl ? ($r['url'] ?? '') : '',
+                'active' => $hasActive ? (!empty($r['active']) ? 1 : 0) : 1,
+                'created_at' => $r['created_at'] ?? null,
             ];
         }, $stmt->fetchAll());
         json_response(['breakingNews' => $items]);
     }
 
-    if ($method === 'POST') {
+    // TOGGLE ACTIVE
+    if ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'toggle') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id < 1) json_response(['message' => 'Valid ID required'], 400);
+
+        if ($hasActive) {
+            $stmt = $dbConn->prepare('UPDATE breaking_news SET active = IF(active = 1, 0, 1) WHERE id = ?');
+            $stmt->execute([$id]);
+            $newActive = (int) $dbConn->query("SELECT active FROM breaking_news WHERE id = $id")->fetchColumn();
+            json_response(['success' => true, 'id' => $id, 'active' => $newActive]);
+        }
+        json_response(['success' => true, 'id' => $id, 'active' => 1]);
+    }
+
+    // CREATE OR UPDATE (POST or PUT)
+    if ($method === 'POST' || $method === 'PUT') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $id = (int) ($input['id'] ?? ($_GET['id'] ?? 0));
         $titleBn = trim((string) ($input['title_bn'] ?? ($input['title'] ?? '')));
         $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
         if ($titleBn === '' && $titleEn === '') {
             json_response(['success' => false, 'message' => 'A breaking-news headline is required.'], 400);
         }
-        $slug = 'breaking-' . time();
+        $slug = trim((string) ($input['slug'] ?? ''));
+        if ($slug === '') {
+            $slug = 'breaking-' . time();
+        }
+        $articleId = !empty($input['article_id']) ? (int) $input['article_id'] : null;
+        $url = trim((string) ($input['url'] ?? ''));
+        $active = isset($input['active']) ? (!empty($input['active']) ? 1 : 0) : 1;
 
-        $hasTitleBn = has_column($dbConn, 'breaking_news', 'title_bn');
-        $hasActive = has_column($dbConn, 'breaking_news', 'active');
+        if ($id > 0) {
+            $chk = $dbConn->prepare('SELECT id FROM breaking_news WHERE id = ?');
+            $chk->execute([$id]);
+            if ($chk->fetch()) {
+                if ($hasTitleBn && $hasArticleId && $hasUrl && $hasActive) {
+                    $stmt = $dbConn->prepare('UPDATE breaking_news SET title = ?, title_bn = ?, title_en = ?, slug = ?, article_id = ?, url = ?, active = ? WHERE id = ?');
+                    $stmt->execute([$titleBn, $titleBn, $titleEn, $slug, $articleId, $url, $active, $id]);
+                } elseif ($hasTitleBn && $hasActive) {
+                    $stmt = $dbConn->prepare('UPDATE breaking_news SET title = ?, title_bn = ?, title_en = ?, slug = ?, active = ? WHERE id = ?');
+                    $stmt->execute([$titleBn, $titleBn, $titleEn, $slug, $active, $id]);
+                } else {
+                    $stmt = $dbConn->prepare('UPDATE breaking_news SET title = ?, slug = ? WHERE id = ?');
+                    $stmt->execute([$titleBn, $slug, $id]);
+                }
+                json_response([
+                    'success' => true,
+                    'item' => [
+                        'id' => $id,
+                        'title_bn' => $titleBn,
+                        'title_en' => $titleEn,
+                        'slug' => $slug,
+                        'article_id' => $articleId,
+                        'url' => $url,
+                        'active' => $active,
+                    ]
+                ]);
+            }
+        }
 
-        if ($hasTitleBn) {
-            $sql = $hasActive
-                ? 'INSERT INTO breaking_news (title_bn, title_en, slug, active) VALUES (?, ?, ?, 1)'
-                : 'INSERT INTO breaking_news (title_bn, title_en, slug) VALUES (?, ?, ?)';
-            $stmt = $dbConn->prepare($sql);
-            $stmt->execute([$titleBn, $titleEn, $slug]);
+        // INSERT
+        if ($hasTitleBn && $hasArticleId && $hasUrl && $hasActive) {
+            $stmt = $dbConn->prepare('INSERT INTO breaking_news (title, title_bn, title_en, slug, article_id, url, active) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$titleBn, $titleBn, $titleEn, $slug, $articleId, $url, $active]);
+        } elseif ($hasTitleBn && $hasActive) {
+            $stmt = $dbConn->prepare('INSERT INTO breaking_news (title, title_bn, title_en, slug, active) VALUES (?, ?, ?, ?, ?)');
+            $stmt->execute([$titleBn, $titleBn, $titleEn, $slug, $active]);
         } else {
             $stmt = $dbConn->prepare('INSERT INTO breaking_news (title, slug) VALUES (?, ?)');
             $stmt->execute([$titleBn, $slug]);
         }
-        $id = (int) $dbConn->lastInsertId();
+        $newId = (int) $dbConn->lastInsertId();
         json_response([
             'success' => true,
-            'item' => ['id' => $id, 'title_bn' => $titleBn, 'title_en' => $titleEn, 'slug' => $slug]
+            'item' => [
+                'id' => $newId > 0 ? $newId : $id,
+                'title_bn' => $titleBn,
+                'title_en' => $titleEn,
+                'slug' => $slug,
+                'article_id' => $articleId,
+                'url' => $url,
+                'active' => $active,
+            ]
         ]);
     }
 
@@ -857,9 +942,6 @@ if ($resource === 'breaking-news') {
         }
         $stmt = $dbConn->prepare('DELETE FROM breaking_news WHERE id = ?');
         $stmt->execute([$id]);
-        if ($stmt->rowCount() === 0) {
-            json_response(['success' => false, 'message' => 'Breaking news was not found.'], 404);
-        }
         json_response(['success' => true, 'deletedId' => $id]);
     }
 }

@@ -16,6 +16,9 @@ CREATE TABLE admins (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+INSERT INTO admins (email, password_hash) VALUES
+('admin@prothomalo.com', '$2y$12$Affak3Sszb7sr/z.E7qTjerisPxOQ.RmPyjvwrwydRHcDWnvtwvAG');
+
 -- 2. Categories Table
 DROP TABLE IF EXISTS categories;
 CREATE TABLE categories (
@@ -51,16 +54,18 @@ CREATE TABLE breaking_news (
   title VARCHAR(500) NOT NULL,
   title_bn VARCHAR(500) NOT NULL DEFAULT '',
   title_en VARCHAR(500) NOT NULL DEFAULT '',
-  slug VARCHAR(255) NOT NULL UNIQUE,
+  slug VARCHAR(255) NOT NULL,
+  article_id INT NULL DEFAULT NULL,
+  url VARCHAR(500) NULL DEFAULT '',
   active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO breaking_news (title, slug, active) VALUES
-('ঢাকায় আজ থেকে মেট্রোরেলের মতিঝিল-উত্তরা পূর্ণাঙ্গ সেবা চালু', 'dhaka-metro-full-service', 1),
-('এশিয়া কাপের ফাইনালে শ্বাসরুদ্ধকর ম্যাচে বাংলাদেশ চ্যাম্পিয়ন', 'bangladesh-asia-cup-champions', 1),
-('রেমিট্যান্স প্রবাহে নতুন রেকর্ড, রিজার্ভ আবারও ঊর্ধ্বমুখী', 'remittance-record-reserves', 1),
-('আগামী তিন দিন সারাদেশে ভারী বৃষ্টির সতর্কতা জারি করেছে আবহাওয়া অধিদপ্তর', 'rain-alert-bangladesh', 1);
+INSERT INTO breaking_news (title, title_bn, title_en, slug, url, active) VALUES
+('ঢাকায় আজ থেকে মেট্রোরেলের মতিঝিল-উত্তরা পূর্ণাঙ্গ সেবা চালু', 'ঢাকায় আজ থেকে মেট্রোরেলের মতিঝিল-উত্তরা পূর্ণাঙ্গ সেবা চালু', 'Full Motijheel-Uttara Metro Rail service begins in Dhaka today', 'dhaka-traffic-smart-system', '/article/dhaka-traffic-smart-system', 1),
+('এশিয়া কাপের ফাইনালে শ্বাসরুদ্ধকর ম্যাচে বাংলাদেশ চ্যাম্পিয়ন', 'এশিয়া কাপের ফাইনালে শ্বাসরুদ্ধকর ম্যাচে বাংলাদেশ চ্যাম্পিয়ন', 'Bangladesh crowned Asia Cup champions in thrilling final', 'bangladesh-cricket-asia-cup-prep', '/article/bangladesh-cricket-asia-cup-prep', 1),
+('রেমিট্যান্স প্রবাহে নতুন রেকর্ড, রিজার্ভ আবারও ঊর্ধ্বমুখী', 'রেমিট্যান্স প্রবাহে নতুন রেকর্ড, রিজার্ভ আবারও ঊর্ধ্বমুখী', 'Remittance hits new record as foreign reserves climb again', 'economic-policy-export-boost', '/article/economic-policy-export-boost', 1),
+('আগামী তিন দিন সারাদেশে ভারী বৃষ্টির সতর্কতা জারি করেছে আবহাওয়া অধিদপ্তর', 'আগামী তিন দিন সারাদেশে ভারী বৃষ্টির সতর্কতা জারি করেছে আবহাওয়া অধিদপ্তর', 'Meteorological department issues heavy rain warning across country for next 3 days', 'bangladesh-flood-relief-grows', '/article/bangladesh-flood-relief-grows', 1);
 
 -- 4. Articles Table
 DROP TABLE IF EXISTS articles;

@@ -143,8 +143,8 @@ export const api = {
     }
   },
 
-  async getBreakingNews() {
-    const res = await client.get('/breaking-news')
+  async getBreakingNews(all = false) {
+    const res = await client.get(`/breaking-news${all ? '?all=1' : ''}`)
     if (!Array.isArray(res.data?.breakingNews)) {
       throw new Error('The server returned an invalid breaking-news response.')
     }
@@ -158,6 +158,11 @@ export const api = {
       throw new Error('The server did not return the saved breaking-news item.')
     }
     return data
+  },
+
+  async toggleBreakingNews(id) {
+    const res = await client.post(`/breaking-news?action=toggle&id=${encodeURIComponent(id)}`)
+    return requireSuccess(res.data)
   },
 
   async deleteBreakingNews(id) {

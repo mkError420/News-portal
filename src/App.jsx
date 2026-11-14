@@ -154,6 +154,16 @@ export default function App() {
     persistData(updated)
   }
 
+  const handleUpdateBreaking = (updatedItem) => {
+    const updated = {
+      ...newsData,
+      breakingNews: (newsData.breakingNews || []).map((item) =>
+        item.id === updatedItem.id ? { ...item, ...updatedItem } : item
+      ),
+    }
+    persistData(updated)
+  }
+
   const handleDeleteBreaking = (id) => {
     const updated = {
       ...newsData,
@@ -291,6 +301,7 @@ export default function App() {
             <BreakingTicker
               items={newsData.breakingNews}
               lang={lang}
+              articles={newsData.articles}
             />
           )}
         </>
@@ -345,6 +356,7 @@ export default function App() {
             element={
               <ArticlePage
                 articles={newsData.articles}
+                breakingNews={newsData.breakingNews}
                 categories={newsData.categories}
                 settings={newsData.settings}
                 lang={lang}
@@ -421,6 +433,7 @@ export default function App() {
                 onUpdateArticle={handleUpdateArticle}
                 onDeleteArticle={handleDeleteArticle}
                 onAddBreaking={handleAddBreaking}
+                onUpdateBreaking={handleUpdateBreaking}
                 onDeleteBreaking={handleDeleteBreaking}
                 onAddCategory={handleAddCategory}
                 onUpdateCategory={handleUpdateCategory}

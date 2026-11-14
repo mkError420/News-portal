@@ -34,11 +34,43 @@ import {
   toBengaliNumber,
 } from '../utils.js'
 
-export default function ArticlePage({ articles = [], categories = [], settings = null, lang = 'bn' }) {
+export default function ArticlePage({ articles = [], breakingNews = [], categories = [], settings = null, lang = 'bn' }) {
   const { slug } = useParams()
   const article = articles.find((a) => a.slug === slug || String(a.id) === String(slug)) ||
     articles.find((a) => a.slug === slug) ||
-    articles[0]
+    (() => {
+      const matchedBreaking = (breakingNews || []).find((b) => b.slug === slug)
+      if (matchedBreaking) {
+        if (matchedBreaking.article_id) {
+          const art = articles.find((a) => a.id === matchedBreaking.article_id)
+          if (art) return art
+        }
+        return {
+          id: matchedBreaking.id,
+          slug: matchedBreaking.slug,
+          title_bn: matchedBreaking.title_bn,
+          title_en: matchedBreaking.title_en || matchedBreaking.title_bn,
+          category: 'national',
+          subheadline_bn: 'বিশেষ ব্রেকিং বুলেটিন',
+          subheadline_en: 'Breaking News Bulletin',
+          summary_bn: matchedBreaking.title_bn,
+          summary_en: matchedBreaking.title_en || matchedBreaking.title_bn,
+          author_bn: (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ? `${lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en} অনলাইন` : 'অনলাইন ডেস্ক',
+          author_en: 'Online Desk',
+          author_role_bn: 'সর্বশেষ লাইভ আপডেট',
+          author_role_en: 'Live Updates',
+          image: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
+          imageCaption: matchedBreaking.title_bn,
+          imageCredit: 'ছবি: প্রথম আলো',
+          published_at: matchedBreaking.created_at || new Date().toISOString(),
+          read_time: '১ মিনিট পাঠ',
+          views: 120,
+          content_bn: `<p><strong>${matchedBreaking.title_bn}</strong></p><p>এই বিষয়ে বিস্তারিত তথ্য ও সর্বশেষ আপডেট সংগ্রহ করা হচ্ছে। বিস্তারিত প্রতিবেদন কিছুক্ষণের মধ্যেই সংযুক্ত করা হবে। সঙ্গে থাকুন।</p>`,
+          content_en: `<p><strong>${matchedBreaking.title_en || matchedBreaking.title_bn}</strong></p><p>More details and live developments are incoming on this breaking story. Please stay tuned.</p>`,
+        }
+      }
+      return articles[0]
+    })()
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
     (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')

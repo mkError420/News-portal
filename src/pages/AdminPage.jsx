@@ -40,6 +40,9 @@ import {
   Smartphone,
   CheckSquare,
   Code,
+  Link as LinkIcon,
+  Play,
+  Pause,
 } from 'lucide-react'
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
@@ -63,6 +66,7 @@ export default function AdminPage({
   onUpdateArticle,
   onDeleteArticle,
   onAddBreaking,
+  onUpdateBreaking,
   onDeleteBreaking,
   onAddCategory,
   onUpdateCategory,
@@ -289,9 +293,19 @@ export default function AdminPage({
   const [articleCategoryFilter, setArticleCategoryFilter] = useState('all')
   const [filterFeaturedOnly, setFilterFeaturedOnly] = useState(false)
 
-  // --- Breaking News Form ---
-  const [newBreakingBn, setNewBreakingBn] = useState('')
-  const [newBreakingEn, setNewBreakingEn] = useState('')
+  // --- Breaking News Form State ---
+  const emptyBreakingForm = {
+    title_bn: '',
+    title_en: '',
+    link_type: 'article', // 'article' | 'custom'
+    article_id: '',
+    slug: '',
+    url: '',
+    active: true,
+  }
+  const [breakingForm, setBreakingForm] = useState(emptyBreakingForm)
+  const [editingBreakingId, setEditingBreakingId] = useState(null)
+  const [breakingSearch, setBreakingSearch] = useState('')
 
   // --- Opinion Form ---
   const [newOpinion, setNewOpinion] = useState({
@@ -503,40 +517,136 @@ export default function AdminPage({
     }
   }
 
-  // Handle Breaking News Add
-  const handleAddBreakingSubmit = async (e) => {
-    e.preventDefault()
-    if (!newBreakingBn.trim() && !newBreakingEn.trim()) return
+  // Handle Article Selection in Breaking Form
+  const handleSelectArticleForBreaking = (articleId) => {
+    if (!articleId) {
+      setBreakingForm((prev) => ({
+        ...prev,
+        article_id: '',
+        slug: '',
+        url: '',
+      }))
+      return
+    }
+    const art = articles.find((a) => a.id === Number(articleId) || String(a.id) === String(articleId))
+    if (art) {
+      setBreakingForm((prev) => ({
+        ...prev,
+        article_id: art.id,
+        slug: art.slug,
+        title_bn: prev.title_bn.trim() ? prev.title_bn : (art.title_bn || ''),
+        title_en: prev.title_en.trim() ? prev.title_en : (art.title_en || ''),
+        url: `/article/${art.slug}`,
+      }))
+    }
+  }
 
-    const newItem = {
-      id: Date.now(),
-      title_bn: newBreakingBn.trim() || newBreakingEn.trim(),
-      title_en: newBreakingEn.trim() || newBreakingBn.trim(),
-      slug: `breaking-${Date.now()}`,
+  // Handle Breaking News Add or Edit Submit
+  const handleSubmitBreaking = async (e) => {
+    e.preventDefault()
+    if (!breakingForm.title_bn.trim() && !breakingForm.title_en.trim()) {
+      alert(lang === 'bn' ? 'দয়া করে ব্রেকিং হেডলাইন লিখুন।' : 'Please enter breaking news headline.')
+      return
     }
+
+    let targetSlug = (breakingForm.slug || '').trim()
+    if (!targetSlug) {
+      if (breakingForm.article_id) {
+        const art = articles.find((a) => a.id === Number(breakingForm.article_id))
+        targetSlug = art?.slug || `breaking-${Date.now()}`
+      } else {
+        targetSlug = `breaking-${Date.now()}`
+      }
+    }
+
+    const targetUrl = breakingForm.link_type === 'custom' && breakingForm.url.trim()
+      ? breakingForm.url.trim()
+      : `/article/${targetSlug}`
+
+    const itemPayload = {
+      id: editingBreakingId || Date.now(),
+      title_bn: breakingForm.title_bn.trim() || breakingForm.title_en.trim(),
+      title_en: breakingForm.title_en.trim() || breakingForm.title_bn.trim(),
+      slug: targetSlug,
+      article_id: breakingForm.link_type === 'article' && breakingForm.article_id ? Number(breakingForm.article_id) : null,
+      url: targetUrl,
+      active: breakingForm.active ? 1 : 0,
+    }
+
     try {
-      const saved = await api.saveBreakingNews(newItem)
-      onAddBreaking?.(saved?.item || newItem)
-      refreshStats()
-      setNewBreakingBn('')
-      setNewBreakingEn('')
-      triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ যুক্ত হয়েছে!' : 'Breaking news added!')
+      const saved = await api.saveBreakingNews(itemPayload)
+      if (editingBreakingId) {
+        onUpdateBreaking?.(saved?.item || itemPayload)
+        triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ সফলভাবে আপডেট হয়েছে!' : 'Breaking news updated successfully!')
+      } else {
+        onAddBreaking?.(saved?.item || itemPayload)
+        triggerToast(lang === 'bn' ? 'নতুন ব্রেকিং নিউজ যুক্ত হয়েছে!' : 'Breaking news added!')
+      }
     } catch {
-      onAddBreaking?.(newItem)
-      setNewBreakingBn('')
-      setNewBreakingEn('')
-      triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ যুক্ত হয়েছে!' : 'Breaking news added!')
+      if (editingBreakingId) {
+        onUpdateBreaking?.(itemPayload)
+        triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ আপডেট হয়েছে!' : 'Breaking news updated!')
+      } else {
+        onAddBreaking?.(itemPayload)
+        triggerToast(lang === 'bn' ? 'নতুন ব্রেকিং নিউজ যুক্ত হয়েছে!' : 'Breaking news added!')
+      }
     }
+
+    refreshStats()
+    setBreakingForm(emptyBreakingForm)
+    setEditingBreakingId(null)
+  }
+
+  // Handle Edit Breaking Click
+  const handleEditBreakingClick = (item) => {
+    const isLinkedArticle = Boolean(item.article_id || (item.slug && articles.some((a) => a.slug === item.slug)))
+    const matchedArtId = item.article_id || articles.find((a) => a.slug === item.slug)?.id || ''
+
+    setBreakingForm({
+      title_bn: item.title_bn || item.title || '',
+      title_en: item.title_en || '',
+      link_type: isLinkedArticle ? 'article' : (item.url ? 'custom' : 'article'),
+      article_id: matchedArtId,
+      slug: item.slug || '',
+      url: item.url || (item.slug ? `/article/${item.slug}` : ''),
+      active: item.active !== 0 && item.active !== false,
+    })
+    setEditingBreakingId(item.id)
+    window.scrollTo({ top: 300, behavior: 'smooth' })
+  }
+
+  // Handle Toggle Breaking Active Status
+  const handleToggleBreakingActive = async (item) => {
+    const newActiveState = (item.active === 0 || item.active === false) ? 1 : 0
+    const updated = { ...item, active: newActiveState }
+
+    try {
+      await api.toggleBreakingNews(item.id)
+    } catch {
+      try {
+        await api.saveBreakingNews(updated)
+      } catch {}
+    }
+
+    onUpdateBreaking?.(updated)
+    refreshStats()
+    triggerToast(
+      newActiveState === 1
+        ? (lang === 'bn' ? 'ব্রেকিং নিউজ টিকারে সক্রিয় করা হয়েছে।' : 'Breaking news activated on ticker.')
+        : (lang === 'bn' ? 'ব্রেকিং নিউজ স্থগিত (নিষ্ক্রিয়) করা হয়েছে।' : 'Breaking news paused.')
+    )
   }
 
   // Handle Breaking News Delete
   const handleDeleteBreakingClick = async (id) => {
-    try {
-      await api.deleteBreakingNews(id)
-    } catch { }
-    onDeleteBreaking?.(id)
-    refreshStats()
-    triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ সরানো হয়েছে।' : 'Breaking news item removed.', 'info')
+    if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই ব্রেকিং নিউজটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this breaking news?')) {
+      try {
+        await api.deleteBreakingNews(id)
+      } catch { }
+      onDeleteBreaking?.(id)
+      refreshStats()
+      triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ সরানো হয়েছে।' : 'Breaking news item removed.', 'info')
+    }
   }
 
   // Handle Add Opinion Submit
@@ -1934,12 +2044,104 @@ export default function AdminPage({
           {/* ================= TAB 5: BREAKING NEWS TICKER ================= */}
           {activeTab === 'breaking' && (
             <div className="space-y-6">
-              {/* Form */}
-              <form onSubmit={handleAddBreakingSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b pb-3 text-[#e30613] font-bold">
-                  <Flame size={18} />
-                  <span>নতুন ব্রেকিং নিউজ টিকার যোগ করুন</span>
+              {/* Add / Edit Breaking Form */}
+              <form onSubmit={handleSubmitBreaking} className="bg-white p-6 sm:p-7 rounded-xl border border-gray-200 shadow-sm space-y-5">
+                <div className="flex items-center justify-between border-b pb-3.5">
+                  <div className="flex items-center gap-2.5 text-[#e30613] font-bold text-base">
+                    <Flame size={20} className="fill-current animate-pulse text-[#e30613]" />
+                    <span>{editingBreakingId ? 'ব্রেকিং নিউজ সম্পাদনা করুন (Edit Breaking Ticker)' : 'নতুন ব্রেকিং নিউজ টিকার যোগ করুন'}</span>
+                  </div>
+                  {editingBreakingId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingBreakingId(null)
+                        setBreakingForm(emptyBreakingForm)
+                      }}
+                      className="text-xs text-gray-500 hover:text-red-600 font-bold bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      বাতিল করুন
+                    </button>
+                  )}
                 </div>
+
+                {/* Step 1: Linking Type Selector */}
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                  <label className="block text-xs font-bold text-gray-800">
+                    ১. ব্রেকিং নিউজের গন্তব্য ও লিঙ্ক উৎস নির্বাচন করুন:
+                  </label>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setBreakingForm((prev) => ({ ...prev, link_type: 'article' }))}
+                      className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${
+                        breakingForm.link_type === 'article'
+                          ? 'bg-[#e30613] text-white shadow-xs'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      <FileText size={14} />
+                      <span>প্রকাশিত সংবাদের সাথে লিঙ্ক করুন (প্রস্তাবিত)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBreakingForm((prev) => ({ ...prev, link_type: 'custom' }))}
+                      className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${
+                        breakingForm.link_type === 'custom'
+                          ? 'bg-[#e30613] text-white shadow-xs'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      <LinkIcon size={14} />
+                      <span>কাস্টম লিংক বা নিজস্ব শিরোনাম</span>
+                    </button>
+                  </div>
+
+                  {/* Sub-section: Article Selector Dropdown */}
+                  {breakingForm.link_type === 'article' ? (
+                    <div className="pt-1 space-y-2">
+                      <label className="block text-xs font-semibold text-gray-600">
+                        নিচের তালিকা থেকে যেকোনো একটি প্রকাশিত সংবাদ নির্বাচন করুন:
+                      </label>
+                      <select
+                        value={breakingForm.article_id}
+                        onChange={(e) => handleSelectArticleForBreaking(e.target.value)}
+                        className="w-full text-xs p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white font-bengali font-semibold text-gray-900"
+                      >
+                        <option value="">-- সংবাদ নির্বাচন করুন (শিরোনাম ও লিংক স্বয়ংক্রিয় পূর্ণ হবে) --</option>
+                        {articles.map((art) => (
+                          <option key={art.id} value={art.id}>
+                            [{CATEGORIES_BN[art.category] || art.category}] {art.title_bn || art.title_en}
+                          </option>
+                        ))}
+                      </select>
+
+                      {breakingForm.slug && (
+                        <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg">
+                          <CheckCircle2 size={15} className="text-emerald-600 flex-shrink-0" />
+                          <span>
+                            ইউজার টিকারে ক্লিক করলে সরাসরি <strong>/article/{breakingForm.slug}</strong> পেজে রিডাইরেক্ট হবে।
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="pt-1 space-y-1.5">
+                      <label className="block text-xs font-semibold text-gray-600">
+                        কাস্টম URL / লিংক (যেমন: `/category/sports` অথবা `https://...`):
+                      </label>
+                      <input
+                        type="text"
+                        value={breakingForm.url}
+                        onChange={(e) => setBreakingForm((prev) => ({ ...prev, url: e.target.value }))}
+                        placeholder="/category/sports বা https://..."
+                        className="w-full text-xs p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Step 2: Headlines */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">
@@ -1948,58 +2150,204 @@ export default function AdminPage({
                     <input
                       type="text"
                       required
-                      value={newBreakingBn}
-                      onChange={(e) => setNewBreakingBn(e.target.value)}
-                      placeholder="ঢাকায় আজ থেকে মেট্রোরেলের পূর্ণাঙ্গ সেবা চালু..."
-                      className="w-full text-xs p-3 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      value={breakingForm.title_bn}
+                      onChange={(e) => setBreakingForm((prev) => ({ ...prev, title_bn: e.target.value }))}
+                      placeholder="ঢাকায় আজ থেকে মেট্রোরেলের মতিঝিল-উত্তরা পূর্ণাঙ্গ সেবা চালু..."
+                      className="w-full text-xs p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-bengali font-semibold text-gray-900"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">
-                      ব্রেকিং হেডলাইন (English)
+                      ব্রেকিং হেডলাইন (English Ticker)
                     </label>
                     <input
                       type="text"
-                      value={newBreakingEn}
-                      onChange={(e) => setNewBreakingEn(e.target.value)}
-                      placeholder="Breaking news headline in English..."
-                      className="w-full text-xs p-3 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none font-sans"
+                      value={breakingForm.title_en}
+                      onChange={(e) => setBreakingForm((prev) => ({ ...prev, title_en: e.target.value }))}
+                      placeholder="Full Motijheel-Uttara Metro Rail service begins today..."
+                      className="w-full text-xs p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-sans"
                     />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow"
-                >
-                  ব্রেকিং টিকার প্রকাশ করুন
-                </button>
+
+                {/* Step 3: Active Status Checkbox */}
+                <div className="flex items-center gap-2 pt-1">
+                  <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={breakingForm.active}
+                      onChange={(e) => setBreakingForm((prev) => ({ ...prev, active: e.target.checked }))}
+                      className="w-4 h-4 text-[#e30613] rounded border-gray-300 focus:ring-red-500"
+                    />
+                    <span>ওয়েবসাইটে সরাসরি টিকারে সক্রিয় রাখুন (Live Active on Ticker)</span>
+                  </label>
+                </div>
+
+                {/* Submit and Action Buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <button
+                    type="submit"
+                    className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition-colors shadow flex items-center gap-2 cursor-pointer"
+                  >
+                    <Flame size={15} />
+                    <span>{editingBreakingId ? 'ব্রেকিং নিউজ আপডেট করুন' : 'ব্রেকিং টিকার প্রকাশ করুন'}</span>
+                  </button>
+                  {editingBreakingId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingBreakingId(null)
+                        setBreakingForm(emptyBreakingForm)
+                      }}
+                      className="px-4 py-2.5 border border-gray-300 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+                    >
+                      বাতিল
+                    </button>
+                  )}
+                </div>
               </form>
 
-              {/* Active Items */}
-              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h4 className="font-bold text-sm text-gray-800 mb-4 border-b pb-2 flex items-center justify-between">
-                  <span>চলমান ব্রেকিং স্ট্রিপ ({toBengaliNumber(breakingNews.length)} টি)</span>
-                  <span className="text-xs font-normal text-gray-400">ওয়েবসাইটের লাল টিকারে স্লাইড হচ্ছে</span>
-                </h4>
+              {/* Active Items Management Table */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden space-y-0">
+                <div className="p-4 border-b bg-gray-50 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                      <Flame size={16} className="text-[#e30613] fill-current" />
+                      <span>চলমান ব্রেকিং স্ট্রিপ তালিকা ({toBengaliNumber(breakingNews.length)} টি)</span>
+                    </h4>
+                    <span className="text-[11px] text-gray-500">
+                      সক্রিয় আইটেমগুলো ওয়েবসাইটের শীর্ষে লাল স্ট্রিপে নিরবচ্ছিন্নভাবে অ্যানিমেট হয় এবং ক্লিক করলে বিস্তারিত পেজ খোলে
+                    </span>
+                  </div>
+
+                  {/* Search filter for breaking news */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="ব্রেকিং নিউজ খুঁজুন..."
+                      value={breakingSearch}
+                      onChange={(e) => setBreakingSearch(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-1 focus:ring-red-500 outline-none w-48 sm:w-56"
+                    />
+                  </div>
+                </div>
+
                 <div className="divide-y divide-gray-100">
-                  {breakingNews.map((item) => (
-                    <div key={item.id} className="py-3 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse flex-shrink-0" />
-                        <div>
-                          <p className="font-bold text-gray-900">{item.title_bn}</p>
-                          {item.title_en && <p className="text-[11px] text-gray-400 font-sans">{item.title_en}</p>}
+                  {breakingNews
+                    .filter((item) => {
+                      if (!breakingSearch.trim()) return true
+                      const q = breakingSearch.toLowerCase()
+                      return (
+                        (item.title_bn || '').toLowerCase().includes(q) ||
+                        (item.title_en || '').toLowerCase().includes(q) ||
+                        (item.slug || '').toLowerCase().includes(q)
+                      )
+                    })
+                    .map((item) => {
+                      const isActive = item.active !== 0 && item.active !== false
+                      const targetUrl = item.url || (item.slug ? `/article/${item.slug}` : '/')
+                      const matchedArticle = articles.find(
+                        (a) => a.id === item.article_id || a.slug === item.slug
+                      )
+
+                      return (
+                        <div key={item.id} className="p-4 flex flex-wrap items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors">
+                          <div className="flex items-start gap-3 flex-1 min-w-[260px]">
+                            {/* Live Pulsing Dot */}
+                            <span
+                              className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
+                                isActive ? 'bg-[#e30613] animate-pulse ring-4 ring-red-100' : 'bg-gray-300'
+                              }`}
+                              title={isActive ? 'সক্রিয় (Live)' : 'স্থগিত (Paused)'}
+                            />
+
+                            <div className="space-y-1 flex-1">
+                              {/* Headline BN & EN */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-bold text-xs sm:text-sm text-gray-900 leading-snug">
+                                  {item.title_bn}
+                                </p>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    isActive
+                                      ? 'bg-red-50 text-red-700 border border-red-200'
+                                      : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                  }`}
+                                >
+                                  {isActive ? 'সক্রিয় (Live)' : 'স্থগিত (Paused)'}
+                                </span>
+                              </div>
+
+                              {item.title_en && (
+                                <p className="text-[11px] text-gray-500 font-sans line-clamp-1">
+                                  {item.title_en}
+                                </p>
+                              )}
+
+                              {/* Destination Info Pill */}
+                              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                                  <LinkIcon size={11} />
+                                  <span>{targetUrl}</span>
+                                </span>
+                                {matchedArticle && (
+                                  <span className="text-[10px] font-semibold text-gray-500">
+                                    (সংবাদ: {matchedArticle.title_bn?.slice(0, 30)}...)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {/* 1. View / Test Link */}
+                            <Link
+                              to={targetUrl}
+                              target="_blank"
+                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-200 flex items-center gap-1 text-xs font-semibold"
+                              title="বিস্তারিত নিউজ পেজ পরীক্ষা করুন (View News Details)"
+                            >
+                              <ExternalLink size={15} />
+                              <span className="hidden sm:inline">পেজ দেখুন</span>
+                            </Link>
+
+                            {/* 2. Toggle Active / Pause */}
+                            <button
+                              onClick={() => handleToggleBreakingActive(item)}
+                              className={`p-2 rounded-lg transition-colors border flex items-center gap-1 text-xs font-semibold ${
+                                isActive
+                                  ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200'
+                                  : 'text-green-700 bg-green-50 hover:bg-green-100 border-green-200'
+                              }`}
+                              title={isActive ? 'টিকারে দেখানো স্থগিত করুন' : 'টিকারে সক্রিয় করুন'}
+                            >
+                              {isActive ? <Pause size={14} /> : <Play size={14} />}
+                              <span className="hidden sm:inline">{isActive ? 'স্থগিত' : 'সক্রিয়'}</span>
+                            </button>
+
+                            {/* 3. Edit */}
+                            <button
+                              onClick={() => handleEditBreakingClick(item)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
+                              title="সম্পাদনা করুন (Edit)"
+                            >
+                              <Edit size={15} />
+                            </button>
+
+                            {/* 4. Delete */}
+                            <button
+                              onClick={() => handleDeleteBreakingClick(item.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                              title="মুছে ফেলুন (Delete)"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteBreakingClick(item.id)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
+                      )
+                    })}
                 </div>
               </div>
             </div>
