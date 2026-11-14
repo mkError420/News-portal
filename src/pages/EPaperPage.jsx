@@ -128,7 +128,10 @@ export default function EPaperPage({ lang = 'bn', settings = null }) {
       </div>
 
       {/* Page Thumbnails Bar */}
-      <div className="mt-6 flex gap-3 overflow-x-auto pb-4 scrollbar-none">
+      <div
+        className="mt-6 flex gap-3 overflow-x-auto pb-4 scrollbar-none"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         {pages.map((p) => (
           <div
             key={p.page}

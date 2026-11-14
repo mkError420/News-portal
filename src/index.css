@@ -129,6 +129,26 @@ img {
 }
 
 /* =========================================================
+   Hide Scrollbar Utility (Cross-Browser)
+   ========================================================= */
+.scrollbar-none,
+.no-scrollbar,
+nav .overflow-x-auto,
+.scrollbar-none *,
+.no-scrollbar * {
+  -ms-overflow-style: none !important; /* IE & Edge */
+  scrollbar-width: none !important;    /* Firefox */
+}
+
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+nav .overflow-x-auto::-webkit-scrollbar {
+  display: none !important;            /* Chrome, Safari, Edge, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* =========================================================
    Breaking News Ticker
    ========================================================= */
 @keyframes ticker-scroll {

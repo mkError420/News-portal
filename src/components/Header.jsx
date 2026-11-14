@@ -152,7 +152,10 @@ export default function Header({
       <div className="bg-[#1a3a5c] text-white text-xs border-b border-[#224b75]">
         <div className="max-w-7xl mx-auto px-4 py-1.5 flex items-center justify-between gap-3 font-bengali">
           {/* Left: Date, Bengali Calendar & City Weather */}
-          <div className="flex items-center gap-3 sm:gap-4 text-gray-200 overflow-x-auto scrollbar-none py-0.5">
+          <div
+            className="flex items-center gap-3 sm:gap-4 text-gray-200 overflow-x-auto scrollbar-none py-0.5"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
             <span className="font-medium tracking-wide whitespace-nowrap">{todayStr}</span>
             {lang === 'bn' && (
               <>
@@ -284,14 +287,17 @@ export default function Header({
       {/* 3. STICKY HORIZONTAL CATEGORY NAVIGATION BAR */}
       <nav className="bg-white border-b-2 border-[#e30613] shadow-sm sticky top-0 z-30 font-bengali">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <div className="flex items-center overflow-x-auto scrollbar-none py-0">
+          <div
+            className="flex items-center overflow-x-auto scrollbar-none py-0 w-full"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 end={item.path === '/'}
                 className={({ isActive }) =>
-                  `px-3 py-2.5 text-[14px] font-semibold whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${
+                  `px-2 sm:px-2.5 md:px-2.5 lg:px-2.5 xl:px-3 py-2 sm:py-2.5 text-[13px] md:text-[13.5px] lg:text-[14px] font-semibold whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${
                     isActive
                       ? 'text-[#e30613] border-[#e30613] bg-red-50/50'
                       : 'text-[#1a1a1a] border-transparent hover:text-[#e30613] hover:border-red-300'
@@ -307,7 +313,10 @@ export default function Header({
 
       {/* 4. TRENDING TOPICS STRIP (আলোচিত বিষয় / Trending Topics Bar) */}
       <div className="bg-[#fcfcfc] border-b border-gray-200 py-1.5 font-bengali text-xs">
-        <div className="max-w-7xl mx-auto px-4 flex items-center gap-2 overflow-x-auto scrollbar-none">
+        <div
+          className="max-w-7xl mx-auto px-4 flex items-center gap-2 overflow-x-auto scrollbar-none"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
           <span className="flex-shrink-0 font-bold text-[#e30613] flex items-center gap-1">
             <Flame size={13} className="text-red-600 fill-current" />
             <span>{lang === 'bn' ? 'আলোচিত বিষয়:' : 'Trending Topics:'}</span>
