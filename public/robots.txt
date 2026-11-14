@@ -1,0 +1,30 @@
+# Robots.txt for News Portal
+User-agent: *
+Allow: /
+Allow: /article/
+Allow: /category/
+Allow: /opinion
+Allow: /photos
+Allow: /video
+Allow: /epaper
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /advertise
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /api/
+Disallow: /backend/
+
+# Google AdsBot
+User-agent: AdsBot-Google
+Allow: /
+
+# Google AdSense Crawler
+User-agent: Mediapartners-Google
+Allow: /
+
+# XML Sitemap
+Sitemap: /sitemap.xml

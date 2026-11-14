@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Home, ChevronRight, FileText, ChevronLeft, ZoomIn, ZoomOut, Download, Calendar } from 'lucide-react'
+import SEO from '../components/SEO.jsx'
 import { formatBengaliDate, formatEnglishDate, toBengaliNumber } from '../utils.js'
 
 export default function EPaperPage({ lang = 'bn', settings = null }) {
@@ -24,6 +25,12 @@ export default function EPaperPage({ lang = 'bn', settings = null }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      <SEO
+        title={lang === 'bn' ? 'অনলাইন ই-পেপার সংস্করণ' : 'Online ePaper Edition'}
+        description={lang === 'bn' ? `${siteName}-এর ছাপা পত্রিকার ডিজিটাল পাতা ব্রাউজ ও পড়ুন` : 'Browse and read digital pages of the daily newspaper'}
+        lang={lang}
+        settings={settings}
+      />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200">
         <Link to="/" className="hover:text-red-600 flex items-center gap-1">

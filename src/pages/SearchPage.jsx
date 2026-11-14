@@ -2,9 +2,10 @@ import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Search as SearchIcon, Home, ChevronRight, Filter, SlidersHorizontal } from 'lucide-react'
 import NewsCard from '../components/NewsCard.jsx'
+import SEO from '../components/SEO.jsx'
 import { CATEGORIES_BN, CATEGORIES_EN, toBengaliNumber } from '../utils.js'
 
-export default function SearchPage({ articles = [], lang = 'bn' }) {
+export default function SearchPage({ articles = [], settings = null, lang = 'bn' }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
   const [query, setQuery] = useState(initialQuery)
@@ -52,6 +53,12 @@ export default function SearchPage({ articles = [], lang = 'bn' }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      <SEO
+        title={query ? (lang === 'bn' ? `"${query}" এর অনুসন্ধান ফলাফল` : `Search Results for "${query}"`) : (lang === 'bn' ? 'সংবাদ অনুসন্ধান' : 'Search News')}
+        noindex={true}
+        lang={lang}
+        settings={settings}
+      />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200">
         <Link to="/" className="hover:text-red-600 flex items-center gap-1">

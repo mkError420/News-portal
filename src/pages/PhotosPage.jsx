@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Home, ChevronRight, Camera, X, Download, Share2 } from 'lucide-react'
+import SEO from '../components/SEO.jsx'
 import { formatBengaliDate, formatEnglishDate } from '../utils.js'
 
 export default function PhotosPage({ photos = [], settings = null, lang = 'bn' }) {
@@ -11,6 +12,12 @@ export default function PhotosPage({ photos = [], settings = null, lang = 'bn' }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      <SEO
+        title={lang === 'bn' ? 'আলোকচিত্র গ্যালারি' : 'Photo Gallery'}
+        description={lang === 'bn' ? `${siteName}-এর ফটোসাংবাদিকদের ক্যামেরায় ধারণ করা সেরা মুহূর্তগুলো` : 'Bangladesh and world news in pictures'}
+        lang={lang}
+        settings={settings}
+      />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200">
         <Link to="/" className="hover:text-red-600 flex items-center gap-1">

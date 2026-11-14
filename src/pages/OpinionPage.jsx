@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Home, ChevronRight, PenTool, MessageSquare, Quote } from 'lucide-react'
 import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
+import SEO from '../components/SEO.jsx'
 import { formatBengaliDate, formatEnglishDate } from '../utils.js'
 
 export default function OpinionPage({ opinions = [], settings = null, lang = 'bn' }) {
@@ -13,6 +14,12 @@ export default function OpinionPage({ opinions = [], settings = null, lang = 'bn
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      <SEO
+        title={lang === 'bn' ? 'মতামত, কলাম ও সম্পাদকীয়' : 'Opinion & Editorial'}
+        description={lang === 'bn' ? 'সমাজ, রাষ্ট্র, অর্থনীতি ও আন্তর্জাতিক রাজনীতির নানা বিষয়ে বিশিষ্ট চিন্তাবিদদের গভীর বিশ্লেষণ।' : 'In-depth perspectives and critical analyses by distinguished writers.'}
+        lang={lang}
+        settings={settings}
+      />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200">
         <Link to="/" className="hover:text-red-600 flex items-center gap-1">
@@ -131,8 +138,8 @@ export default function OpinionPage({ opinions = [], settings = null, lang = 'bn
                 : `Views expressed in ${siteName} opinion pieces belong solely to the authors. We champion constructive diversity of perspectives and free expression.`}
             </p>
           </div>
-          <AdBanner size="rectangle" lang={lang} />
-          <AdBanner size="halfpage" lang={lang} />
+          <AdBanner size="rectangle" lang={lang} settings={settings} />
+          <AdBanner size="halfpage" lang={lang} settings={settings} />
         </aside>
       </div>
     </div>

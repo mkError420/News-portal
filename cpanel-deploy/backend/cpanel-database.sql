@@ -94,7 +94,13 @@ CREATE TABLE articles (
   featured TINYINT(1) NOT NULL DEFAULT 0,
   content LONGTEXT NOT NULL,
   content_bn LONGTEXT DEFAULT NULL,
-  content_en LONGTEXT DEFAULT NULL
+  content_en LONGTEXT DEFAULT NULL,
+  seo_title VARCHAR(255) DEFAULT NULL,
+  seo_description TEXT DEFAULT NULL,
+  focus_keyword VARCHAR(150) DEFAULT NULL,
+  canonical_url VARCHAR(500) DEFAULT NULL,
+  og_image VARCHAR(500) DEFAULT NULL,
+  schema_type VARCHAR(50) DEFAULT 'NewsArticle'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO articles (
@@ -224,5 +230,18 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('copyright_bn', 'স্বত্ব © ২০২৬ প্রথম আলো | সর্বস্বত্ব সংরক্ষিত।'),
 ('copyright_en', 'Copyright © 2026 Prothom Alo | All rights reserved.'),
 ('edition_bn', 'বাংলাদেশ'),
-('edition_en', 'Bangladesh')
+('edition_en', 'Bangladesh'),
+('adsense_enabled', '0'),
+('adsense_client_id', ''),
+('adsense_auto_ads', '1'),
+('adsense_header_slot', ''),
+('adsense_article_slot', ''),
+('adsense_sidebar_slot', ''),
+('adsense_footer_slot', ''),
+('ads_txt_content', 'google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0'),
+('google_site_verification', ''),
+('bing_site_verification', ''),
+('canonical_base_url', ''),
+('meta_keywords_default', 'সংবাদ, বাংলাদেশ, প্রথম আলো, খবর, ব্রেকিং নিউজ, News, Bangladesh'),
+('og_image_default', '')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);

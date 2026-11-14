@@ -4,9 +4,10 @@ import { Home, ChevronRight, Filter, TrendingUp } from 'lucide-react'
 import NewsCard from '../components/NewsCard.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
+import SEO from '../components/SEO.jsx'
 import { CATEGORIES_BN, CATEGORIES_EN } from '../utils.js'
 
-export default function CategoryPage({ articles = [], categories = [], lang = 'bn' }) {
+export default function CategoryPage({ articles = [], categories = [], settings = null, lang = 'bn' }) {
   const { slug } = useParams()
   const catKey = (slug || 'national').toLowerCase()
   const [selectedSubcat, setSelectedSubcat] = useState('all')
@@ -75,8 +76,46 @@ export default function CategoryPage({ articles = [], categories = [], lang = 'b
     { id: 'analysis', bn: 'বিশ্লেষণ', en: 'Analysis' },
   ]
 
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const catUrl = `${originUrl}/category/${catKey}`
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: lang === 'bn' ? 'প্রচ্ছদ' : 'Home',
+        item: originUrl || '/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: categoryTitle,
+        item: catUrl,
+      },
+    ],
+  }
+
+  const collectionSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${categoryTitle} সংবাদ`,
+    url: catUrl,
+    description: `${categoryTitle} বিভাগের সর্বশেষ ও ব্রেকিং নিউজ সরাসরি আমাদের পোর্টালে পড়ুন।`,
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      <SEO
+        title={`${categoryTitle} সংবাদ ও খবর`}
+        description={`${categoryTitle} বিভাগের সর্বশেষ ও ব্রেকিং নিউজ, ছবি ও বিশ্লেষণ।`}
+        canonical={catUrl}
+        schema={[breadcrumbSchema, collectionSchema]}
+        lang={lang}
+        settings={settings}
+      />
       {/* Breadcrumb Navigation */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200">
         <Link to="/" className="hover:text-red-600 flex items-center gap-1">
@@ -175,7 +214,7 @@ export default function CategoryPage({ articles = [], categories = [], lang = 'b
           </div>
 
           {/* Ad Banner */}
-          <AdBanner size="rectangle" lang={lang} />
+          <AdBanner size="rectangle" lang={lang} settings={settings} />
 
           {/* Popular Category Tags */}
           <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">

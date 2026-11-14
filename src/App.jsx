@@ -6,6 +6,7 @@ import { Helmet } from 'react-helmet-async'
 import Header from './components/Header.jsx'
 import BreakingTicker from './components/BreakingTicker.jsx'
 import Footer from './components/Footer.jsx'
+import AdSenseScript from './components/AdSenseScript.jsx'
 
 // Pages
 import HomePage from './pages/HomePage.jsx'
@@ -268,6 +269,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#ffffff] text-[#1a1a1a]">
+      <AdSenseScript settings={newsData.settings} />
       <Helmet>
         <html lang={lang} />
         <title>{`${dynamicSiteName} | ${dynamicTagline}`}</title>

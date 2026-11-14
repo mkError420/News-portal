@@ -1,11 +1,23 @@
 Options -Indexes
+DirectoryIndex index.php index.html
 RewriteEngine On
 
 RewriteRule ^backend/config\.php$ - [F,L,NC]
+
+# SEO & Google Verification / Feeds / Ads.txt routes
+RewriteRule ^sitemap\.xml$ backend/api/index.php?endpoint=sitemap [L]
+RewriteRule ^rss\.xml$ backend/api/index.php?endpoint=rss [L]
+RewriteRule ^feed$ backend/api/index.php?endpoint=rss [L]
+RewriteRule ^ads\.txt$ backend/api/index.php?endpoint=ads-txt [L]
+
+# API routes
 RewriteRule ^api(?:/.*)?$ backend/api/index.php [QSA,L]
 
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
+
+RewriteCond %{DOCUMENT_ROOT}/index.php -f
+RewriteRule ^ index.php [L]
 
 RewriteRule ^ index.html [L]

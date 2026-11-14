@@ -99,6 +99,31 @@ function has_column(PDO $pdo, string $table, string $column): bool
     return in_array($column, $columnsCache[$table], true);
 }
 
+function auto_migrate_seo(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    $seoCols = [
+        'seo_title' => "VARCHAR(255) NULL DEFAULT ''",
+        'seo_description' => "TEXT NULL",
+        'focus_keyword' => "VARCHAR(150) NULL DEFAULT ''",
+        'canonical_url' => "VARCHAR(500) NULL DEFAULT ''",
+        'og_image' => "VARCHAR(500) NULL DEFAULT ''",
+        'schema_type' => "VARCHAR(50) NULL DEFAULT 'NewsArticle'"
+    ];
+    foreach ($seoCols as $colName => $colDef) {
+        if (!has_column($pdo, 'articles', $colName)) {
+            try {
+                $pdo->exec("ALTER TABLE `articles` ADD COLUMN `$colName` $colDef");
+            } catch (Throwable $e) {
+                // Ignore if lacks ALTER permissions
+            }
+        }
+    }
+}
+
 function is_admin(): bool
 {
     return !empty($_SESSION['admin_authenticated']);
@@ -145,6 +170,12 @@ function serialize_article(array $row): array
         'tags_en' => $tagsEn,
         'content_bn' => $row['content_bn'] ?? ($row['content'] ?? ''),
         'content_en' => $row['content_en'] ?? ($row['content'] ?? ''),
+        'seo_title' => $row['seo_title'] ?? '',
+        'seo_description' => $row['seo_description'] ?? '',
+        'focus_keyword' => $row['focus_keyword'] ?? '',
+        'canonical_url' => $row['canonical_url'] ?? '',
+        'og_image' => $row['og_image'] ?? '',
+        'schema_type' => !empty($row['schema_type']) ? $row['schema_type'] : 'NewsArticle',
     ];
 }
 
@@ -155,11 +186,175 @@ $segments = array_values(array_filter(explode('/', trim($route, '/')), fn ($s) =
 
 $apiIndex = array_search('api', $segments);
 if ($apiIndex === false) {
-    json_response(['message' => 'Invalid route'], 404);
+    if (isset($_GET['endpoint'])) {
+        $resource = trim($_GET['endpoint']);
+    } else {
+        $lastSeg = end($segments);
+        if (in_array($lastSeg, ['sitemap.xml', 'sitemap', 'rss.xml', 'rss', 'feed', 'ads.txt', 'ads-txt'], true)) {
+            $resource = str_replace(['.xml', '.txt'], '', $lastSeg);
+        } else {
+            json_response(['message' => 'Invalid route'], 404);
+        }
+    }
+} else {
+    $resource = $segments[$apiIndex + 1] ?? null;
 }
 
-$resource = $segments[$apiIndex + 1] ?? null;
 $method = $_SERVER['REQUEST_METHOD'];
+
+// ----------------------------------------------------
+// ROUTE: Dynamic XML Sitemap (/sitemap.xml or /api/sitemap)
+// ----------------------------------------------------
+if ($resource === 'sitemap' || $resource === 'sitemap.xml') {
+    header('Content-Type: application/xml; charset=utf-8');
+    $dbConn = db();
+    $articles = [];
+    if ($dbConn) {
+        try {
+            auto_migrate_seo($dbConn);
+            $stmt = $dbConn->query("SELECT slug, published_at, updated_at, image, title_bn, title_en FROM articles ORDER BY published_at DESC LIMIT 1000");
+            $articles = $stmt->fetchAll();
+        } catch (Throwable $e) {}
+    }
+
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $baseUrl = rtrim($protocol . ($_SERVER['HTTP_HOST'] ?? 'localhost'), '/');
+
+    echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
+
+    // 1. Homepage
+    echo "  <url>\n";
+    echo "    <loc>" . htmlspecialchars($baseUrl . '/') . "</loc>\n";
+    echo "    <changefreq>always</changefreq>\n";
+    echo "    <priority>1.0</priority>\n";
+    echo "  </url>\n";
+
+    // 2. Main Categories
+    $categories = ['national', 'politics', 'international', 'economy', 'business', 'sports', 'entertainment', 'technology', 'education', 'health', 'lifestyle', 'opinion', 'photos', 'video', 'epaper'];
+    foreach ($categories as $cat) {
+        echo "  <url>\n";
+        echo "    <loc>" . htmlspecialchars($baseUrl . '/category/' . $cat) . "</loc>\n";
+        echo "    <changefreq>hourly</changefreq>\n";
+        echo "    <priority>0.8</priority>\n";
+        echo "  </url>\n";
+    }
+
+    // 3. Static Pages
+    foreach (['about', 'contact', 'privacy', 'terms', 'advertise'] as $sp) {
+        echo "  <url>\n";
+        echo "    <loc>" . htmlspecialchars($baseUrl . '/' . $sp) . "</loc>\n";
+        echo "    <changefreq>monthly</changefreq>\n";
+        echo "    <priority>0.5</priority>\n";
+        echo "  </url>\n";
+    }
+
+    // 4. Articles
+    foreach ($articles as $art) {
+        $slug = $art['slug'];
+        $lastmod = !empty($art['updated_at']) ? date('c', strtotime($art['updated_at'])) : (!empty($art['published_at']) ? date('c', strtotime($art['published_at'])) : date('c'));
+        $title = htmlspecialchars(!empty($art['title_bn']) ? $art['title_bn'] : ($art['title_en'] ?? ''));
+        $img = !empty($art['image']) ? htmlspecialchars($art['image']) : '';
+        echo "  <url>\n";
+        echo "    <loc>" . htmlspecialchars($baseUrl . '/article/' . $slug) . "</loc>\n";
+        echo "    <lastmod>" . $lastmod . "</lastmod>\n";
+        echo "    <changefreq>daily</changefreq>\n";
+        echo "    <priority>0.9</priority>\n";
+        if ($img !== '') {
+            echo "    <image:image>\n";
+            echo "      <image:loc>" . $img . "</image:loc>\n";
+            echo "      <image:title>" . $title . "</image:title>\n";
+            echo "    </image:image>\n";
+        }
+        echo "  </url>\n";
+    }
+
+    echo '</urlset>';
+    exit;
+}
+
+// ----------------------------------------------------
+// ROUTE: Dynamic RSS Feed (/rss.xml or /feed or /api/rss)
+// ----------------------------------------------------
+if ($resource === 'rss' || $resource === 'rss.xml' || $resource === 'feed') {
+    header('Content-Type: application/rss+xml; charset=utf-8');
+    $dbConn = db();
+    $articles = [];
+    if ($dbConn) {
+        try {
+            $stmt = $dbConn->query("SELECT * FROM articles ORDER BY published_at DESC LIMIT 50");
+            $articles = $stmt->fetchAll();
+        } catch (Throwable $e) {}
+    }
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $baseUrl = rtrim($protocol . ($_SERVER['HTTP_HOST'] ?? 'localhost'), '/');
+
+    echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    echo '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">' . "\n";
+    echo '<channel>' . "\n";
+    echo '  <title>প্রথম আলো | Prothom Alo</title>' . "\n";
+    echo '  <link>' . htmlspecialchars($baseUrl) . '</link>' . "\n";
+    echo '  <description>অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক</description>' . "\n";
+    echo '  <language>bn</language>' . "\n";
+    echo '  <atom:link href="' . htmlspecialchars($baseUrl . '/rss.xml') . '" rel="self" type="application/rss+xml" />' . "\n";
+
+    foreach ($articles as $art) {
+        $title = htmlspecialchars($art['title_bn'] ?? ($art['title'] ?? ''));
+        $summary = htmlspecialchars($art['summary_bn'] ?? ($art['summary'] ?? ''));
+        $link = htmlspecialchars($baseUrl . '/article/' . $art['slug']);
+        $pubDate = !empty($art['published_at']) ? date(DATE_RSS, strtotime($art['published_at'])) : date(DATE_RSS);
+        $author = htmlspecialchars($art['author_bn'] ?? 'প্রথম আলো');
+
+        echo "  <item>\n";
+        echo "    <title><![CDATA[" . $title . "]]></title>\n";
+        echo "    <link>" . $link . "</link>\n";
+        echo "    <guid isPermaLink=\"true\">" . $link . "</guid>\n";
+        echo "    <pubDate>" . $pubDate . "</pubDate>\n";
+        echo "    <author>" . $author . "</author>\n";
+        echo "    <description><![CDATA[" . $summary . "]]></description>\n";
+        if (!empty($art['image'])) {
+            echo "    <enclosure url=\"" . htmlspecialchars($art['image']) . "\" type=\"image/jpeg\" />\n";
+        }
+        echo "  </item>\n";
+    }
+    echo '</channel>' . "\n";
+    echo '</rss>';
+    exit;
+}
+
+// ----------------------------------------------------
+// ROUTE: Dynamic Google AdSense ads.txt (/ads.txt or /api/ads-txt)
+// ----------------------------------------------------
+if ($resource === 'ads-txt' || $resource === 'ads.txt') {
+    header('Content-Type: text/plain; charset=utf-8');
+    $dbConn = db();
+    $content = '';
+    if ($dbConn) {
+        try {
+            $stmt = $dbConn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'ads_txt_content' LIMIT 1");
+            $stmt->execute();
+            $content = (string) $stmt->fetchColumn();
+        } catch (Throwable $e) {}
+    }
+    if (trim($content) === '') {
+        $clientId = '';
+        if ($dbConn) {
+            try {
+                $stmt = $dbConn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'adsense_client_id' LIMIT 1");
+                $stmt->execute();
+                $clientId = trim((string) $stmt->fetchColumn());
+            } catch (Throwable $e) {}
+        }
+        if ($clientId !== '') {
+            $pubId = str_replace('ca-', '', $clientId);
+            $content = "google.com, " . $pubId . ", DIRECT, f08c47fec0942fa0";
+        } else {
+            $content = "# Google AdSense ads.txt\n# Example: google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0";
+        }
+    }
+    echo $content;
+    exit;
+}
 
 // ----------------------------------------------------
 // ROUTE: GET /api/health
@@ -418,6 +613,19 @@ if ($resource === 'settings') {
         'copyright_en' => 'Copyright © 2026 Prothom Alo | All rights reserved.',
         'edition_bn' => 'বাংলাদেশ',
         'edition_en' => 'Bangladesh',
+        'adsense_enabled' => '0',
+        'adsense_client_id' => '',
+        'adsense_auto_ads' => '1',
+        'adsense_header_slot' => '',
+        'adsense_article_slot' => '',
+        'adsense_sidebar_slot' => '',
+        'adsense_footer_slot' => '',
+        'ads_txt_content' => "google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0",
+        'google_site_verification' => '',
+        'bing_site_verification' => '',
+        'canonical_base_url' => '',
+        'meta_keywords_default' => 'সংবাদ, বাংলাদেশ, প্রথম আলো, খবর, ব্রেকিং নিউজ, News, Bangladesh',
+        'og_image_default' => '',
     ];
 
     $cacheFile = __DIR__ . '/settings.json';
@@ -474,11 +682,9 @@ if ($resource === 'settings') {
             }
         }
 
-        if (empty($settingsToSave) && !empty($input)) {
-            foreach ($input as $k => $v) {
-                if (is_scalar($v) && strlen($k) < 100) {
-                    $settingsToSave[$k] = trim((string) $v);
-                }
+        foreach ($input as $k => $v) {
+            if (is_scalar($v) && strlen($k) < 100 && !isset($settingsToSave[$k])) {
+                $settingsToSave[$k] = trim((string) $v);
             }
         }
 
@@ -628,7 +834,17 @@ if ($resource === 'articles') {
             $slug = 'news-' . time() . '-' . rand(100, 999);
         }
 
+        auto_migrate_seo($dbConn);
         $hasBilingualCols = has_column($dbConn, 'articles', 'title_bn');
+        $hasSeoCols = has_column($dbConn, 'articles', 'seo_title');
+
+        $seoTitle = trim((string) ($input['seo_title'] ?? ''));
+        $seoDescription = trim((string) ($input['seo_description'] ?? ''));
+        $focusKeyword = trim((string) ($input['focus_keyword'] ?? ''));
+        $canonicalUrl = trim((string) ($input['canonical_url'] ?? ''));
+        $ogImage = trim((string) ($input['og_image'] ?? ''));
+        $schemaType = trim((string) ($input['schema_type'] ?? 'NewsArticle'));
+        if ($schemaType === '') $schemaType = 'NewsArticle';
 
         if ($method === 'PUT') {
             $exists = $dbConn->prepare('SELECT id FROM articles WHERE id = ?');
@@ -636,7 +852,28 @@ if ($resource === 'articles') {
             if (!$exists->fetch()) {
                 json_response(['success' => false, 'message' => 'Article was not found.'], 404);
             }
-                    if ($hasBilingualCols) {
+                    if ($hasBilingualCols && $hasSeoCols) {
+                        $sql = 'UPDATE articles SET title_bn = ?, title_en = ?, category = ?, subheadline_bn = ?, subheadline_en = ?,
+                                summary_bn = ?, summary_en = ?, author_bn = ?, author_en = ?, author_role_bn = ?, author_role_en = ?,
+                                image = ?, image_caption = ?, image_credit = ?, tags_bn = ?, tags_en = ?, featured = ?, content_bn = ?, content_en = ?,
+                                seo_title = ?, seo_description = ?, focus_keyword = ?, canonical_url = ?, og_image = ?, schema_type = ?
+                                WHERE id = ?';
+                        $stmt = $dbConn->prepare($sql);
+                        $stmt->execute([
+                            $titleBn, $titleEn, $category,
+                            (string) ($input['subheadline_bn'] ?? ''), (string) ($input['subheadline_en'] ?? ''),
+                            $summaryBn, $summaryEn,
+                            (string) ($input['author_bn'] ?? 'প্রথম আলো ডেস্ক'), (string) ($input['author_en'] ?? 'Staff Reporter'),
+                            (string) ($input['author_role_bn'] ?? 'প্রতিবেদক'), (string) ($input['author_role_en'] ?? 'Reporter'),
+                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
+                            json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
+                            json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
+                            !empty($input['featured']) ? 1 : 0,
+                            (string) ($input['content_bn'] ?? ''), (string) ($input['content_en'] ?? ''),
+                            $seoTitle, $seoDescription, $focusKeyword, $canonicalUrl, $ogImage, $schemaType,
+                            $id
+                        ]);
+                    } elseif ($hasBilingualCols) {
                         $sql = 'UPDATE articles SET title_bn = ?, title_en = ?, category = ?, subheadline_bn = ?, subheadline_en = ?,
                                 summary_bn = ?, summary_en = ?, author_bn = ?, author_en = ?, author_role_bn = ?, author_role_en = ?,
                                 image = ?, image_caption = ?, image_credit = ?, tags_bn = ?, tags_en = ?, featured = ?, content_bn = ?, content_en = ?
@@ -677,7 +914,29 @@ if ($resource === 'articles') {
             json_response(['success' => true, 'id' => $id]);
         } else {
                     // INSERT
-                    if ($hasBilingualCols) {
+                    if ($hasBilingualCols && $hasSeoCols) {
+                        $sql = 'INSERT INTO articles (slug, title_bn, title_en, category, subheadline_bn, subheadline_en,
+                                summary_bn, summary_en, author_bn, author_en, author_role_bn, author_role_en, image,
+                                image_caption, image_credit, published_at, read_time, tags_bn, tags_en, featured, content_bn, content_en,
+                                seo_title, seo_description, focus_keyword, canonical_url, og_image, schema_type)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                        $stmt = $dbConn->prepare($sql);
+                        $stmt->execute([
+                            $slug, $titleBn, $titleEn, $category,
+                            (string) ($input['subheadline_bn'] ?? ''), (string) ($input['subheadline_en'] ?? ''),
+                            $summaryBn, $summaryEn,
+                            (string) ($input['author_bn'] ?? 'প্রথম আলো ডেস্ক'), (string) ($input['author_en'] ?? 'Staff Reporter'),
+                            (string) ($input['author_role_bn'] ?? 'প্রতিবেদক'), (string) ($input['author_role_en'] ?? 'Reporter'),
+                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
+                            date('Y-m-d H:i:s'),
+                            '4 min read',
+                            json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
+                            json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
+                            !empty($input['featured']) ? 1 : 0,
+                            (string) ($input['content_bn'] ?? ''), (string) ($input['content_en'] ?? ''),
+                            $seoTitle, $seoDescription, $focusKeyword, $canonicalUrl, $ogImage, $schemaType
+                        ]);
+                    } elseif ($hasBilingualCols) {
                         $sql = 'INSERT INTO articles (slug, title_bn, title_en, category, subheadline_bn, subheadline_en,
                                 summary_bn, summary_en, author_bn, author_en, author_role_bn, author_role_en, image,
                                 image_caption, image_credit, published_at, read_time, tags_bn, tags_en, featured, content_bn, content_en)

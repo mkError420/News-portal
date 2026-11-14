@@ -5,25 +5,58 @@
 Upload the **contents** of `cpanel-deploy/` into the hosting document root:
 
 ```text
-htdocs/                         # InfinityFree document root
-  .htaccess
-  index.html
-  assets/
+htdocs/ or public_html/         # Document root
+  .htaccess                     # Handles SPA routes, SEO rewrite rules, & caching
+  index.php                     # Server-Side Pre-Renderer & Dynamic Meta Injector for Crawlers
+  index.html                    # React SPA bundle template
+  robots.txt                    # Search crawler instructions & Sitemap reference
+  favicon.svg
+  assets/                       # Built JS, CSS, and media bundles
   backend/
     .htaccess
-    config.php                  # add privately in the hosting file manager
+    config.php                  # Add database credentials here (kept private)
     api/
-      index.php
+      index.php                 # REST API, Sitemap, RSS, and ads.txt handler
 ```
 
 For regular cPanel hosting, the document root is commonly `public_html/` instead of `htdocs/`.
 
-The SQL dump is intentionally kept outside the web root. Import the project-root `backend/cpanel-database.sql` using phpMyAdmin before uploading the site.
+The SQL dumps are kept in `backend/`.
+- For **fresh installations**: import `backend/cpanel-database.sql`.
+- For **existing live databases**: run `backend/migrate-seo.sql` once in phpMyAdmin.
+
+---
+
+## 🌟 Complete SEO & Google AdSense Features Included
+
+1. **Google AdSense & Auto-Ads**:
+   - In Admin Dashboard -> Settings (`/admin`), set your **AdSense Publisher ID** (`ca-pub-XXXXXXXXXXXXXXXX`).
+   - Enable **Auto-Ads** with one click.
+   - Configure individual responsive ad unit slots for Header, In-Article, and Sidebar.
+   - Live `/ads.txt` is served dynamically at `https://yourdomain.com/ads.txt`.
+
+2. **Article Dashboard SEO Studio**:
+   - When writing or editing news in the Admin Dashboard, use the **SEO Studio**:
+     - Custom **SEO Meta Title** with character meter (40-60 characters)
+     - Custom **SEO Meta Description** with character meter (120-160 characters)
+     - **Focus Target Keyword** optimization
+     - **Schema.org Type** selection (`NewsArticle`, `OpinionNewsArticle`, `AnalysisNewsArticle`, `Report`)
+     - **Real-Time Google SERP Simulator** (Live Desktop & Mobile preview)
+     - **Real-time SEO Score & Checklist** (RankMath / Yoast style audit)
+
+3. **Universal Search Engine & Social Media Crawlability**:
+   - Server-Side Meta Tag Injection via `index.php` for WhatsApp, Facebook, Twitter, LinkedIn, and Googlebot.
+   - **Dynamic XML Sitemap**: `https://yourdomain.com/sitemap.xml`
+   - **Google News RSS Feed**: `https://yourdomain.com/rss.xml`
+   - **Search Console Verification**: Set Google and Bing site verification codes in Settings.
+   - **JSON-LD Structured Data**: `NewsArticle`, `WebSite` (SearchAction), `BreadcrumbList`, and `NewsMediaOrganization`.
+
+---
 
 ## Before upload
 
 1. Rotate the database password in the hosting control panel.
-2. Set `DB_HOST`, `DB_NAME`, `DB_USER`, and `DB_PASS` in the hosting environment. If the host does not support environment variables, enter the values in the deployed `backend/config.php` only; keep that file private and never commit it.
+2. Set `DB_HOST`, `DB_NAME`, `DB_USER`, and `DB_PASS` in the hosting environment or in `backend/config.php`.
 3. Generate an admin password hash locally:
 
    ```sh
@@ -37,28 +70,17 @@ The SQL dump is intentionally kept outside the web root. Import the project-root
    VALUES ('admin@YOUR-DOMAIN.com', 'PASTE_THE_GENERATED_HASH_HERE');
    ```
 
-   The API validates passwords with `password_verify()`; the SQL seed intentionally does not create an account with a shared default password.
 4. Build the React site and refresh the deployment directory:
 
    ```sh
    npm run build
    ```
 
-   The deploy folder must contain the files from `dist/` plus the provided `.htaccess` and `backend/` PHP files.
-
 ## Upload and verify
 
-1. For a **new database only**, select it in phpMyAdmin and import `backend/cpanel-database.sql`. This import recreates the tables. For an existing installation, back up the database and run `backend/migrate-bilingual.sql` once instead; do not reimport the dump over live data.
-2. In the hosting file manager, upload the contents of `cpanel-deploy/` into the document root. Do not upload `node_modules/`, the SQL dump, or the project source tree.
-3. Confirm Apache `.htaccess` overrides are enabled and HTTPS is active.
-4. Open `https://YOUR-DOMAIN/api/health`. A working response includes `"status": "ok"` and `"database": "connected"`.
-5. Open the homepage and `/admin`; sign in with the admin account and the password chosen in step 3.
-6. Publish and delete a test article, then verify both changes remain after reloading the site.
-7. Remove any temporary SQL dumps or exported backups from the web root.
+1. For a **new database**, import `backend/cpanel-database.sql`. For an existing installation, run `backend/migrate-seo.sql` in phpMyAdmin.
+2. In the hosting file manager, upload the contents of `cpanel-deploy/` into the document root.
+3. Open `https://YOUR-DOMAIN/api/health`. A working response includes `"status": "ok"` and `"database": "connected"`.
+4. Open `https://YOUR-DOMAIN/sitemap.xml` and `https://YOUR-DOMAIN/ads.txt` to verify dynamic SEO endpoints.
+5. Open the homepage and `/admin`; sign in with the admin account to manage news and configure your AdSense ID and SEO settings.
 
-## Notes
-
-- The API and frontend use same-origin `/api` routes, so no domain-specific CORS setting is required.
-- `backend/config.php` is denied as a direct web request by Apache rules.
-- If the health endpoint fails, check the database host, database name, user privileges, password, and whether the hosting plan permits connections to that MySQL host.
-- PHP needs PDO MySQL enabled. URL rewriting must be enabled for the SPA routes and `/api` endpoints.

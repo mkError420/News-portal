@@ -574,6 +574,19 @@ export const defaultSiteSettings = {
   copyright_en: 'Copyright © 2026 Prothom Alo | All rights reserved.',
   edition_bn: 'বাংলাদেশ',
   edition_en: 'Bangladesh',
+  adsense_enabled: '0',
+  adsense_client_id: '',
+  adsense_auto_ads: '1',
+  adsense_header_slot: '',
+  adsense_article_slot: '',
+  adsense_sidebar_slot: '',
+  adsense_footer_slot: '',
+  ads_txt_content: 'google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0',
+  google_site_verification: '',
+  bing_site_verification: '',
+  canonical_base_url: '',
+  meta_keywords_default: 'সংবাদ, বাংলাদেশ, প্রথম আলো, খবর, ব্রেকিং নিউজ, News, Bangladesh',
+  og_image_default: '',
 }
 
 export const defaultData = {

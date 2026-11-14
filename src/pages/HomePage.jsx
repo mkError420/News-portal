@@ -16,6 +16,7 @@ import {
 import NewsCard from '../components/NewsCard.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
+import SEO from '../components/SEO.jsx'
 import { PRAYER_TIMES, CURRENCY_RATES, formatRelativeTime } from '../utils.js'
 
 export default function HomePage({
@@ -103,8 +104,53 @@ export default function HomePage({
     }
   }
 
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
+  const siteTagline = (lang === 'bn' ? settings?.tagline_bn : settings?.tagline_en) ||
+    (lang === 'bn' ? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক' : 'Online Edition • Fearless in Pursuit of Truth')
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : ''
+
+  const sameAsLinks = [
+    settings?.facebook_url,
+    settings?.twitter_url,
+    settings?.youtube_url,
+    settings?.instagram_url,
+    settings?.linkedin_url,
+  ].filter(Boolean)
+
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsMediaOrganization',
+    name: siteName,
+    url: originUrl || '/',
+    logo: {
+      '@type': 'ImageObject',
+      url: settings?.logo_url || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
+    },
+    sameAs: sameAsLinks,
+  }
+
+  const websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteName,
+    url: originUrl || '/',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${originUrl}/search?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      <SEO
+        title=""
+        description={lang === 'bn' ? settings?.about_bn : settings?.about_en}
+        schema={[organizationSchema, websiteSchema]}
+        lang={lang}
+        settings={settings}
+      />
       {/* ================= 1. HERO TOP SECTION (প্রধান শীর্ষ সংবাদ) ================= */}
       <section className="mb-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -120,7 +166,7 @@ export default function HomePage({
             ))}
             {/* Quick in-feed banner */}
             <div className="mt-1">
-              <AdBanner size="infeed" lang={lang} />
+              <AdBanner size="infeed" lang={lang} settings={settings} />
             </div>
           </div>
         </div>
@@ -142,7 +188,7 @@ export default function HomePage({
 
       {/* Leaderboard Mid Ad */}
       <div className="my-8">
-        <AdBanner size="leaderboard" lang={lang} />
+        <AdBanner size="leaderboard" lang={lang} settings={settings} />
       </div>
 
       {/* ================= 3. MAIN CONTENT (8 cols) + SIDEBAR (4 cols) ================= */}
@@ -469,7 +515,7 @@ export default function HomePage({
           </div>
 
           {/* Widget 2: Medium Rectangle Ad (300x250) */}
-          <AdBanner size="rectangle" lang={lang} />
+          <AdBanner size="rectangle" lang={lang} settings={settings} />
 
           {/* Widget 3: আজকের ই-পেপার (Today's e-Paper Front Page Preview) */}
           <div className="bg-gradient-to-br from-[#1a3a5c] to-[#0f2540] text-white p-4 rounded-lg shadow-md">
@@ -601,7 +647,7 @@ export default function HomePage({
           </div>
 
           {/* Widget 6: Half Page Ad (300x600) */}
-          <AdBanner size="halfpage" lang={lang} />
+          <AdBanner size="halfpage" lang={lang} settings={settings} />
         </aside>
       </div>
 

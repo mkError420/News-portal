@@ -34,6 +34,12 @@ import {
   Share2,
   Sliders,
   Image as ImageIcon,
+  DollarSign,
+  Megaphone,
+  Monitor,
+  Smartphone,
+  CheckSquare,
+  Code,
 } from 'lucide-react'
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
@@ -114,6 +120,19 @@ export default function AdminPage({
     copyright_en: settings?.copyright_en || defaultSiteSettings.copyright_en,
     edition_bn: settings?.edition_bn || defaultSiteSettings.edition_bn,
     edition_en: settings?.edition_en || defaultSiteSettings.edition_en,
+    adsense_enabled: settings?.adsense_enabled ?? (defaultSiteSettings.adsense_enabled || '0'),
+    adsense_client_id: settings?.adsense_client_id ?? '',
+    adsense_auto_ads: settings?.adsense_auto_ads ?? '1',
+    adsense_header_slot: settings?.adsense_header_slot ?? '',
+    adsense_article_slot: settings?.adsense_article_slot ?? '',
+    adsense_sidebar_slot: settings?.adsense_sidebar_slot ?? '',
+    adsense_footer_slot: settings?.adsense_footer_slot ?? '',
+    ads_txt_content: settings?.ads_txt_content ?? (defaultSiteSettings.ads_txt_content || ''),
+    google_site_verification: settings?.google_site_verification ?? '',
+    bing_site_verification: settings?.bing_site_verification ?? '',
+    canonical_base_url: settings?.canonical_base_url ?? '',
+    meta_keywords_default: settings?.meta_keywords_default ?? (defaultSiteSettings.meta_keywords_default || ''),
+    og_image_default: settings?.og_image_default ?? '',
   }))
   const [isSavingSettings, setIsSavingSettings] = useState(false)
 
@@ -237,10 +256,17 @@ export default function AdminPage({
     featured: false,
     tags_bn: 'বাংলাদেশ, সংবাদ',
     tags_en: 'Bangladesh, News',
+    seo_title: '',
+    seo_description: '',
+    focus_keyword: '',
+    canonical_url: '',
+    og_image: '',
+    schema_type: 'NewsArticle',
   }
 
   const [formData, setFormData] = useState(emptyArticleForm)
   const [isEditing, setIsEditing] = useState(false)
+  const [seoPreviewDevice, setSeoPreviewDevice] = useState('desktop') // 'desktop' | 'mobile'
 
   // --- Articles List Filters ---
   const [articleSearch, setArticleSearch] = useState('')
@@ -410,6 +436,12 @@ export default function AdminPage({
   const handleEditClick = (article) => {
     setFormData({
       ...article,
+      seo_title: article.seo_title || '',
+      seo_description: article.seo_description || '',
+      focus_keyword: article.focus_keyword || '',
+      canonical_url: article.canonical_url || '',
+      og_image: article.og_image || '',
+      schema_type: article.schema_type || 'NewsArticle',
       tags_bn: Array.isArray(article.tags_bn) ? article.tags_bn.join(', ') : (article.tags_bn || ''),
       tags_en: Array.isArray(article.tags_en) ? article.tags_en.join(', ') : (article.tags_en || ''),
     })
@@ -1531,6 +1563,299 @@ export default function AdminPage({
                 </div>
               </div>
 
+              {/* ================= 6. SEARCH ENGINE OPTIMIZATION (SEO) STUDIO ================= */}
+              {(() => {
+                const effectiveTitle = (formData.seo_title || formData.title_bn || formData.title_en || 'সংবাদের শিরোনাম এখানে প্রদর্শিত হবে').trim()
+                const effectiveDesc = (formData.seo_description || formData.summary_bn || formData.summary_en || formData.subheadline_bn || 'এখানে সার্চ রেজাল্টের মেটা বিবরণ ও সারসংক্ষেপ দেখা যাবে...').trim()
+                const focusKw = (formData.focus_keyword || '').trim().toLowerCase()
+                const contentText = (formData.content_bn || '').replace(/<[^>]*>/g, ' ')
+                const wordCount = contentText.trim().split(/\s+/).filter(Boolean).length
+
+                // Live SEO Checks
+                const checks = [
+                  {
+                    label: 'শিরোনামের দৈর্ঘ্য আদর্শ (৪০-৭০ অক্ষরের মধ্যে)',
+                    passed: effectiveTitle.length >= 40 && effectiveTitle.length <= 70,
+                    detail: `${effectiveTitle.length} অক্ষর (লক্ষ্য: ৪০-৭০)`,
+                  },
+                  {
+                    label: 'মেটা বিবরণের দৈর্ঘ্য আদর্শ (১০০-১৬০ অক্ষরের মধ্যে)',
+                    passed: effectiveDesc.length >= 100 && effectiveDesc.length <= 165,
+                    detail: `${effectiveDesc.length} অক্ষর (লক্ষ্য: ১২০-১৬০)`,
+                  },
+                  {
+                    label: 'ফোকাস কিওয়ার্ড প্রধান শিরোনামে রয়েছে',
+                    passed: focusKw ? effectiveTitle.toLowerCase().includes(focusKw) : false,
+                    detail: focusKw ? (effectiveTitle.toLowerCase().includes(focusKw) ? 'মিলেছে' : 'শিরোনামে কিওয়ার্ড পাওয়া যায়নি') : 'ফোকাস কিওয়ার্ড প্রদান করুন',
+                  },
+                  {
+                    label: 'ফোকাস কিওয়ার্ড মেটা বর্ণনায় রয়েছে',
+                    passed: focusKw ? effectiveDesc.toLowerCase().includes(focusKw) : false,
+                    detail: focusKw ? (effectiveDesc.toLowerCase().includes(focusKw) ? 'মিলেছে' : 'মেটা বর্ণনায় কিওয়ার্ড নেই') : 'ফোকাস কিওয়ার্ড প্রদান করুন',
+                  },
+                  {
+                    label: 'ফিচার্ড বা সোশ্যাল শেয়ার ছবি উপস্থিত',
+                    passed: Boolean(formData.image || formData.og_image),
+                    detail: formData.image ? 'ছবি যুক্ত আছে' : 'ছবি দিন',
+                  },
+                  {
+                    label: 'বিস্তারিত বিষয়বস্তুর গভীরতা (> ১৫০ শব্দ)',
+                    passed: wordCount >= 150,
+                    detail: `${wordCount} শব্দ`,
+                  },
+                ]
+
+                const passedCount = checks.filter(c => c.passed).length
+                const scorePercent = Math.round((passedCount / checks.length) * 100)
+
+                const scoreColor = scorePercent >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-300' :
+                                   scorePercent >= 50 ? 'text-amber-700 bg-amber-50 border-amber-300' :
+                                   'text-red-700 bg-red-50 border-red-300'
+
+                const scoreText = scorePercent >= 80 ? 'চমৎকার এসইও (Excellent SEO)' :
+                                  scorePercent >= 50 ? 'চলতি এসইও (Average SEO)' :
+                                  'উন্নতি প্রয়োজন (Needs Improvement)'
+
+                const slugPreview = formData.slug || 'news-article-slug'
+                const catSlug = formData.category || 'national'
+
+                return (
+                  <div className="bg-slate-50/80 rounded-xl border-2 border-indigo-100 p-5 sm:p-7 space-y-6">
+                    {/* Header */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-indigo-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-xs">
+                            <Sparkles size={18} />
+                          </span>
+                          <h4 className="text-base font-extrabold text-gray-900 font-bengali">
+                            সার্চ ইঞ্জিন অপ্টিমাইজেশন ও মেটা সেটিংস (SEO Studio)
+                          </h4>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 font-bengali">
+                          গুগল সার্চ ও সোশ্যাল মিডিয়ায় আপনার সংবাদটিকে সবার উপরে প্রদর্শন করানোর জন্য প্রয়োজনীয় সেটিংস।
+                        </p>
+                      </div>
+
+                      {/* Real-time SEO Score Badge */}
+                      <div className={`px-4 py-2 rounded-xl border flex items-center gap-2.5 font-bold text-xs shadow-2xs ${scoreColor}`}>
+                        <div className="w-2.5 h-2.5 rounded-full bg-current animate-pulse"></div>
+                        <div>
+                          <span className="text-sm font-black">{scorePercent}/১০০</span> • <span>{scoreText}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live Google Search Result Simulator (SERP Preview) */}
+                    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                          <Globe size={15} className="text-blue-600" />
+                          <span>গুগল সার্চ রেজাল্ট প্রিভিউ (Google Search Preview)</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setSeoPreviewDevice('desktop')}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all ${
+                              seoPreviewDevice === 'desktop' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                          >
+                            <Monitor size={13} />
+                            <span>ডেস্কটপ</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSeoPreviewDevice('mobile')}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all ${
+                              seoPreviewDevice === 'mobile' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                          >
+                            <Smartphone size={13} />
+                            <span>মোবাইল</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Google SERP Card Preview */}
+                      <div className={`p-4 bg-white border border-gray-200 rounded-lg transition-all ${
+                        seoPreviewDevice === 'mobile' ? 'max-w-md mx-auto shadow-sm ring-1 ring-gray-200' : 'w-full'
+                      }`}>
+                        {/* Google URL Line */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">
+                            প্র
+                          </div>
+                          <div className="text-[11px] leading-tight overflow-hidden text-ellipsis whitespace-nowrap text-[#202124]">
+                            <span className="font-medium text-gray-800">{siteForm.site_name_bn || 'প্রথম আলো'}</span>
+                            <span className="text-gray-400 mx-1">›</span>
+                            <span className="text-gray-500">{catSlug}</span>
+                            <span className="text-gray-400 mx-1">›</span>
+                            <span className="text-gray-500">{slugPreview}</span>
+                          </div>
+                        </div>
+
+                        {/* Google Blue Link Title */}
+                        <h3 className="text-[#1a0dab] hover:underline font-normal text-base sm:text-lg leading-snug cursor-pointer font-sans line-clamp-2">
+                          {effectiveTitle}
+                        </h3>
+
+                        {/* Snippet Description */}
+                        <p className="text-xs text-[#4d5156] leading-relaxed mt-1 font-sans line-clamp-2">
+                          {effectiveDesc}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* SEO Form Inputs */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* 1. SEO Title Override */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-gray-700">
+                            সার্চ ইঞ্জিন মেটা টাইটেল (SEO Title)
+                          </label>
+                          <span className={`text-[11px] font-bold ${
+                            formData.seo_title.length >= 40 && formData.seo_title.length <= 70 ? 'text-emerald-600' : 'text-gray-400'
+                          }`}>
+                            {formData.seo_title.length} / ৬০ অক্ষর
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={formData.seo_title}
+                          onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                          placeholder={formData.title_bn || 'কাস্টম এসইও শিরোনাম (ফাঁকা রাখলে মূল শিরোনাম ব্যবহৃত হবে)...'}
+                          className="w-full text-xs p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-bengali"
+                        />
+                        <p className="text-[11px] text-gray-500">
+                          গুগল সার্চ ফলাফলে যে শিরোনামটি সবার আগে প্রদর্শিত হবে।
+                        </p>
+                      </div>
+
+                      {/* 2. Focus Keyword */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-gray-700">
+                          মূল ফোকাস কিওয়ার্ড (Focus Target Keyword)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.focus_keyword}
+                          onChange={(e) => setFormData({ ...formData, focus_keyword: e.target.value })}
+                          placeholder="যেমন: মেট্রোরেল, এশিয়া কাপ, রেমিট্যান্স"
+                          className="w-full text-xs p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-bengali"
+                        />
+                        <p className="text-[11px] text-gray-500">
+                          যে নির্দিষ্ট শব্দ বা বাক্যাংশের জন্য আপনি গুগলে ১ নম্বরে র‍্যাংক করতে চান।
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 3. SEO Meta Description */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-gray-700">
+                          সার্চ ইঞ্জিন মেটা ডেসক্রিপশন (Meta Description for Google SERP)
+                        </label>
+                        <span className={`text-[11px] font-bold ${
+                          formData.seo_description.length >= 100 && formData.seo_description.length <= 165 ? 'text-emerald-600' : 'text-gray-400'
+                        }`}>
+                          {formData.seo_description.length} / ১৬০ অক্ষর
+                        </span>
+                      </div>
+                      <textarea
+                        rows="2"
+                        value={formData.seo_description}
+                        onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                        placeholder={formData.summary_bn || 'গুগল সার্চ রেজাল্টের শিরোনামের নিচে প্রদর্শিত সারসংক্ষেপ...'}
+                        className="w-full text-xs p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-bengali"
+                      />
+                      <p className="text-[11px] text-gray-500">
+                        পাঠকদের আকৃষ্ট করতে আকর্ষণীয় ১-২ লাইনের বিবরণ লিখুন যাতে তারা ক্লিক করে।
+                      </p>
+                    </div>
+
+                    {/* Advanced Technical SEO Options */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                      {/* Schema Type */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Schema.org কাঠামোগত ডেটা টাইপ
+                        </label>
+                        <select
+                          value={formData.schema_type || 'NewsArticle'}
+                          onChange={(e) => setFormData({ ...formData, schema_type: e.target.value })}
+                          className="w-full text-xs p-2.5 border rounded-lg bg-white outline-none focus:ring-1 focus:ring-indigo-500"
+                        >
+                          <option value="NewsArticle">NewsArticle (সংবাদ প্রতিবেদন)</option>
+                          <option value="OpinionNewsArticle">OpinionNewsArticle (মতামত / সম্পাদকীয়)</option>
+                          <option value="AnalysisNewsArticle">AnalysisNewsArticle (গভীর বিশ্লেষণ)</option>
+                          <option value="ReviewNewsArticle">ReviewNewsArticle (রিভিউ / মূল্যায়ন)</option>
+                          <option value="Report">Report (বিশেষ রিপোর্ট)</option>
+                          <option value="BlogPosting">BlogPosting (ব্লগ নিবন্ধ)</option>
+                        </select>
+                      </div>
+
+                      {/* Social Share OG Image */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          সোশ্যাল শেয়ার ছবি (OG Image URL)
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.og_image}
+                          onChange={(e) => setFormData({ ...formData, og_image: e.target.value })}
+                          placeholder="ফাঁকা রাখলে মূল ফিচার্ড ছবি ব্যবহৃত হবে"
+                          className="w-full text-xs p-2.5 border rounded-lg bg-white outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
+                        />
+                      </div>
+
+                      {/* Canonical URL */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          ক্যানোনিকাল ইউআরএল (Canonical URL)
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.canonical_url}
+                          onChange={(e) => setFormData({ ...formData, canonical_url: e.target.value })}
+                          placeholder="স্বয়ংক্রিয় তৈরি (প্রয়োজনে ওভাররাইড করুন)"
+                          className="w-full text-xs p-2.5 border rounded-lg bg-white outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
+                        />
+                      </div>
+                    </div>
+
+                    {/* SEO Checklist */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-2.5">
+                      <span className="block text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                        <CheckSquare size={14} className="text-indigo-600" />
+                        <span>রিয়েল-টাইম এসইও চেকলিস্ট (SEO Optimization Audit):</span>
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {checks.map((chk, i) => (
+                          <div
+                            key={i}
+                            className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 ${
+                              chk.passed ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800' : 'bg-gray-50 border-gray-200 text-gray-600'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                ch.passed ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-700'
+                              }`}>
+                                {chk.passed ? '✓' : '×'}
+                              </span>
+                              <span className="font-medium font-bengali">{chk.label}</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-500">{chk.detail}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Submit Buttons */}
               <div className="flex items-center gap-3 pt-2">
                 <button
@@ -2283,6 +2608,266 @@ export default function AdminPage({
                         placeholder="Copyright © 2026 | All rights reserved."
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Google AdSense ও অটো-বিজ্ঞাপন সেটিংস */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-amber-500 text-white rounded-lg">
+                        <DollarSign size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">
+                          ৬. গুগল অ্যাডসেন্স ও অটো বিজ্ঞাপন (Google AdSense & Auto Ads)
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          আপনার Google AdSense একাউন্ট যুক্ত করুন এবং সাইটে স্বয়ংক্রিয় বিজ্ঞাপন চালু করুন।
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="adsenseEnableCheck"
+                        checked={siteForm.adsense_enabled === '1' || siteForm.adsense_enabled === true || siteForm.adsense_enabled === 'true'}
+                        onChange={(e) => setSiteForm({ ...siteForm, adsense_enabled: e.target.checked ? '1' : '0' })}
+                        className="w-4 h-4 text-amber-600 rounded cursor-pointer"
+                      />
+                      <label htmlFor="adsenseEnableCheck" className="text-xs font-bold text-gray-800 cursor-pointer">
+                        AdSense চালু রাখুন
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Google AdSense Publisher ID (Client ID) *
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.adsense_client_id}
+                        onChange={(e) => setSiteForm({ ...siteForm, adsense_client_id: e.target.value })}
+                        placeholder="ca-pub-1234567890123456"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-amber-500 outline-none font-sans"
+                      />
+                      <span className="text-[11px] text-gray-500 mt-0.5 block">
+                        আপনার গুগল অ্যাডসেন্স একাউন্ট থেকে প্রাপ্ত ca-pub-XXXXXXXXXXXXXXXX আইডি।
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Google Auto Ads (স্বয়ংক্রিয় বিজ্ঞাপন)
+                      </label>
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="checkbox"
+                          id="autoAdsCheck"
+                          checked={siteForm.adsense_auto_ads === '1' || siteForm.adsense_auto_ads === true}
+                          onChange={(e) => setSiteForm({ ...siteForm, adsense_auto_ads: e.target.checked ? '1' : '0' })}
+                          className="w-4 h-4 text-amber-600 rounded cursor-pointer"
+                        />
+                        <label htmlFor="autoAdsCheck" className="text-xs font-semibold text-gray-700 cursor-pointer">
+                          গুগল এআই দ্বারা স্বয়ংক্রিয়ভাবে বিজ্ঞাপনের স্থান নির্বাচন করুন
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ad Slots */}
+                  <div className="border-t pt-4">
+                    <span className="block font-bold text-xs text-gray-800 mb-3">
+                      নির্দিষ্ট বিজ্ঞাপন স্লট আইডি (Responsive Ad Unit Slot IDs):
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <label className="block text-gray-600 mb-1">হেডার লিডারবোর্ড স্লট আইডি</label>
+                        <input
+                          type="text"
+                          value={siteForm.adsense_header_slot}
+                          onChange={(e) => setSiteForm({ ...siteForm, adsense_header_slot: e.target.value })}
+                          placeholder="যেমন: 1234567890"
+                          className="w-full p-2 border rounded font-sans"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-600 mb-1">ইন-আর্টিকেল স্লট আইডি</label>
+                        <input
+                          type="text"
+                          value={siteForm.adsense_article_slot}
+                          onChange={(e) => setSiteForm({ ...siteForm, adsense_article_slot: e.target.value })}
+                          placeholder="যেমন: 2345678901"
+                          className="w-full p-2 border rounded font-sans"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-600 mb-1">সাইডবার স্লট আইডি</label>
+                        <input
+                          type="text"
+                          value={siteForm.adsense_sidebar_slot}
+                          onChange={(e) => setSiteForm({ ...siteForm, adsense_sidebar_slot: e.target.value })}
+                          placeholder="যেমন: 3456789012"
+                          className="w-full p-2 border rounded font-sans"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ads.txt Editor */}
+                  <div className="border-t pt-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block font-bold text-xs text-gray-800">
+                        Google AdSense ads.txt ফাইল কনটেন্ট
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pub = (siteForm.adsense_client_id || '').replace('ca-', '').trim() || 'pub-XXXXXXXXXXXXXXXX'
+                            setSiteForm({
+                              ...siteForm,
+                              ads_txt_content: `google.com, ${pub}, DIRECT, f08c47fec0942fa0`
+                            })
+                          }}
+                          className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200 hover:bg-amber-100"
+                        >
+                          + অটো লাইন তৈরি
+                        </button>
+                        <a
+                          href="/ads.txt"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
+                        >
+                          <ExternalLink size={12} />
+                          <span>লাইভ ads.txt</span>
+                        </a>
+                      </div>
+                    </div>
+                    <textarea
+                      rows="2"
+                      value={siteForm.ads_txt_content}
+                      onChange={(e) => setSiteForm({ ...siteForm, ads_txt_content: e.target.value })}
+                      placeholder="google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0"
+                      className="w-full p-2.5 border rounded font-mono text-xs outline-none bg-slate-50"
+                    />
+                  </div>
+                </div>
+
+                {/* 7. সার্চ ইঞ্জিন এসইও ও সাইট ভেরিফিকেশন (Global SEO) */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-lg">
+                      <Globe size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900">
+                        ৭. সার্চ ইঞ্জিন এসইও ও সাইট ভেরিফিকেশন (Search Console & Global SEO)
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Google Search Console এবং Bing Webmaster ভেরিফিকেশন কোড ও সাইটের ক্যানোনিকাল ডোমেন সেট করুন।
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Google Search Console ভেরিফিকেশন কোড
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.google_site_verification}
+                        onChange={(e) => setSiteForm({ ...siteForm, google_site_verification: e.target.value })}
+                        placeholder="যেমন: abc123XYZ_sample_code"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-mono"
+                      />
+                      <span className="text-[11px] text-gray-500 mt-0.5 block">
+                        গুগল সার্চ কনসোল HTML Tag মেথডের content এর মান দিন।
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Bing Webmaster Tools ভেরিফিকেশন কোড
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.bing_site_verification}
+                        onChange={(e) => setSiteForm({ ...siteForm, bing_site_verification: e.target.value })}
+                        placeholder="যেমন: BING_VERIFICATION_KEY"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-mono"
+                      />
+                      <span className="text-[11px] text-gray-500 mt-0.5 block">
+                        মাইক্রোসফট বিং ওয়েবমাস্টার মেটা ট্যাগের কোড।
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        সাইটের মূল ক্যানোনিকাল ইউআরএল (Canonical Base URL)
+                      </label>
+                      <input
+                        type="url"
+                        value={siteForm.canonical_base_url}
+                        onChange={(e) => setSiteForm({ ...siteForm, canonical_base_url: e.target.value })}
+                        placeholder="https://www.yourdomain.com"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-sans"
+                      />
+                      <span className="text-[11px] text-gray-500 mt-0.5 block">
+                        আপনার পোর্টালের আসল ডোমেন অ্যাড্রেস (SSL সহ https://)।
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        ডিফল্ট মেটা কিওয়ার্ডসমূহ (Meta Keywords)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.meta_keywords_default}
+                        onChange={(e) => setSiteForm({ ...siteForm, meta_keywords_default: e.target.value })}
+                        placeholder="সংবাদ, খবর, বাংলাদেশ, প্রথম আলো, ব্রেকিং নিউজ"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick SEO Links Bar */}
+                  <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 mt-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <span className="font-bold text-gray-700">গুগল ও সার্চ ইঞ্জিনের প্রয়োজনীয় ফাইলসমূহ:</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a
+                        href="/sitemap.xml"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-white border border-gray-300 rounded font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 shadow-2xs"
+                      >
+                        <ExternalLink size={12} />
+                        <span>🗺️ সাইটম্যাপ (/sitemap.xml)</span>
+                      </a>
+                      <a
+                        href="/rss.xml"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-white border border-gray-300 rounded font-bold text-orange-600 hover:text-orange-800 flex items-center gap-1 shadow-2xs"
+                      >
+                        <ExternalLink size={12} />
+                        <span>📰 আরএসএস ফিড (/rss.xml)</span>
+                      </a>
+                      <a
+                        href="/robots.txt"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-white border border-gray-300 rounded font-bold text-gray-700 hover:text-black flex items-center gap-1 shadow-2xs"
+                      >
+                        <ExternalLink size={12} />
+                        <span>🤖 রোবটস (/robots.txt)</span>
+                      </a>
                     </div>
                   </div>
                 </div>

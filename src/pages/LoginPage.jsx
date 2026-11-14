@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Lock, Mail, ArrowRight, CheckCircle2, AlertCircle, Home } from 'lucide-react'
+import SEO from '../components/SEO.jsx'
 import { api } from '../api.js'
 
 export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null }) {
@@ -49,6 +50,12 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
 
   return (
     <div className="min-h-[80vh] flex flex-col justify-center items-center px-4 py-12 font-bengali">
+      <SEO
+        title={lang === 'bn' ? 'অ্যাডমিন লগইন' : 'Admin Login'}
+        noindex={true}
+        lang={lang}
+        settings={settings}
+      />
       {/* Return to Home link */}
       <div className="w-full max-w-md mb-4 flex justify-between items-center text-xs text-gray-500">
         <Link to="/" className="flex items-center gap-1 hover:text-red-600 transition-colors">

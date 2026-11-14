@@ -22,6 +22,7 @@ import { FacebookIcon, TwitterIcon } from '../components/SocialIcons.jsx'
 import NewsCard from '../components/NewsCard.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
+import SEO from '../components/SEO.jsx'
 import { api } from '../api.js'
 import {
   formatBengaliDate,
@@ -136,8 +137,86 @@ export default function ArticlePage({ articles = [], categories = [], settings =
   const relatedArticles = articles.filter((a) => a.id !== article.id).slice(0, 3)
   const mostRead = [...articles].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
 
+  // SEO & Structured Data calculation
+  const seoTitle = article.seo_title || title
+  const seoDesc = article.seo_description || (lang === 'bn' ? article.summary_bn : article.summary_en) || article.summary || subhead || ''
+  const ogImg = article.og_image || article.image
+  const tagsList = (lang === 'bn' ? article.tags_bn : article.tags_en) || article.tags_bn || article.tags || []
+  const schemaType = article.schema_type || 'NewsArticle'
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const articleUrl = typeof window !== 'undefined' ? window.location.href : (article.canonical_url || `${originUrl}/article/${article.slug}`)
+
+  const newsArticleSchema = {
+    '@context': 'https://schema.org',
+    '@type': schemaType,
+    headline: seoTitle,
+    description: seoDesc,
+    image: [ogImg],
+    datePublished: article.date || article.published_at,
+    dateModified: article.updated_at || article.date || article.published_at,
+    author: [{
+      '@type': 'Person',
+      name: author,
+      jobTitle: authorRole,
+    }],
+    publisher: {
+      '@type': 'NewsMediaOrganization',
+      name: siteName,
+      logo: {
+        '@type': 'ImageObject',
+        url: settings?.logo_url || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': articleUrl,
+    },
+    articleSection: catTitle,
+    keywords: Array.isArray(tagsList) ? tagsList.join(', ') : tagsList,
+  }
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: lang === 'bn' ? 'প্রচ্ছদ' : 'Home',
+        item: originUrl || '/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: catTitle,
+        item: `${originUrl}/category/${catKey}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: title,
+        item: articleUrl,
+      },
+    ],
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      <SEO
+        title={seoTitle}
+        description={seoDesc}
+        canonical={article.canonical_url}
+        ogImage={ogImg}
+        ogType="article"
+        publishedTime={article.date || article.published_at}
+        modifiedTime={article.updated_at || article.date}
+        author={author}
+        section={catTitle}
+        tags={Array.isArray(tagsList) ? tagsList : []}
+        schema={[newsArticleSchema, breadcrumbSchema]}
+        lang={lang}
+        settings={settings}
+      />
       {/* 1. Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200">
         <Link to="/" className="hover:text-red-600 flex items-center gap-1">
@@ -313,7 +392,7 @@ export default function ArticlePage({ articles = [], categories = [], settings =
 
           {/* Mid-Article In-feed Ad Banner */}
           <div className="my-8">
-            <AdBanner size="infeed" lang={lang} />
+            <AdBanner size="infeed" lang={lang} settings={settings} />
           </div>
 
           {/* Comments Section */}
@@ -393,7 +472,7 @@ export default function ArticlePage({ articles = [], categories = [], settings =
           </div>
 
           {/* Ad 300x250 */}
-          <AdBanner size="rectangle" lang={lang} />
+          <AdBanner size="rectangle" lang={lang} settings={settings} />
 
           {/* Related Articles Box */}
           <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
@@ -410,7 +489,7 @@ export default function ArticlePage({ articles = [], categories = [], settings =
           </div>
 
           {/* Ad 300x600 Skyscraper */}
-          <AdBanner size="halfpage" lang={lang} />
+          <AdBanner size="halfpage" lang={lang} settings={settings} />
         </aside>
       </div>
     </div>

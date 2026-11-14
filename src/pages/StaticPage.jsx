@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Home, ChevronRight, ShieldCheck, FileText, Mail, Phone, MapPin, Send, HelpCircle } from 'lucide-react'
+import SEO from '../components/SEO.jsx'
 
 export default function StaticPage({ lang = 'bn', settings = null }) {
   const location = useLocation()
@@ -24,6 +25,12 @@ export default function StaticPage({ lang = 'bn', settings = null }) {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 font-bengali">
+      <SEO
+        title={lang === 'bn' ? currentTitle.bn : currentTitle.en}
+        description={`${lang === 'bn' ? currentTitle.bn : currentTitle.en} - ${siteName}`}
+        lang={lang}
+        settings={settings}
+      />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-6 pb-2 border-b border-gray-200">
         <Link to="/" className="hover:text-red-600 flex items-center gap-1">
