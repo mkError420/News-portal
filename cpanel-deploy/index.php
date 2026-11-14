@@ -40,8 +40,8 @@ function get_seo_article($slug) {
 }
 
 // Default Fallback Metadata
-$siteNameBn = $settings['site_name_bn'] ?? 'প্রথম আলো';
-$siteNameEn = $settings['site_name_en'] ?? 'Prothom Alo';
+$siteNameBn = $settings['site_name_bn'] ?? 'প্রথম কালো';
+$siteNameEn = $settings['site_name_en'] ?? 'Prothom kalo';
 $taglineBn = $settings['tagline_bn'] ?? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক';
 $defaultTitle = $siteNameBn . ' | ' . $taglineBn;
 $defaultDesc = $settings['about_bn'] ?? 'সর্বশেষ সংবাদ, রাজনীতি, অর্থনীতি, খেলাধুলা, বিনোদন ও আন্তর্জাতিক খবরের বিশ্বস্ত মাধ্যম।';
@@ -132,8 +132,8 @@ if (!empty($settings['bing_site_verification'])) {
     $verificationSnippet .= '<meta name="msvalidate.01" content="' . htmlspecialchars($settings['bing_site_verification']) . '">' . "\n  ";
 }
 
-// Read template index.html
-$templatePath = __DIR__ . '/index.html';
+// Read template index.html (check dist/index.html first if built, else root index.html)
+$templatePath = file_exists(__DIR__ . '/dist/index.html') ? __DIR__ . '/dist/index.html' : __DIR__ . '/index.html';
 $html = @file_get_contents($templatePath);
 
 if (!$html) {
@@ -167,12 +167,14 @@ $seoBlock = <<<HTML
   {$schemaJson}
 HTML;
 
+// Replace <title>...</title> and existing meta description with the SEO block
 if (preg_match('#<title>.*?</title>#is', $html)) {
     $html = preg_replace('#<title>.*?</title>#is', $seoBlock, $html, 1);
 } else {
     $html = str_replace('<head>', "<head>\n" . $seoBlock, $html);
 }
 
+// Output final SEO optimized HTML
 header('Content-Type: text/html; charset=utf-8');
 echo $html;
 exit;

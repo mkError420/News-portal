@@ -105,7 +105,7 @@ export default function HomePage({
   }
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
+    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
   const siteTagline = (lang === 'bn' ? settings?.tagline_bn : settings?.tagline_en) ||
     (lang === 'bn' ? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক' : 'Online Edition • Fearless in Pursuit of Truth')
   const originUrl = typeof window !== 'undefined' ? window.location.origin : ''

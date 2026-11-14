@@ -40,8 +40,8 @@ function get_seo_article($slug) {
 }
 
 // Default Fallback Metadata
-$siteNameBn = $settings['site_name_bn'] ?? 'প্রথম আলো';
-$siteNameEn = $settings['site_name_en'] ?? 'Prothom Alo';
+$siteNameBn = $settings['site_name_bn'] ?? 'প্রথম কালো';
+$siteNameEn = $settings['site_name_en'] ?? 'Prothom kalo';
 $taglineBn = $settings['tagline_bn'] ?? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক';
 $defaultTitle = $siteNameBn . ' | ' . $taglineBn;
 $defaultDesc = $settings['about_bn'] ?? 'সর্বশেষ সংবাদ, রাজনীতি, অর্থনীতি, খেলাধুলা, বিনোদন ও আন্তর্জাতিক খবরের বিশ্বস্ত মাধ্যম।';

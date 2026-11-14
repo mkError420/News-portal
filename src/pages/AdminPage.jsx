@@ -1848,7 +1848,7 @@ export default function AdminPage({
                             প্র
                           </div>
                           <div className="text-[11px] leading-tight overflow-hidden text-ellipsis whitespace-nowrap text-[#202124]">
-                            <span className="font-medium text-gray-800">{siteForm.site_name_bn || 'প্রথম আলো'}</span>
+                            <span className="font-medium text-gray-800">{siteForm.site_name_bn || 'প্রথম কালো'}</span>
                             <span className="text-gray-400 mx-1">›</span>
                             <span className="text-gray-500">{catSlug}</span>
                             <span className="text-gray-400 mx-1">›</span>
@@ -3230,7 +3230,7 @@ export default function AdminPage({
                         type="text"
                         value={siteForm.meta_keywords_default}
                         onChange={(e) => setSiteForm({ ...siteForm, meta_keywords_default: e.target.value })}
-                        placeholder="সংবাদ, খবর, বাংলাদেশ, প্রথম আলো, ব্রেকিং নিউজ"
+                        placeholder="সংবাদ, খবর, বাংলাদেশ, প্রথম কালো, ব্রেকিং নিউজ, Prothom kalo"
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"
                       />
                     </div>

@@ -13,7 +13,7 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
   const navigate = useNavigate()
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
+    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
 
   // If already logged in, redirect to admin
   useEffect(() => {

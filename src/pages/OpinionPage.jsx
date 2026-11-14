@@ -10,7 +10,7 @@ export default function OpinionPage({ opinions = [], settings = null, lang = 'bn
   const [activeOpinion, setActiveOpinion] = useState(opinions[0])
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
+    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
