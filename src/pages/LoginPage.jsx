@@ -154,7 +154,7 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 bg-[#e30613] hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-lg text-sm transition-colors shadow flex items-center justify-center gap-2"
+              className="w-full mt-2 bg-[#e30613] hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-lg text-sm transition-colors shadow flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading ? (
                 <span>{lang === 'bn' ? 'যাচাই করা হচ্ছে...' : 'Verifying...'}</span>
@@ -166,6 +166,27 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
               )}
             </button>
           </form>
+
+          {/* Quick Demo Credentials Assistant */}
+          <div className="mt-6 p-3.5 bg-gray-50 border border-gray-200 rounded-lg text-xs space-y-2">
+            <div className="flex items-center justify-between text-gray-700 font-bold">
+              <span>{lang === 'bn' ? '🔑 ডিফল্ট অ্যাডমিন তথ্য:' : '🔑 Default Admin Credentials:'}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@prothomalo.com')
+                  setPassword('admin123')
+                }}
+                className="text-[11px] text-red-600 hover:text-red-700 font-semibold underline cursor-pointer"
+              >
+                {lang === 'bn' ? 'তথ্য পূরণ করুন (Auto-fill)' : 'Auto-fill'}
+              </button>
+            </div>
+            <div className="text-[11px] text-gray-600 space-y-0.5 font-mono">
+              <p><span className="text-gray-400 font-sans">ইমেইল / User:</span> admin@prothomalo.com</p>
+              <p><span className="text-gray-400 font-sans">পাসওয়ার্ড / Pass:</span> admin123</p>
+            </div>
+          </div>
 
         </div>
       </div>

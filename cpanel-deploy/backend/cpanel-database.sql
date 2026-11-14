@@ -14,6 +14,9 @@ CREATE TABLE admins (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+INSERT INTO admins (email, password_hash) VALUES
+('admin@prothomalo.com', '$2y$12$Affak3Sszb7sr/z.E7qTjerisPxOQ.RmPyjvwrwydRHcDWnvtwvAG');
+
 -- 2. Categories Table
 DROP TABLE IF EXISTS categories;
 CREATE TABLE categories (
