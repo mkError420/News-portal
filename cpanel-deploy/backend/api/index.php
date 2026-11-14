@@ -246,20 +246,85 @@ if ($resource === 'logout' && $method === 'POST') {
 // ----------------------------------------------------
 if ($resource === 'categories') {
     $dbConn = require_db();
-    $hasNameBn = has_column($dbConn, 'categories', 'name_bn');
+
+    // Auto-migrate categories table if name_bn / name_en columns are missing
+    $hasNameBn = false;
+    try {
+        $hasNameBn = has_column($dbConn, 'categories', 'name_bn');
+        if (!$hasNameBn) {
+            $dbConn->exec("ALTER TABLE `categories` ADD COLUMN `name_bn` VARCHAR(150) NULL AFTER `name`, ADD COLUMN `name_en` VARCHAR(150) NULL AFTER `name_bn`");
+            $hasNameBn = true;
+        }
+    } catch (Throwable $e) {
+        $hasNameBn = has_column($dbConn, 'categories', 'name_bn');
+    }
+
+    $defaultCatDict = [
+        'national'      => ['bn' => 'বাংলাদেশ', 'en' => 'National'],
+        'politics'      => ['bn' => 'রাজনীতি', 'en' => 'Politics'],
+        'international' => ['bn' => 'আন্তর্জাতিক', 'en' => 'International'],
+        'economy'       => ['bn' => 'অর্থনীতি', 'en' => 'Economy'],
+        'business'      => ['bn' => 'বাণিজ্য', 'en' => 'Business'],
+        'sports'        => ['bn' => 'খেলা', 'en' => 'Sports'],
+        'entertainment' => ['bn' => 'বিনোদন', 'en' => 'Entertainment'],
+        'technology'    => ['bn' => 'প্রযুক্তি', 'en' => 'Technology'],
+        'education'     => ['bn' => 'শিক্ষা', 'en' => 'Education'],
+        'health'        => ['bn' => 'স্বাস্থ্য', 'en' => 'Health'],
+        'lifestyle'     => ['bn' => 'জীবনযাপন', 'en' => 'Lifestyle'],
+        'opinion'       => ['bn' => 'মতামত', 'en' => 'Opinion'],
+        'photos'        => ['bn' => 'আলোকচিত্র', 'en' => 'Photos'],
+        'photo'         => ['bn' => 'আলোকচিত্র', 'en' => 'Photos'],
+        'video'         => ['bn' => 'ভিডিও', 'en' => 'Video'],
+        'videos'        => ['bn' => 'ভিডিও', 'en' => 'Video'],
+        'epaper'        => ['bn' => 'ই-পেপার', 'en' => 'ePaper'],
+    ];
 
     if ($method === 'GET') {
         $stmt = $dbConn->query('SELECT * FROM categories ORDER BY id ASC');
         $rows = $stmt->fetchAll();
-        $cats = array_map(function ($r) use ($hasNameBn) {
-            $nameBn = $hasNameBn ? ($r['name_bn'] ?? $r['name'] ?? '') : ($r['name'] ?? '');
-            $nameEn = $hasNameBn ? ($r['name_en'] ?? $r['name'] ?? '') : ($r['name'] ?? '');
+        $cats = array_map(function ($r) use ($hasNameBn, $defaultCatDict, $dbConn) {
+            $slug = strtolower(trim((string) ($r['slug'] ?? '')));
+            $rawBn = (string) ($hasNameBn ? ($r['name_bn'] ?? '') : '');
+            $rawEn = (string) ($hasNameBn ? ($r['name_en'] ?? '') : '');
+            $rawName = (string) ($r['name'] ?? '');
+
+            $hasBnChars = preg_match('/[\x{0980}-\x{09FF}]/u', $rawBn);
+            $nameHasBnChars = preg_match('/[\x{0980}-\x{09FF}]/u', $rawName);
+
+            if ($hasBnChars) {
+                $nameBn = $rawBn;
+            } elseif ($nameHasBnChars) {
+                $nameBn = $rawName;
+            } elseif (isset($defaultCatDict[$slug])) {
+                $nameBn = $defaultCatDict[$slug]['bn'];
+            } else {
+                $nameBn = $rawBn ?: ($rawName ?: $slug);
+            }
+
+            if (!empty($rawEn) && !preg_match('/[\x{0980}-\x{09FF}]/u', $rawEn)) {
+                $nameEn = $rawEn;
+            } elseif (isset($defaultCatDict[$slug])) {
+                $nameEn = $defaultCatDict[$slug]['en'];
+            } elseif (!empty($rawName) && !preg_match('/[\x{0980}-\x{09FF}]/u', $rawName)) {
+                $nameEn = $rawName;
+            } else {
+                $nameEn = $rawEn ?: $slug;
+            }
+
+            // Proactively update DB row if name_bn was missing or English
+            if ($hasNameBn && !$hasBnChars && isset($defaultCatDict[$slug]) && !empty($r['id'])) {
+                try {
+                    $up = $dbConn->prepare('UPDATE categories SET name_bn = ?, name_en = ?, name = ? WHERE id = ?');
+                    $up->execute([$nameBn, $nameEn, $nameBn, $r['id']]);
+                } catch (Throwable $e) {}
+            }
+
             return [
                 'id' => (int) $r['id'],
                 'name_bn' => $nameBn,
                 'name_en' => $nameEn,
-                'name' => $r['name'] ?? $nameBn,
-                'slug' => $r['slug'] ?? '',
+                'name' => $nameBn,
+                'slug' => $slug,
             ];
         }, $rows);
         json_response(['categories' => $cats]);
@@ -269,8 +334,16 @@ if ($resource === 'categories') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $nameBn = trim((string) ($input['name_bn'] ?? ($input['name'] ?? '')));
-        $nameEn = trim((string) ($input['name_en'] ?? $nameBn));
+        $nameEn = trim((string) ($input['name_en'] ?? ''));
         $slug = strtolower(trim((string) ($input['slug'] ?? '')));
+
+        if ($nameEn === '' && isset($defaultCatDict[$slug])) {
+            $nameEn = $defaultCatDict[$slug]['en'];
+        }
+        if ($nameEn === '') {
+            $nameEn = $nameBn;
+        }
+
         if ($slug === '') {
             $slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower($nameEn ?: $nameBn));
             $slug = trim($slug, '-');
@@ -280,8 +353,8 @@ if ($resource === 'categories') {
         }
 
         if ($hasNameBn) {
-            $stmt = $dbConn->prepare('INSERT INTO categories (name_bn, name_en, slug) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name_bn = VALUES(name_bn), name_en = VALUES(name_en)');
-            $stmt->execute([$nameBn, $nameEn, $slug]);
+            $stmt = $dbConn->prepare('INSERT INTO categories (name, name_bn, name_en, slug) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), name_bn = VALUES(name_bn), name_en = VALUES(name_en)');
+            $stmt->execute([$nameBn, $nameBn, $nameEn, $slug]);
         } else {
             $stmt = $dbConn->prepare('INSERT INTO categories (name, slug) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)');
             $stmt->execute([$nameBn, $slug]);
@@ -519,19 +592,6 @@ if ($resource === 'articles') {
         json_response(['articles' => $items]);
     }
 
-    // INCREMENT VIEW COUNT (Public)
-    $rawInput = file_get_contents('php://input');
-    $input = json_decode($rawInput, true) ?: [];
-    $action = $_GET['action'] ?? ($input['action'] ?? '');
-    if ($method === 'POST' && ($action === 'view' || !empty($input['view_id']))) {
-        $viewId = (int) ($_GET['id'] ?? ($input['id'] ?? ($input['view_id'] ?? 0)));
-        if ($viewId > 0) {
-            $stmt = $dbConn->prepare('UPDATE articles SET views = views + 1 WHERE id = ?');
-            $stmt->execute([$viewId]);
-            json_response(['success' => true, 'id' => $viewId]);
-        }
-    }
-
     // INCREMENT ARTICLE VIEW COUNT
     if ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'view') {
         $id = (int) ($_GET['id'] ?? 0);
@@ -545,6 +605,8 @@ if ($resource === 'articles') {
     // CREATE OR UPDATE ARTICLE
     if ($method === 'POST' || $method === 'PUT') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $titleBn = trim((string) ($input['title_bn'] ?? ($input['title'] ?? '')));
         $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
         $titleBn = $titleBn !== '' ? $titleBn : $titleEn;
@@ -673,391 +735,6 @@ if ($resource === 'articles') {
             json_response(['success' => false, 'message' => 'Article was not found.'], 404);
         }
         json_response(['success' => true, 'deletedId' => $id]);
-    }
-}
-
-// ----------------------------------------------------
-// ROUTE: /api/opinions (Dynamic Opinions & Columns)
-// ----------------------------------------------------
-if ($resource === 'opinions') {
-    $dbConn = db();
-
-    if ($dbConn) {
-        try {
-            $dbConn->exec("CREATE TABLE IF NOT EXISTS `opinions` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `slug` VARCHAR(255) NOT NULL UNIQUE,
-                `title_bn` VARCHAR(500) NOT NULL,
-                `title_en` VARCHAR(500) NOT NULL,
-                `author_bn` VARCHAR(150) NOT NULL,
-                `author_en` VARCHAR(150) NOT NULL,
-                `author_role_bn` VARCHAR(150) DEFAULT NULL,
-                `author_role_en` VARCHAR(150) DEFAULT NULL,
-                `author_image` VARCHAR(500) DEFAULT NULL,
-                `summary_bn` TEXT DEFAULT NULL,
-                `summary_en` TEXT DEFAULT NULL,
-                `image` VARCHAR(500) DEFAULT NULL,
-                `category` VARCHAR(50) DEFAULT 'opinion',
-                `content_bn` LONGTEXT DEFAULT NULL,
-                `content_en` LONGTEXT DEFAULT NULL,
-                `date` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        } catch (Throwable $e) {}
-    }
-
-    if ($method === 'GET') {
-        if ($dbConn) {
-            $stmt = $dbConn->query('SELECT * FROM opinions ORDER BY date DESC, id DESC');
-            $rows = $stmt->fetchAll();
-            if (!empty($rows)) {
-                $opinions = array_map(function ($r) {
-                    return [
-                        'id' => (int) $r['id'],
-                        'slug' => $r['slug'],
-                        'title_bn' => $r['title_bn'],
-                        'title_en' => $r['title_en'],
-                        'author_bn' => $r['author_bn'],
-                        'author_en' => $r['author_en'],
-                        'author_role_bn' => $r['author_role_bn'] ?? '',
-                        'author_role_en' => $r['author_role_en'] ?? '',
-                        'author_image' => $r['author_image'] ?? '',
-                        'summary_bn' => $r['summary_bn'] ?? '',
-                        'summary_en' => $r['summary_en'] ?? '',
-                        'image' => $r['image'] ?? '',
-                        'category' => $r['category'] ?? 'opinion',
-                        'content_bn' => $r['content_bn'] ?? '',
-                        'content_en' => $r['content_en'] ?? '',
-                        'date' => $r['date'] ?? date('c'),
-                    ];
-                }, $rows);
-                json_response(['opinions' => $opinions]);
-            }
-        }
-        json_response(['opinions' => []]);
-    }
-
-    if ($method === 'POST') {
-        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $titleBn = trim((string) ($input['title_bn'] ?? ''));
-        $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
-        $authorBn = trim((string) ($input['author_bn'] ?? 'কলামিস্ট'));
-        $authorEn = trim((string) ($input['author_en'] ?? 'Columnist'));
-        $slug = trim((string) ($input['slug'] ?? 'opinion-' . time()));
-
-        if ($titleBn === '') {
-            json_response(['success' => false, 'message' => 'Opinion title is required.'], 400);
-        }
-
-        if ($dbConn) {
-            $stmt = $dbConn->prepare("INSERT INTO opinions (slug, title_bn, title_en, author_bn, author_en, author_role_bn, author_role_en, author_image, summary_bn, summary_en, image, content_bn, content_en, date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE title_bn = VALUES(title_bn), title_en = VALUES(title_en), author_bn = VALUES(author_bn), author_en = VALUES(author_en), summary_bn = VALUES(summary_bn), content_bn = VALUES(content_bn)");
-            $stmt->execute([
-                $slug, $titleBn, $titleEn, $authorBn, $authorEn,
-                (string) ($input['author_role_bn'] ?? ''), (string) ($input['author_role_en'] ?? ''),
-                (string) ($input['author_image'] ?? ''),
-                (string) ($input['summary_bn'] ?? ''), (string) ($input['summary_en'] ?? ''),
-                (string) ($input['image'] ?? ''),
-                (string) ($input['content_bn'] ?? ''), (string) ($input['content_en'] ?? ''),
-                date('Y-m-d H:i:s')
-            ]);
-            $id = (int) $dbConn->lastInsertId();
-            json_response(['success' => true, 'id' => $id, 'slug' => $slug]);
-        }
-        json_response(['success' => true]);
-    }
-
-    if ($method === 'DELETE') {
-        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
-        $id = (int) ($_GET['id'] ?? 0);
-        if ($dbConn && $id > 0) {
-            $stmt = $dbConn->prepare('DELETE FROM opinions WHERE id = ?');
-            $stmt->execute([$id]);
-        }
-        json_response(['success' => true, 'deletedId' => $id]);
-    }
-}
-
-// ----------------------------------------------------
-// ROUTE: /api/photos (Dynamic Photo Gallery)
-// ----------------------------------------------------
-if ($resource === 'photos') {
-    $dbConn = db();
-
-    if ($dbConn) {
-        try {
-            $dbConn->exec("CREATE TABLE IF NOT EXISTS `photos` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `slug` VARCHAR(255) NOT NULL UNIQUE,
-                `title_bn` VARCHAR(500) NOT NULL,
-                `title_en` VARCHAR(500) NOT NULL,
-                `image` VARCHAR(500) NOT NULL,
-                `credit_bn` VARCHAR(255) DEFAULT NULL,
-                `credit_en` VARCHAR(255) DEFAULT NULL,
-                `caption_bn` TEXT DEFAULT NULL,
-                `caption_en` TEXT DEFAULT NULL,
-                `date` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        } catch (Throwable $e) {}
-    }
-
-    if ($method === 'GET') {
-        if ($dbConn) {
-            $stmt = $dbConn->query('SELECT * FROM photos ORDER BY date DESC, id DESC');
-            $rows = $stmt->fetchAll();
-            if (!empty($rows)) {
-                $photos = array_map(function ($r) {
-                    return [
-                        'id' => (int) $r['id'],
-                        'slug' => $r['slug'],
-                        'title_bn' => $r['title_bn'],
-                        'title_en' => $r['title_en'],
-                        'image' => $r['image'],
-                        'credit_bn' => $r['credit_bn'] ?? '',
-                        'credit_en' => $r['credit_en'] ?? '',
-                        'caption_bn' => $r['caption_bn'] ?? '',
-                        'caption_en' => $r['caption_en'] ?? '',
-                        'date' => $r['date'] ?? date('c'),
-                    ];
-                }, $rows);
-                json_response(['photos' => $photos]);
-            }
-        }
-        json_response(['photos' => []]);
-    }
-
-    if ($method === 'POST') {
-        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $titleBn = trim((string) ($input['title_bn'] ?? ''));
-        $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
-        $image = trim((string) ($input['image'] ?? ''));
-        $slug = trim((string) ($input['slug'] ?? 'photo-' . time()));
-
-        if ($titleBn === '' || $image === '') {
-            json_response(['success' => false, 'message' => 'Photo title and image URL are required.'], 400);
-        }
-
-        if ($dbConn) {
-            $stmt = $dbConn->prepare("INSERT INTO photos (slug, title_bn, title_en, image, credit_bn, credit_en, caption_bn, caption_en, date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([
-                $slug, $titleBn, $titleEn, $image,
-                (string) ($input['credit_bn'] ?? 'ছবি: প্রথম আলো'),
-                (string) ($input['credit_en'] ?? 'Photo: Prothom Alo'),
-                (string) ($input['caption_bn'] ?? ''),
-                (string) ($input['caption_en'] ?? ''),
-                date('Y-m-d H:i:s')
-            ]);
-            $id = (int) $dbConn->lastInsertId();
-            json_response(['success' => true, 'id' => $id, 'slug' => $slug]);
-        }
-        json_response(['success' => true]);
-    }
-
-    if ($method === 'DELETE') {
-        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
-        $id = (int) ($_GET['id'] ?? 0);
-        if ($dbConn && $id > 0) {
-            $stmt = $dbConn->prepare('DELETE FROM photos WHERE id = ?');
-            $stmt->execute([$id]);
-        }
-        json_response(['success' => true, 'deletedId' => $id]);
-    }
-}
-
-// ----------------------------------------------------
-// ROUTE: /api/videos (Dynamic Video Reports)
-// ----------------------------------------------------
-if ($resource === 'videos') {
-    $dbConn = db();
-
-    if ($dbConn) {
-        try {
-            $dbConn->exec("CREATE TABLE IF NOT EXISTS `videos` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `slug` VARCHAR(255) NOT NULL UNIQUE,
-                `title_bn` VARCHAR(500) NOT NULL,
-                `title_en` VARCHAR(500) NOT NULL,
-                `thumb` VARCHAR(500) NOT NULL,
-                `video_url` VARCHAR(500) NOT NULL,
-                `duration` VARCHAR(50) DEFAULT '৩:৩০',
-                `views` INT NOT NULL DEFAULT 0,
-                `date` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        } catch (Throwable $e) {}
-    }
-
-    if ($method === 'GET') {
-        if ($dbConn) {
-            $stmt = $dbConn->query('SELECT * FROM videos ORDER BY date DESC, id DESC');
-            $rows = $stmt->fetchAll();
-            if (!empty($rows)) {
-                $videos = array_map(function ($r) {
-                    return [
-                        'id' => (int) $r['id'],
-                        'slug' => $r['slug'],
-                        'title_bn' => $r['title_bn'],
-                        'title_en' => $r['title_en'],
-                        'thumb' => $r['thumb'],
-                        'videoUrl' => $r['video_url'],
-                        'duration' => $r['duration'] ?? '৩:৩০',
-                        'views' => (int) ($r['views'] ?? 0),
-                        'date' => $r['date'] ?? date('c'),
-                    ];
-                }, $rows);
-                json_response(['videos' => $videos]);
-            }
-        }
-        json_response(['videos' => []]);
-    }
-
-    if ($method === 'POST') {
-        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $titleBn = trim((string) ($input['title_bn'] ?? ''));
-        $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
-        $thumb = trim((string) ($input['thumb'] ?? ''));
-        $videoUrl = trim((string) ($input['videoUrl'] ?? ($input['video_url'] ?? '')));
-        $slug = trim((string) ($input['slug'] ?? 'video-' . time()));
-
-        if ($titleBn === '') {
-            json_response(['success' => false, 'message' => 'Video title is required.'], 400);
-        }
-
-        if ($dbConn) {
-            $stmt = $dbConn->prepare("INSERT INTO videos (slug, title_bn, title_en, thumb, video_url, duration, views, date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([
-                $slug, $titleBn, $titleEn, $thumb, $videoUrl,
-                (string) ($input['duration'] ?? '৩:৩০'),
-                (int) ($input['views'] ?? 0),
-                date('Y-m-d H:i:s')
-            ]);
-            $id = (int) $dbConn->lastInsertId();
-            json_response(['success' => true, 'id' => $id, 'slug' => $slug]);
-        }
-        json_response(['success' => true]);
-    }
-
-    if ($method === 'DELETE') {
-        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
-        $id = (int) ($_GET['id'] ?? 0);
-        if ($dbConn && $id > 0) {
-            $stmt = $dbConn->prepare('DELETE FROM videos WHERE id = ?');
-            $stmt->execute([$id]);
-        }
-        json_response(['success' => true, 'deletedId' => $id]);
-    }
-}
-
-// ----------------------------------------------------
-// ROUTE: /api/poll (Dynamic Reader Opinion Poll)
-// ----------------------------------------------------
-if ($resource === 'poll') {
-    $dbConn = db();
-
-    if ($dbConn) {
-        try {
-            $dbConn->exec("CREATE TABLE IF NOT EXISTS `polls` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `question_bn` VARCHAR(500) NOT NULL,
-                `question_en` VARCHAR(500) NOT NULL,
-                `votes_yes` INT NOT NULL DEFAULT 76,
-                `votes_no` INT NOT NULL DEFAULT 18,
-                `votes_no_opinion` INT NOT NULL DEFAULT 6,
-                `active` TINYINT(1) NOT NULL DEFAULT 1,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-            $pollCount = (int) $dbConn->query('SELECT COUNT(*) FROM polls')->fetchColumn();
-            if ($pollCount === 0) {
-                $dbConn->exec("INSERT INTO polls (question_bn, question_en, votes_yes, votes_no, votes_no_opinion, active)
-                    VALUES ('জাতীয় নির্বাচনের প্রস্তুতি ও আইনশৃঙ্খলা পরিস্থিতি নিয়ে আপনি কি সন্তুষ্ট?', 'Are you satisfied with national election preparations and law & order?', 840, 198, 62, 1)");
-            }
-        } catch (Throwable $e) {}
-    }
-
-    if ($method === 'GET') {
-        if ($dbConn) {
-            $stmt = $dbConn->query('SELECT * FROM polls WHERE active = 1 ORDER BY id DESC LIMIT 1');
-            $poll = $stmt->fetch();
-            if ($poll) {
-                $total = (int)$poll['votes_yes'] + (int)$poll['votes_no'] + (int)$poll['votes_no_opinion'];
-                json_response([
-                    'poll' => [
-                        'id' => (int)$poll['id'],
-                        'question_bn' => $poll['question_bn'],
-                        'question_en' => $poll['question_en'],
-                        'votes_yes' => (int)$poll['votes_yes'],
-                        'votes_no' => (int)$poll['votes_no'],
-                        'votes_no_opinion' => (int)$poll['votes_no_opinion'],
-                        'total_votes' => $total,
-                        'percent_yes' => $total > 0 ? round(($poll['votes_yes'] / $total) * 100) : 0,
-                        'percent_no' => $total > 0 ? round(($poll['votes_no'] / $total) * 100) : 0,
-                        'percent_no_opinion' => $total > 0 ? round(($poll['votes_no_opinion'] / $total) * 100) : 0,
-                    ]
-                ]);
-            }
-        }
-        json_response([
-            'poll' => [
-                'id' => 1,
-                'question_bn' => 'জাতীয় নির্বাচনের প্রস্তুতি ও আইনশৃঙ্খলা পরিস্থিতি নিয়ে আপনি কি সন্তুষ্ট?',
-                'question_en' => 'Are you satisfied with national election preparations and law & order?',
-                'votes_yes' => 840,
-                'votes_no' => 198,
-                'votes_no_opinion' => 62,
-                'total_votes' => 1100,
-                'percent_yes' => 76,
-                'percent_no' => 18,
-                'percent_no_opinion' => 6,
-            ]
-        ]);
-    }
-
-    if ($method === 'POST') {
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $option = trim((string) ($input['option'] ?? ''));
-        $pollId = (int) ($input['id'] ?? 1);
-
-        $col = match ($option) {
-            'yes', 'হ্যাঁ' => 'votes_yes',
-            'no', 'না' => 'votes_no',
-            default => 'votes_no_opinion',
-        };
-
-        if ($dbConn) {
-            $stmt = $dbConn->prepare("UPDATE polls SET $col = $col + 1 WHERE id = ?");
-            $stmt->execute([$pollId]);
-
-            $stmt2 = $dbConn->prepare('SELECT * FROM polls WHERE id = ?');
-            $stmt2->execute([$pollId]);
-            $poll = $stmt2->fetch();
-            if ($poll) {
-                $total = (int)$poll['votes_yes'] + (int)$poll['votes_no'] + (int)$poll['votes_no_opinion'];
-                json_response([
-                    'success' => true,
-                    'poll' => [
-                        'id' => (int)$poll['id'],
-                        'question_bn' => $poll['question_bn'],
-                        'question_en' => $poll['question_en'],
-                        'votes_yes' => (int)$poll['votes_yes'],
-                        'votes_no' => (int)$poll['votes_no'],
-                        'votes_no_opinion' => (int)$poll['votes_no_opinion'],
-                        'total_votes' => $total,
-                        'percent_yes' => $total > 0 ? round(($poll['votes_yes'] / $total) * 100) : 0,
-                        'percent_no' => $total > 0 ? round(($poll['votes_no'] / $total) * 100) : 0,
-                        'percent_no_opinion' => $total > 0 ? round(($poll['votes_no_opinion'] / $total) * 100) : 0,
-                    ]
-                ]);
-            }
-        }
-        json_response(['success' => true]);
     }
 }
 

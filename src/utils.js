@@ -124,6 +124,7 @@ export function formatViews(n, lang = 'bn') {
 }
 
 export const CATEGORIES_BN = {
+  home:          'প্রচ্ছদ',
   national:      'বাংলাদেশ',
   politics:      'রাজনীতি',
   international: 'আন্তর্জাতিক',
@@ -137,11 +138,15 @@ export const CATEGORIES_BN = {
   lifestyle:     'জীবনযাপন',
   opinion:       'মতামত',
   photo:         'আলোকচিত্র',
+  photos:        'আলোকচিত্র',
   video:         'ভিডিও',
+  videos:        'ভিডিও',
+  epaper:        'ই-পেপার',
 }
 
 export const CATEGORIES_EN = {
-  national:      'Bangladesh',
+  home:          'Home',
+  national:      'National',
   politics:      'Politics',
   international: 'International',
   economy:       'Economy',
@@ -154,15 +159,19 @@ export const CATEGORIES_EN = {
   lifestyle:     'Lifestyle',
   opinion:       'Opinion',
   photo:         'Photos',
+  photos:        'Photos',
   video:         'Video',
+  videos:        'Video',
+  epaper:        'ePaper',
 }
 
 export const NAV_ITEMS = [
   { label_bn: 'প্রচ্ছদ',       label_en: 'Home',          path: '/' },
-  { label_bn: 'বাংলাদেশ',      label_en: 'Bangladesh',    path: '/category/national' },
+  { label_bn: 'বাংলাদেশ',      label_en: 'National',      path: '/category/national' },
   { label_bn: 'রাজনীতি',       label_en: 'Politics',      path: '/category/politics' },
   { label_bn: 'আন্তর্জাতিক',  label_en: 'International', path: '/category/international' },
   { label_bn: 'অর্থনীতি',      label_en: 'Economy',       path: '/category/economy' },
+  { label_bn: 'বাণিজ্য',       label_en: 'Business',      path: '/category/business' },
   { label_bn: 'খেলা',          label_en: 'Sports',        path: '/category/sports' },
   { label_bn: 'বিনোদন',        label_en: 'Entertainment', path: '/category/entertainment' },
   { label_bn: 'প্রযুক্তি',    label_en: 'Technology',    path: '/category/technology' },

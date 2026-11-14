@@ -246,20 +246,85 @@ if ($resource === 'logout' && $method === 'POST') {
 // ----------------------------------------------------
 if ($resource === 'categories') {
     $dbConn = require_db();
-    $hasNameBn = has_column($dbConn, 'categories', 'name_bn');
+
+    // Auto-migrate categories table if name_bn / name_en columns are missing
+    $hasNameBn = false;
+    try {
+        $hasNameBn = has_column($dbConn, 'categories', 'name_bn');
+        if (!$hasNameBn) {
+            $dbConn->exec("ALTER TABLE `categories` ADD COLUMN `name_bn` VARCHAR(150) NULL AFTER `name`, ADD COLUMN `name_en` VARCHAR(150) NULL AFTER `name_bn`");
+            $hasNameBn = true;
+        }
+    } catch (Throwable $e) {
+        $hasNameBn = has_column($dbConn, 'categories', 'name_bn');
+    }
+
+    $defaultCatDict = [
+        'national'      => ['bn' => 'বাংলাদেশ', 'en' => 'National'],
+        'politics'      => ['bn' => 'রাজনীতি', 'en' => 'Politics'],
+        'international' => ['bn' => 'আন্তর্জাতিক', 'en' => 'International'],
+        'economy'       => ['bn' => 'অর্থনীতি', 'en' => 'Economy'],
+        'business'      => ['bn' => 'বাণিজ্য', 'en' => 'Business'],
+        'sports'        => ['bn' => 'খেলা', 'en' => 'Sports'],
+        'entertainment' => ['bn' => 'বিনোদন', 'en' => 'Entertainment'],
+        'technology'    => ['bn' => 'প্রযুক্তি', 'en' => 'Technology'],
+        'education'     => ['bn' => 'শিক্ষা', 'en' => 'Education'],
+        'health'        => ['bn' => 'স্বাস্থ্য', 'en' => 'Health'],
+        'lifestyle'     => ['bn' => 'জীবনযাপন', 'en' => 'Lifestyle'],
+        'opinion'       => ['bn' => 'মতামত', 'en' => 'Opinion'],
+        'photos'        => ['bn' => 'আলোকচিত্র', 'en' => 'Photos'],
+        'photo'         => ['bn' => 'আলোকচিত্র', 'en' => 'Photos'],
+        'video'         => ['bn' => 'ভিডিও', 'en' => 'Video'],
+        'videos'        => ['bn' => 'ভিডিও', 'en' => 'Video'],
+        'epaper'        => ['bn' => 'ই-পেপার', 'en' => 'ePaper'],
+    ];
 
     if ($method === 'GET') {
         $stmt = $dbConn->query('SELECT * FROM categories ORDER BY id ASC');
         $rows = $stmt->fetchAll();
-        $cats = array_map(function ($r) use ($hasNameBn) {
-            $nameBn = $hasNameBn ? ($r['name_bn'] ?? $r['name'] ?? '') : ($r['name'] ?? '');
-            $nameEn = $hasNameBn ? ($r['name_en'] ?? $r['name'] ?? '') : ($r['name'] ?? '');
+        $cats = array_map(function ($r) use ($hasNameBn, $defaultCatDict, $dbConn) {
+            $slug = strtolower(trim((string) ($r['slug'] ?? '')));
+            $rawBn = (string) ($hasNameBn ? ($r['name_bn'] ?? '') : '');
+            $rawEn = (string) ($hasNameBn ? ($r['name_en'] ?? '') : '');
+            $rawName = (string) ($r['name'] ?? '');
+
+            $hasBnChars = preg_match('/[\x{0980}-\x{09FF}]/u', $rawBn);
+            $nameHasBnChars = preg_match('/[\x{0980}-\x{09FF}]/u', $rawName);
+
+            if ($hasBnChars) {
+                $nameBn = $rawBn;
+            } elseif ($nameHasBnChars) {
+                $nameBn = $rawName;
+            } elseif (isset($defaultCatDict[$slug])) {
+                $nameBn = $defaultCatDict[$slug]['bn'];
+            } else {
+                $nameBn = $rawBn ?: ($rawName ?: $slug);
+            }
+
+            if (!empty($rawEn) && !preg_match('/[\x{0980}-\x{09FF}]/u', $rawEn)) {
+                $nameEn = $rawEn;
+            } elseif (isset($defaultCatDict[$slug])) {
+                $nameEn = $defaultCatDict[$slug]['en'];
+            } elseif (!empty($rawName) && !preg_match('/[\x{0980}-\x{09FF}]/u', $rawName)) {
+                $nameEn = $rawName;
+            } else {
+                $nameEn = $rawEn ?: $slug;
+            }
+
+            // Proactively update DB row if name_bn was missing or English
+            if ($hasNameBn && !$hasBnChars && isset($defaultCatDict[$slug]) && !empty($r['id'])) {
+                try {
+                    $up = $dbConn->prepare('UPDATE categories SET name_bn = ?, name_en = ?, name = ? WHERE id = ?');
+                    $up->execute([$nameBn, $nameEn, $nameBn, $r['id']]);
+                } catch (Throwable $e) {}
+            }
+
             return [
                 'id' => (int) $r['id'],
                 'name_bn' => $nameBn,
                 'name_en' => $nameEn,
-                'name' => $r['name'] ?? $nameBn,
-                'slug' => $r['slug'] ?? '',
+                'name' => $nameBn,
+                'slug' => $slug,
             ];
         }, $rows);
         json_response(['categories' => $cats]);
@@ -269,8 +334,16 @@ if ($resource === 'categories') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $nameBn = trim((string) ($input['name_bn'] ?? ($input['name'] ?? '')));
-        $nameEn = trim((string) ($input['name_en'] ?? $nameBn));
+        $nameEn = trim((string) ($input['name_en'] ?? ''));
         $slug = strtolower(trim((string) ($input['slug'] ?? '')));
+
+        if ($nameEn === '' && isset($defaultCatDict[$slug])) {
+            $nameEn = $defaultCatDict[$slug]['en'];
+        }
+        if ($nameEn === '') {
+            $nameEn = $nameBn;
+        }
+
         if ($slug === '') {
             $slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower($nameEn ?: $nameBn));
             $slug = trim($slug, '-');
@@ -280,8 +353,8 @@ if ($resource === 'categories') {
         }
 
         if ($hasNameBn) {
-            $stmt = $dbConn->prepare('INSERT INTO categories (name_bn, name_en, slug) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name_bn = VALUES(name_bn), name_en = VALUES(name_en)');
-            $stmt->execute([$nameBn, $nameEn, $slug]);
+            $stmt = $dbConn->prepare('INSERT INTO categories (name, name_bn, name_en, slug) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), name_bn = VALUES(name_bn), name_en = VALUES(name_en)');
+            $stmt->execute([$nameBn, $nameBn, $nameEn, $slug]);
         } else {
             $stmt = $dbConn->prepare('INSERT INTO categories (name, slug) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)');
             $stmt->execute([$nameBn, $slug]);

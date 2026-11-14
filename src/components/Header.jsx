@@ -4,6 +4,8 @@ import { Menu, X, Search, Globe, User, Bell, LogOut, Flame } from 'lucide-react'
 import ProthomAloLogo from './ProthomAloLogo.jsx'
 import {
   NAV_ITEMS,
+  CATEGORIES_BN,
+  CATEGORIES_EN,
   TRENDING_TOPICS,
   formatBengaliDate,
   formatEnglishDate,
@@ -69,9 +71,12 @@ export default function Header({
     }
   }
 
-  // --- Dynamic Category Navigation Bar (synced with dashboard) ---
+  // --- Dynamic Category Navigation Bar (synced with dashboard & bilingual) ---
+  const isBengali = (str) => typeof str === 'string' && /[\u0980-\u09FF]/.test(str)
+
   const navItems = useMemo(() => {
     const list = [{ path: '/', label_bn: 'প্রচ্ছদ', label_en: 'Home' }]
+    const seenPaths = new Set(['/'])
 
     if (Array.isArray(categories) && categories.length > 0) {
       categories.forEach((cat) => {
@@ -79,19 +84,40 @@ export default function Header({
         if (!slug || slug === 'home' || slug === 'index') return
         let path = `/category/${slug}`
         if (slug === 'opinion') path = '/opinion'
-        if (slug === 'photos') path = '/photos'
+        if (slug === 'photos' || slug === 'photo') path = '/photos'
         if (slug === 'video' || slug === 'videos') path = '/video'
+        if (slug === 'epaper') path = '/epaper'
+
+        if (seenPaths.has(path)) return
+        seenPaths.add(path)
+
+        // Ensure authentic Bengali script for label_bn even if DB returned English
+        const label_bn = isBengali(cat.name_bn)
+          ? cat.name_bn
+          : (CATEGORIES_BN[slug] || (isBengali(cat.name) ? cat.name : (cat.name_bn || cat.name || slug)))
+
+        // Ensure proper English translation for label_en
+        const label_en = (cat.name_en && !isBengali(cat.name_en))
+          ? cat.name_en
+          : (CATEGORIES_EN[slug] || (!isBengali(cat.name) ? cat.name : (cat.name_en || slug)))
+
         list.push({
           path,
-          label_bn: cat.name_bn || cat.name || slug,
-          label_en: cat.name_en || cat.name || slug,
+          label_bn,
+          label_en,
         })
       })
     } else {
-      list.push(...NAV_ITEMS.slice(1))
+      NAV_ITEMS.forEach((item) => {
+        if (!seenPaths.has(item.path)) {
+          seenPaths.add(item.path)
+          list.push(item)
+        }
+      })
     }
 
-    if (!list.some((item) => item.path === '/epaper')) {
+    if (!seenPaths.has('/epaper')) {
+      seenPaths.add('/epaper')
       list.push({ path: '/epaper', label_bn: 'ই-পেপার', label_en: 'ePaper' })
     }
 
