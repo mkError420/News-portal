@@ -113,33 +113,35 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
 
             <span className="text-gray-500 hidden sm:inline">|</span>
 
-            {/* Login / Logout Link (No redundant Dashboard in navbar) */}
+            {/* Login / Auth State (Prothom Alo standard: Clean Login when logged out, Dashboard/Logout when logged in) */}
             {isAuth ? (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1 text-gray-200 hover:text-red-300 transition-colors font-medium text-xs"
-                title={lang === 'bn' ? 'লগআউট করুন' : 'Logout'}
-              >
-                <LogOut size={12} />
-                <span>{lang === 'bn' ? 'লগআউট' : 'Logout'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center gap-1 bg-[#e30613] hover:bg-red-700 text-white px-2.5 py-0.5 rounded text-[11px] font-semibold transition-colors shadow-sm"
+                  title={lang === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Admin Dashboard'}
+                >
+                  <User size={11} />
+                  <span>{lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1 text-gray-300 hover:text-white transition-colors font-medium text-xs ml-1"
+                  title={lang === 'bn' ? 'লগআউট করুন' : 'Logout'}
+                >
+                  <LogOut size={12} />
+                  <span className="hidden sm:inline">{lang === 'bn' ? 'লগআউট' : 'Logout'}</span>
+                </button>
+              </div>
             ) : (
               <Link
                 to="/login"
-                className="flex items-center gap-1 text-gray-200 hover:text-yellow-300 transition-colors font-medium text-xs"
+                className="flex items-center gap-1 text-gray-200 hover:text-white transition-colors font-medium text-xs px-2 py-0.5 rounded hover:bg-white/10"
               >
                 <User size={12} />
                 <span>{t.login}</span>
               </Link>
             )}
-
-            {/* Admin shortcut */}
-            <Link
-              to="/admin"
-              className="hidden md:inline-flex items-center gap-1 bg-[#e30613] hover:bg-red-700 text-white px-2.5 py-0.5 rounded text-[11px] font-semibold transition-colors"
-            >
-              <span>{lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
-            </Link>
           </div>
         </div>
       </div>
@@ -336,13 +338,23 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
               {lang === 'bn' ? item.label_bn : item.label_en}
             </NavLink>
           ))}
-          <NavLink
-            to="/admin"
-            onClick={() => setMobileOpen(false)}
-            className="block px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-          >
-            ⚡ {lang === 'bn' ? 'অ্যাডমিন প্যানেল' : 'Admin Panel'}
-          </NavLink>
+          {isAuth ? (
+            <NavLink
+              to="/admin"
+              onClick={() => setMobileOpen(false)}
+              className="block px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+            >
+              {lang === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Admin Dashboard'}
+            </NavLink>
+          ) : (
+            <NavLink
+              to="/login"
+              onClick={() => setMobileOpen(false)}
+              className="block px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {lang === 'bn' ? 'লগইন' : 'Login'}
+            </NavLink>
+          )}
         </div>
 
         {/* Drawer Footer */}

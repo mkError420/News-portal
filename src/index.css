@@ -1,7 +1,26 @@
 /* =========================================================
    Google Fonts
    ========================================================= */
-@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@400;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap');
+
+/* =========================================================
+   Prothom Alo Official Font (Shurjo)
+   ========================================================= */
+@font-face {
+  font-family: 'Shurjo';
+  src: url('https://assets.prothomalo.com/prothomalo/assets/ShurjoWeb_400_v5_1.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Shurjo';
+  src: url('https://assets.prothomalo.com/prothomalo/assets/ShurjoWeb_700_v5_1.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* =========================================================
    Tailwind Directives
@@ -19,15 +38,15 @@
   --brand-blue:     #1a3a5c;
   --brand-darkblue: #0f2540;
   --brand-gold:     #c89b2a;
-  --brand-bg:       #f4f4f4;
+  --brand-bg:       #ffffff;
   --brand-text:     #1a1a1a;
   --brand-muted:    #777777;
-  --brand-border:   #dddddd;
+  --brand-border:   #e5e7eb;
   --brand-footer:   #1a1a1a;
   --brand-light:    #f9f9f9;
 
-  --shadow-card:       0 2px 8px rgba(0,0,0,0.08);
-  --shadow-card-hover: 0 6px 20px rgba(0,0,0,0.14);
+  --shadow-card:       0 2px 8px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 6px 20px rgba(0,0,0,0.12);
 
   --transition-fast: 0.15s ease;
   --transition-med:  0.25s ease;
@@ -47,14 +66,28 @@ html {
 }
 
 body {
-  font-family: 'Hind Siliguri', 'Noto Sans Bengali', Arial, sans-serif;
+  font-family: 'Shurjo', 'Anek Bangla', 'SolaimanLipi', 'Kalpurush', 'Hind Siliguri', 'Noto Sans Bengali', Arial, sans-serif;
   background-color: var(--brand-bg);
   color: var(--brand-text);
-  line-height: 1.7;
+  line-height: 1.65;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prothom Alo News Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Shurjo', 'Anek Bangla', 'SolaimanLipi', 'Hind Siliguri', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.font-bengali {
+  font-family: 'Shurjo', 'Anek Bangla', 'SolaimanLipi', 'Kalpurush', 'Hind Siliguri', sans-serif !important;
+}
+
+.font-bengali-serif {
+  font-family: 'Shurjo', 'Noto Serif Bengali', 'SolaimanLipi', serif !important;
 }
 
 a {

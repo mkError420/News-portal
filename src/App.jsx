@@ -68,7 +68,11 @@ export default function App() {
   useEffect(() => {
     let active = true
     const syncData = async () => {
-      const results = await Promise.allSettled([api.getArticles(), api.getBreakingNews()])
+      const results = await Promise.allSettled([
+        api.getArticles(),
+        api.getBreakingNews(),
+        api.getCategories(),
+      ])
       if (!active) return
 
       const updates = {}
@@ -81,6 +85,9 @@ export default function App() {
         updates.breakingNews = results[1].value
       } else {
         console.error('Unable to load breaking news from the database:', results[1].reason)
+      }
+      if (results[2].status === 'fulfilled' && Array.isArray(results[2].value) && results[2].value.length > 0) {
+        updates.categories = results[2].value
       }
 
       setNewsData((prev) => {
@@ -148,6 +155,89 @@ export default function App() {
       breakingNews: (newsData.breakingNews || []).filter((item) => item.id !== id),
     }
     persistData(updated)
+  }
+
+  // --- Categories CRUD Handlers ---
+  const handleAddCategory = (newCat) => {
+    const updated = {
+      ...newsData,
+      categories: [...(newsData.categories || []), newCat],
+    }
+    persistData(updated)
+  }
+
+  const handleUpdateCategory = (updatedCat) => {
+    const updated = {
+      ...newsData,
+      categories: (newsData.categories || []).map((c) =>
+        c.id === updatedCat.id || c.slug === updatedCat.slug ? { ...c, ...updatedCat } : c
+      ),
+    }
+    persistData(updated)
+  }
+
+  const handleDeleteCategory = (catIdOrSlug) => {
+    const updated = {
+      ...newsData,
+      categories: (newsData.categories || []).filter((c) => c.id !== catIdOrSlug && c.slug !== catIdOrSlug),
+    }
+    persistData(updated)
+  }
+
+  // --- Opinions CRUD Handlers ---
+  const handleAddOpinion = (newOpinion) => {
+    const updated = {
+      ...newsData,
+      opinions: [newOpinion, ...(newsData.opinions || [])],
+    }
+    persistData(updated)
+  }
+
+  const handleDeleteOpinion = (id) => {
+    const updated = {
+      ...newsData,
+      opinions: (newsData.opinions || []).filter((item) => item.id !== id),
+    }
+    persistData(updated)
+  }
+
+  // --- Photos CRUD Handlers ---
+  const handleAddPhoto = (newPhoto) => {
+    const updated = {
+      ...newsData,
+      photos: [newPhoto, ...(newsData.photos || [])],
+    }
+    persistData(updated)
+  }
+
+  const handleDeletePhoto = (id) => {
+    const updated = {
+      ...newsData,
+      photos: (newsData.photos || []).filter((item) => item.id !== id),
+    }
+    persistData(updated)
+  }
+
+  // --- Videos CRUD Handlers ---
+  const handleAddVideo = (newVideo) => {
+    const updated = {
+      ...newsData,
+      videos: [newVideo, ...(newsData.videos || [])],
+    }
+    persistData(updated)
+  }
+
+  const handleDeleteVideo = (id) => {
+    const updated = {
+      ...newsData,
+      videos: (newsData.videos || []).filter((item) => item.id !== id),
+    }
+    persistData(updated)
+  }
+
+  const handleResetData = () => {
+    localStorage.removeItem(STORAGE_KEY)
+    window.location.reload()
   }
 
   return (
@@ -285,6 +375,7 @@ export default function App() {
               <AdminPage
                 articles={newsData.articles}
                 breakingNews={newsData.breakingNews}
+                categories={newsData.categories}
                 opinions={newsData.opinions}
                 photos={newsData.photos}
                 videos={newsData.videos}
@@ -293,6 +384,16 @@ export default function App() {
                 onDeleteArticle={handleDeleteArticle}
                 onAddBreaking={handleAddBreaking}
                 onDeleteBreaking={handleDeleteBreaking}
+                onAddCategory={handleAddCategory}
+                onUpdateCategory={handleUpdateCategory}
+                onDeleteCategory={handleDeleteCategory}
+                onAddOpinion={handleAddOpinion}
+                onDeleteOpinion={handleDeleteOpinion}
+                onAddPhoto={handleAddPhoto}
+                onDeletePhoto={handleDeletePhoto}
+                onAddVideo={handleAddVideo}
+                onDeleteVideo={handleDeleteVideo}
+                onResetData={handleResetData}
                 lang={lang}
               />
             }

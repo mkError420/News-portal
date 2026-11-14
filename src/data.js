@@ -531,23 +531,27 @@ export const articles = [
   },
 ]
 
+export const initialCategories = [
+  { id: 1, slug: 'national', name_bn: 'বাংলাদেশ', name_en: 'Bangladesh' },
+  { id: 2, slug: 'politics', name_bn: 'রাজনীতি', name_en: 'Politics' },
+  { id: 3, slug: 'international', name_bn: 'আন্তর্জাতিক', name_en: 'International' },
+  { id: 4, slug: 'economy', name_bn: 'অর্থনীতি ও বাণিজ্য', name_en: 'Economy & Business' },
+  { id: 5, slug: 'sports', name_bn: 'খেলাধুলা', name_en: 'Sports' },
+  { id: 6, slug: 'entertainment', name_bn: 'বিনোদন', name_en: 'Entertainment' },
+  { id: 7, slug: 'technology', name_bn: 'বিজ্ঞান ও প্রযুক্তি', name_en: 'Technology' },
+  { id: 8, slug: 'education', name_bn: 'শিক্ষা ও চাকরি', name_en: 'Education & Career' },
+  { id: 9, slug: 'health', name_bn: 'স্বাস্থ্য ও চিকিৎসা', name_en: 'Health' },
+  { id: 10, slug: 'lifestyle', name_bn: 'জীবনযাপন', name_en: 'Lifestyle' },
+  { id: 11, slug: 'opinion', name_bn: 'মতামত', name_en: 'Opinion' },
+  { id: 12, slug: 'photos', name_bn: 'আলোকচিত্র', name_en: 'Photos' },
+  { id: 13, slug: 'video', name_bn: 'ভিডিও সংবাদ', name_en: 'Video Reports' },
+]
+
 export const defaultData = {
   breakingNews,
   articles,
   opinions,
   photos,
   videos,
-  categories: [
-    'national',
-    'politics',
-    'international',
-    'economy',
-    'sports',
-    'entertainment',
-    'technology',
-    'education',
-    'health',
-    'lifestyle',
-    'opinion'
-  ],
+  categories: initialCategories,
 }

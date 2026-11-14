@@ -88,6 +88,28 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  // --- Categories CRUD ---
+  async getCategories() {
+    try {
+      const res = await client.get('/categories')
+      if (Array.isArray(res.data?.categories)) {
+        return res.data.categories
+      }
+    } catch {}
+    return null
+  },
+
+  async saveCategory(category) {
+    const res = await client.post('/categories', category)
+    return requireSuccess(res.data)
+  },
+
+  async deleteCategory(idOrSlug) {
+    const param = typeof idOrSlug === 'number' ? `id=${idOrSlug}` : `slug=${encodeURIComponent(idOrSlug)}`
+    const res = await client.delete(`/categories?${param}`)
+    return requireSuccess(res.data)
+  },
+
   async getStats() {
     const res = await client.get('/stats')
     return res.data

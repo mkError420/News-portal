@@ -242,12 +242,78 @@ if ($resource === 'logout' && $method === 'POST') {
 }
 
 // ----------------------------------------------------
-// ROUTE: GET /api/categories
+// ROUTE: /api/categories (Full Dynamic Categories CRUD)
 // ----------------------------------------------------
-if ($resource === 'categories' && $method === 'GET') {
+if ($resource === 'categories') {
     $dbConn = require_db();
-    $stmt = $dbConn->query('SELECT slug, name AS name_bn, name AS name_en FROM categories ORDER BY id ASC');
-    json_response(['categories' => $stmt->fetchAll()]);
+    $hasNameBn = has_column($dbConn, 'categories', 'name_bn');
+
+    if ($method === 'GET') {
+        $stmt = $dbConn->query('SELECT * FROM categories ORDER BY id ASC');
+        $rows = $stmt->fetchAll();
+        $cats = array_map(function ($r) use ($hasNameBn) {
+            $nameBn = $hasNameBn ? ($r['name_bn'] ?? $r['name'] ?? '') : ($r['name'] ?? '');
+            $nameEn = $hasNameBn ? ($r['name_en'] ?? $r['name'] ?? '') : ($r['name'] ?? '');
+            return [
+                'id' => (int) $r['id'],
+                'name_bn' => $nameBn,
+                'name_en' => $nameEn,
+                'name' => $r['name'] ?? $nameBn,
+                'slug' => $r['slug'] ?? '',
+            ];
+        }, $rows);
+        json_response(['categories' => $cats]);
+    }
+
+    if ($method === 'POST') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $nameBn = trim((string) ($input['name_bn'] ?? ($input['name'] ?? '')));
+        $nameEn = trim((string) ($input['name_en'] ?? $nameBn));
+        $slug = strtolower(trim((string) ($input['slug'] ?? '')));
+        if ($slug === '') {
+            $slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower($nameEn ?: $nameBn));
+            $slug = trim($slug, '-');
+        }
+        if ($nameBn === '' || $slug === '') {
+            json_response(['success' => false, 'message' => 'Category name and slug are required.'], 400);
+        }
+
+        if ($hasNameBn) {
+            $stmt = $dbConn->prepare('INSERT INTO categories (name_bn, name_en, slug) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name_bn = VALUES(name_bn), name_en = VALUES(name_en)');
+            $stmt->execute([$nameBn, $nameEn, $slug]);
+        } else {
+            $stmt = $dbConn->prepare('INSERT INTO categories (name, slug) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)');
+            $stmt->execute([$nameBn, $slug]);
+        }
+        $id = (int) $dbConn->lastInsertId();
+        json_response([
+            'success' => true,
+            'category' => [
+                'id' => $id > 0 ? $id : time(),
+                'name_bn' => $nameBn,
+                'name_en' => $nameEn,
+                'name' => $nameBn,
+                'slug' => $slug,
+            ]
+        ]);
+    }
+
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? 0);
+        $slug = trim((string) ($_GET['slug'] ?? ''));
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('DELETE FROM categories WHERE id = ?');
+            $stmt->execute([$id]);
+        } elseif ($slug !== '') {
+            $stmt = $dbConn->prepare('DELETE FROM categories WHERE slug = ?');
+            $stmt->execute([$slug]);
+        } else {
+            json_response(['success' => false, 'message' => 'Valid category ID or slug required.'], 400);
+        }
+        json_response(['success' => true, 'message' => 'Category deleted successfully.']);
+    }
 }
 
 // ----------------------------------------------------

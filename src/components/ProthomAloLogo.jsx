@@ -31,7 +31,7 @@ export default function ProthomAloLogo({ lang = 'bn', size = 'default' }) {
           className="font-extrabold tracking-tight leading-none text-[#e30613] group-hover:text-[#b80010] transition-colors"
           style={{
             fontSize: isSmall ? '1.5rem' : 'clamp(1.9rem, 3.5vw, 2.5rem)',
-            fontFamily: "'Hind Siliguri', 'Noto Serif Bengali', serif",
+            fontFamily: "'Shurjo', 'Anek Bangla', 'SolaimanLipi', 'Noto Serif Bengali', serif",
             letterSpacing: '-0.02em',
           }}
         >
