@@ -1,0 +1,553 @@
+// Comprehensive bilingual sample dataset for Prothom Alo clone
+
+export const breakingNews = [
+  { id: 1, title_bn: 'ঢাকায় আজ থেকে মেট্রোরেলের মতিঝিল-উত্তরা পূর্ণাঙ্গ সেবা চালু', title_en: 'Full Motijheel-Uttara Metro Rail service begins in Dhaka today', slug: 'dhaka-metro-full-service' },
+  { id: 2, title_bn: 'এশিয়া কাপের ফাইনালে শ্বাসরুদ্ধকর ম্যাচে বাংলাদেশ চ্যাম্পিয়ন', title_en: 'Bangladesh crowned Asia Cup champions in thrilling final', slug: 'bangladesh-asia-cup-champions' },
+  { id: 3, title_bn: 'রেমিট্যান্স প্রবাহে নতুন রেকর্ড, রিজার্ভ আবারও ঊর্ধ্বমুখী', title_en: 'Remittance hits new record as foreign reserves climb again', slug: 'remittance-record-reserves' },
+  { id: 4, title_bn: 'আগামী তিন দিন সারাদেশে ভারী বৃষ্টির সতর্কতা জারি করেছে আবহাওয়া অধিদপ্তর', title_en: 'Meteorological department issues heavy rain warning across country for next 3 days', slug: 'rain-alert-bangladesh' },
+  { id: 5, title_bn: 'জাতীয় অর্থনৈতিক পরিষদের সভায় নতুন ৫০টি মেগা প্রকল্প অনুমোদন', title_en: 'National Economic Council approves 50 new mega projects', slug: 'economic-council-mega-projects' },
+  { id: 6, title_bn: 'পদ্মা সেতুতে ২৪ ঘণ্টায় সর্বোচ্চ টোল আদায়ের নতুন ইতিহাস', title_en: 'Padma Bridge records historic 24-hour toll collection', slug: 'padma-bridge-toll-record' },
+]
+
+export const opinions = [
+  {
+    id: 'op1',
+    slug: 'democracy-future-bangladesh',
+    title_bn: 'গণতন্ত্রের ভবিষ্যৎ ও আমাদের নাগরিক দায়িত্ব',
+    title_en: 'The Future of Democracy and Our Civic Responsibility',
+    author_bn: 'ড. মুহাম্মদ ইউনূস',
+    author_en: 'Dr. Muhammad Yunus',
+    author_role_bn: 'অর্থনীতিবিদ ও শান্তিতে নোবেল বিজয়ী',
+    author_role_en: 'Economist & Nobel Peace Laureate',
+    author_image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    summary_bn: 'একটি শক্তিশালী গণতান্ত্রিক ব্যবস্থার মূল ভিত্তি হলো প্রতিটি নাগরিকের সমান অংশগ্রহণ ও জবাবদিহিতা।',
+    summary_en: 'The foundation of a robust democratic system lies in the equal participation and accountability of every citizen.',
+    date: '2026-11-13T08:00:00.000Z',
+    image: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=800&q=80',
+    category: 'opinion',
+    content_bn: '<p>গণতন্ত্র কেবল একটি শাসনব্যবস্থা নয়, এটি একটি সামাজিক সংস্কৃতি ও মূল্যবোধ। যখন নাগরিকরা সচেতন হন এবং প্রাতিষ্ঠানিক জবাবদিহিতা নিশ্চিত করেন, তখনই একটি রাষ্ট্র উন্নয়নের সঠিক শিখরে পৌঁছায়।</p><p>আমাদের তরুণ প্রজন্মকে আধুনিক শিক্ষায় শিক্ষিত করে ন্যায় ও সত্যের পক্ষে দাঁড়ানোর শক্তি জোগাতে হবে। ভবিষ্যৎ সমাজ তাদের হাতেই গঠিত হবে।</p>',
+    content_en: '<p>Democracy is not merely a system of governance; it is a social culture and a set of shared values. Only when citizens remain vigilant and ensure institutional accountability does a nation truly flourish.</p><p>We must empower our youth with quality education and the courage to uphold justice and truth. The future belongs in their capable hands.</p>',
+  },
+  {
+    id: 'op2',
+    slug: 'economic-resilience-south-asia',
+    title_bn: 'বৈশ্বিক অস্থিরতার মুখে বাংলাদেশের অর্থনৈতিক স্থিতিস্থাপকতা',
+    title_en: 'Economic Resilience of Bangladesh Amid Global Volatility',
+    author_bn: 'ড. দেবপ্রিয় ভট্টাচার্য',
+    author_en: 'Dr. Debapriya Bhattacharya',
+    author_role_bn: 'বিশিষ্ট অর্থনীতিবিদ ও পলিসি বিশ্লেষক',
+    author_role_en: 'Eminent Economist & Policy Analyst',
+    author_image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+    summary_bn: 'মূল্যস্ফীতি নিয়ন্ত্রণ ও কৃষি-রপ্তানির ভারসাম্য বজায় রাখাই হবে আগামী দিনের মূল অর্থনৈতিক চালিকাশক্তি।',
+    summary_en: 'Taming inflation while balancing agriculture and exports will be the core economic driver ahead.',
+    date: '2026-11-12T09:30:00.000Z',
+    image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80',
+    category: 'opinion',
+    content_bn: '<p>বিশ্বব্যাপী মূল্যস্ফীতি ও মুদ্রা সংকট থাকলেও বাংলাদেশের গ্রামীণ অর্থনীতি ও তৈরি পোশাক খাতের প্রাণশক্তি অত্যন্ত শক্তিশালী। সঠিক মুদ্রানীতি প্রণয়ন করা গেলে এই ইতিবাচক ধারা দীর্ঘস্থায়ী হবে।</p>',
+    content_en: '<p>Despite worldwide inflation and currency pressures, the vitality of Bangladesh’s rural economy and RMG sector remains exceptionally strong. Sound monetary policies will ensure sustainable growth.</p>',
+  },
+  {
+    id: 'op3',
+    slug: 'climate-justice-and-bangladesh',
+    title_bn: 'জলবায়ু ন্যায়বিচার: বাংলাদেশের দাবি ও করণীয়',
+    title_en: 'Climate Justice: Bangladesh’s Demand and Global Imperatives',
+    author_bn: 'সৈয়দা রিজওয়ানা হাসান',
+    author_en: 'Syeda Rizwana Hasan',
+    author_role_bn: 'পরিবেশ আইনজীবী ও র‍্যামন ম্যাগসেসে পুরস্কারপ্রাপ্ত',
+    author_role_en: 'Environmental Lawyer & Ramon Magsaysay Awardee',
+    author_image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+    summary_bn: 'উপকূলীয় জনগোষ্ঠীর সুরক্ষায় বিশ্বকে দ্রুত ক্ষতিপূরণ তহবিল কার্যকর করতে হবে।',
+    summary_en: 'The world must rapidly operationalize loss-and-damage funds to protect coastal communities.',
+    date: '2026-11-11T11:00:00.000Z',
+    image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80',
+    category: 'opinion',
+    content_bn: '<p>বাংলাদেশ বৈশ্বিক কার্বন নিঃসরণে দায়ী না হয়েও জলবায়ু পরিবর্তনের মারাত্মক ক্ষতির শিকার। উপকূলীয় বাঁধ নির্মাণ এবং নদী শাসনের জন্য আন্তর্জাতিক সহায়তা এখন সময়ের দাবি।</p>',
+    content_en: '<p>Bangladesh suffers disproportionately from climate change despite contributing negligible emissions. Robust international climate finance for embankments and adaptation is urgent.</p>',
+  },
+]
+
+export const photos = [
+  {
+    id: 'ph1',
+    title_bn: 'শরতের বিকেলে কাশবনের অপার সৌন্দর্য',
+    title_en: 'Breathtaking beauty of Kashful in Autumn afternoon',
+    slug: 'autumn-kashful-beauty',
+    image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-13T06:00:00.000Z',
+    credit_bn: 'ছবি: আসিফ মাহমুদ / প্রথম আলো',
+    credit_en: 'Photo: Asif Mahmud / Prothom Alo',
+    caption_bn: 'দিয়াবাড়ির বিস্তৃত কাশবনে পরিবার-পরিজন নিয়ে সূর্যাস্ত উপভোগ করছেন দর্শনার্থীরা।',
+    caption_en: 'Visitors enjoy sunset with families amidst vast autumn grass at Diabari.',
+  },
+  {
+    id: 'ph2',
+    title_bn: 'কুয়াশাচ্ছন্ন ভোরে রূপসী বাংলার নদীমাতৃক রূপ',
+    title_en: 'Misty morning across the rivers of Bengal',
+    slug: 'misty-morning-river-bengal',
+    image: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-12T07:00:00.000Z',
+    credit_bn: 'ছবি: শফিকুল ইসলাম / প্রথম আলো',
+    credit_en: 'Photo: Shafiqul Islam / Prothom Alo',
+    caption_bn: 'মেঘনা নদীতে কুয়াশার চাদর ভেদ করে মাছ শিকারে যাচ্ছেন জেলেরা।',
+    caption_en: 'Fishermen set out across the Meghna river through early morning mist.',
+  },
+  {
+    id: 'ph3',
+    title_bn: 'পদ্মা সেতুর আলোকসজ্জায় উদ্ভাসিত রাত',
+    title_en: 'Padma Bridge illuminated under the night sky',
+    slug: 'padma-bridge-night-lights',
+    image: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-11T08:00:00.000Z',
+    credit_bn: 'ছবি: বিশেষ সংবাদদাতা',
+    credit_en: 'Photo: Special Correspondent',
+    caption_bn: 'রাতের আঁধারে পদ্মা সেতুর উজ্জ্বল আলোকচ্ছটা নদীর পানিতে মোহময় প্রতিফলন তৈরি করে।',
+    caption_en: 'Vibrant illumination of Padma Bridge casts striking reflections upon the river waters.',
+  },
+  {
+    id: 'ph4',
+    title_bn: 'কক্সবাজার সমুদ্রসৈকতে পর্যটকদের উপচে পড়া ভিড়',
+    title_en: 'Huge rush of tourists at Cox’s Bazar sea beach',
+    slug: 'coxsbazar-sea-beach-crowd',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-10T09:00:00.000Z',
+    credit_bn: 'ছবি: নিজস্ব প্রতিবেদক',
+    credit_en: 'Photo: Staff Reporter',
+    caption_bn: 'ছুটির দিনে বিশ্বের দীর্ঘতম সমুদ্রসৈকতে উচ্ছ্বাসে মেতেছেন হাজারো ভ্রমণপিপাসু।',
+    caption_en: 'Thousands of holidaymakers rejoice along the world’s longest natural sandy beach.',
+  },
+  {
+    id: 'ph5',
+    title_bn: 'সুন্দরবনের জীববৈচিত্র্য ও বেঙ্গল টাইগারের পদচারণা',
+    title_en: 'Biodiversity of the Sundarbans and Royal Bengal Tiger',
+    slug: 'sundarbans-wildlife-biodiversity',
+    image: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-09T10:00:00.000Z',
+    credit_bn: 'ছবি: বন অধিদপ্তর',
+    credit_en: 'Photo: Forest Department',
+    caption_bn: 'ম্যানগ্রোভ বনের গভীরে বাঘের উপস্থিতি পর্যবেক্ষণ ও সুরক্ষার বিশেষ অভিযান।',
+    caption_en: 'Special conservation patrols track wildlife inside the mangrove sanctuary.',
+  },
+  {
+    id: 'ph6',
+    title_bn: 'ঐতিহাসিক লালবাগ কেল্লায় বসন্তের আগমনী সুর',
+    title_en: 'Spring blooms at historic Lalbagh Fort',
+    slug: 'historic-lalbagh-fort-spring',
+    image: 'https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-08T11:00:00.000Z',
+    credit_bn: 'ছবি: প্রত্নতত্ত্ব বিভাগ',
+    credit_en: 'Photo: Archaeology Dept.',
+    caption_bn: 'মুঘল স্থাপত্যের রাজকীয় আবহে ফুটে ওঠা রঙিন ফুলের মেলা।',
+    caption_en: 'Colorful blossom beds flourish against the majestic Mughal brick architecture.',
+  },
+]
+
+export const videos = [
+  {
+    id: 'v1',
+    title_bn: 'বাংলাদেশ বনাম ভারত এশিয়া কাপ ফাইনাল: জয়ের রোমাঞ্চকর মুহূর্তগুলো',
+    title_en: 'Bangladesh vs India Asia Cup Final: Thrilling Winning Moments',
+    slug: 'bd-vs-india-asia-cup-final-highlights',
+    thumb: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80',
+    duration: '৮:৩২',
+    date: '2026-11-14T05:00:00.000Z',
+    views: 125000,
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+  },
+  {
+    id: 'v2',
+    title_bn: 'পদ্মা সেতু ও মেট্রোরেল: বাংলাদেশের রূপান্তরের ১০ বছর',
+    title_en: 'Padma Bridge & Metro Rail: 10 Years of Bangladesh’s Transformation',
+    slug: 'transformation-of-bangladesh-documentary',
+    thumb: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=800&q=80',
+    duration: '১৫:২০',
+    date: '2026-11-13T09:00:00.000Z',
+    views: 94000,
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+  },
+  {
+    id: 'v3',
+    title_bn: 'সুন্দরবনের জীববৈচিত্র্য সংরক্ষণে নতুন ড্রোন প্রযুক্তির ব্যবহার',
+    title_en: 'New drone surveillance technology deployed to protect Sundarbans',
+    slug: 'sundarbans-drone-tech-conservation',
+    thumb: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?auto=format&fit=crop&w=800&q=80',
+    duration: '৬:৪৫',
+    date: '2026-11-12T11:00:00.000Z',
+    views: 68000,
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+  },
+  {
+    id: 'v4',
+    title_bn: 'ঢাকার আধুনিক ট্র্যাফিক কন্ট্রোল সেন্টার কীভাবে পরিচালিত হচ্ছে?',
+    title_en: 'How Dhaka’s modern smart traffic control center operates',
+    slug: 'dhaka-smart-traffic-control-inside',
+    thumb: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=800&q=80',
+    duration: '১০:১৫',
+    date: '2026-11-11T14:00:00.000Z',
+    views: 52000,
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+  },
+]
+
+export const articles = [
+  {
+    id: 1,
+    slug: 'bangladesh-flood-relief-grows',
+    title_bn: 'বন্যা কবলিত এলাকায় ত্রাণ ও চিকিৎসা সহায়তা দ্বিগুণ করল সরকার',
+    title_en: 'Government doubles relief and medical assistance in flood-affected regions',
+    subheadline_bn: 'নদীর পানি বিপদসীমার নিচে নামতে শুরু করায় পুনর্বাসন পরিকল্পনা দ্রুত প্রস্তুত হচ্ছে',
+    subheadline_en: 'Rehabilitation plan expedited as river levels begin receding below danger mark',
+    summary_bn: 'উত্তরাঞ্চল ও পূর্বাঞ্চলের প্লাবিত জেলাগুলোতে শুকনো খাবার, নিরাপদ পানি এবং জরুরি ভ্রাম্যমাণ মেডিকেল ক্যাম্প পরিচালনা শুরু হয়েছে।',
+    summary_en: 'Dry food, safe drinking water, and emergency mobile medical camps deployed across inundated districts in northern and eastern zones.',
+    category: 'national',
+    author_bn: 'শাহরিয়ার হোসেন',
+    author_en: 'Shahriar Hossain',
+    author_role_bn: 'সিনিয়র স্টাফ রিপোর্টার',
+    author_role_en: 'Senior Staff Reporter',
+    image: 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-14T08:30:00.000Z',
+    views: 48920,
+    featured: true,
+    tags_bn: ['বন্যা', 'ত্রাণ', 'জাতীয়', 'স্বাস্থ্য'],
+    tags_en: ['Flood', 'Relief', 'National', 'Health'],
+    content_bn: `
+      <p>দেশের উত্তর ও দক্ষিণ-পূর্বাঞ্চলের কয়েকটি জেলায় সাম্প্রতিক বন্যায় ক্ষতিগ্রস্ত জনগোষ্ঠীর কাছে পর্যাপ্ত খাদ্যসামগ্রী ও জরুরি ওষুধ পৌঁছে দিতে সর্বাত্মক উদ্যোগ গ্রহণ করেছে সংশ্লিষ্ট মন্ত্রণালয় ও দুর্যোগ ব্যবস্থাপনা অধিদপ্তর।</p>
+      <h2>জরুরি কন্ট্রোল রুম ও স্বাস্থ্য শিবির</h2>
+      <p>স্থানীয় প্রশাসনের সঙ্গে সমন্বয় করে জেলায় জেলায় ২৪ ঘণ্টার জরুরি কন্ট্রোল রুম খোলা হয়েছে। পানি নেমে যাওয়ার সঙ্গে সঙ্গে ডায়রিয়া ও অন্যান্য পানিবাহিত রোগ প্রতিরোধে প্রয়োজনীয় বিশুদ্ধকরণ ট্যাবলেট ও স্যালাইন বিনামূল্যে বিতরণ করা হচ্ছে।</p>
+      <blockquote>"কোনো মানুষ যেন ত্রাণের অভাবে কষ্ট না পায়, সরকার প্রতিটি প্রান্তে পৌঁছানোর জন্য স্থানীয় স্বেচ্ছাসেবী সংগঠনগুলোকে সঙ্গে নিয়ে কাজ করছে।" — দুর্যোগ ব্যবস্থাপনা সচিব</blockquote>
+      <p>কৃষি পুনর্বাসনের অংশ হিসেবে ক্ষতিগ্রস্ত কৃষকদের মাঝে বিনামূল্যে আমন ধানের চারা ও শীতকালীন সবজির বীজ বিতরণের প্রস্তুতিও সম্পন্ন হয়েছে বলে জানা গেছে।</p>
+    `,
+    content_en: `
+      <p>The relevant ministry and the Department of Disaster Management have mounted comprehensive efforts to deliver adequate food supplies and essential medications to communities affected by recent floods in northern and southeastern districts.</p>
+      <h2>Emergency Control Rooms and Health Camps</h2>
+      <p>Round-the-clock emergency control rooms have been opened across all impacted districts in coordination with local administrations. As floodwaters recede, water purification tablets and oral saline are being distributed free of cost to prevent waterborne infections.</p>
+      <blockquote>"The government is collaborating closely with grassroots volunteer networks to ensure no affected family is left without vital aid." — Disaster Management Secretary</blockquote>
+      <p>Furthermore, preparations to distribute free paddy seedlings and winter vegetable seeds to affected farmers as part of the agricultural rehabilitation drive have reached final stages.</p>
+    `,
+  },
+  {
+    id: 2,
+    slug: 'economic-policy-export-boost',
+    title_bn: 'রপ্তানিমুখী নতুন শিল্পনীতিতে শিল্পোদ্যোক্তাদের ব্যাপক আস্থা',
+    title_en: 'High confidence among industrialists in new export-oriented policy',
+    subheadline_bn: 'তৈরি পোশাক ও কৃষি প্রক্রিয়াজাত পণ্যের বৈশ্বিক বাজার সম্প্রসারণে কর রেয়াত ঘোষণা',
+    subheadline_en: 'Tax exemptions announced to expand global footprint of RMG and agro-processed goods',
+    summary_bn: 'আন্তর্জাতিক বাজারে প্রতিযোগিতামূলক সক্ষমতা বাড়াতে প্রযুক্তিগত আধুনিকায়ন ও সহজ শর্তে ঋণের ঘোষণা দিয়েছে বাণিজ্য মন্ত্রণালয়।',
+    summary_en: 'Commerce Ministry announces tech modernization incentives and soft loans to enhance competitive edge in overseas markets.',
+    category: 'economy',
+    author_bn: 'মেহেদী হাসান',
+    author_en: 'Mehedi Hasan',
+    author_role_bn: 'বাণিজ্য ও অর্থনীতি সম্পাদক',
+    author_role_en: 'Commerce & Economy Editor',
+    image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-13T10:00:00.000Z',
+    views: 32680,
+    featured: true,
+    tags_bn: ['অর্থনীতি', 'রপ্তানি', 'বাণিজ্য', 'পোশাক খাত'],
+    tags_en: ['Economy', 'Export', 'Commerce', 'RMG'],
+    content_bn: `
+      <p>বাংলাদেশের রপ্তানি আয়কে নতুন উচ্চতায় নিয়ে যেতে আধুনিক ডিজিটাল প্রণোদনা প্যাকেজ উন্মোচন করেছে সরকার। ইউরোপ ও উত্তর আমেরিকার পাশাপাশি এশিয়া ও ল্যাটিন আমেরিকার নতুন বাজারে দেশীয় পণ্যের বিস্তার ঘটাতে এই কৌশল গ্রহণ করা হয়েছে।</p>
+      <p>ব্যবসায়ী ও শিল্পপতিদের শীর্ষ সংগঠন এফবিসিসিআই এই সিদ্ধান্তকে স্বাগত জানিয়ে বলেছে, এর ফলে ক্ষুদ্র ও মাঝারি উদ্যোক্তারা বৈশ্বিক সাপ্লাই চেইনে সরাসরি যুক্ত হতে পারবেন।</p>
+    `,
+    content_en: `
+      <p>The government has unveiled a cutting-edge digital incentive package aimed at propelling Bangladesh’s export earnings to new heights. The strategy focuses on diversifying market presence into emerging economies across Asia and Latin America.</p>
+      <p>Welcoming the measure, top trade bodies noted that small and medium enterprises will now gain direct access to global value chains.</p>
+    `,
+  },
+  {
+    id: 3,
+    slug: 'dhaka-traffic-smart-system',
+    title_bn: 'রাজধানীতে কৃত্রিম বুদ্ধিমত্তানির্ভর স্মার্ট সিগন্যাল ব্যবস্থার সফল পরীক্ষা',
+    title_en: 'Successful pilot of AI-driven smart traffic signal system in capital',
+    subheadline_bn: 'প্রধান প্রধান মোড়ে স্বয়ংক্রিয় টাইমিংয়ে যানজট কমিয়ে আনার উদ্যোগ',
+    subheadline_en: 'Automated adaptive timings slash intersection congestion during rush hours',
+    summary_bn: 'ডিজিটাল ট্র্যাফিক মনিটরিং সেন্টার থেকে ক্যামেরা ও সেন্সরের সাহায্যে গাড়ির চাপ অনুযায়ী সিগন্যাল স্বয়ংক্রিয়ভাবে পরিবর্তিত হচ্ছে।',
+    summary_en: 'Signals change dynamically based on vehicle density tracked by cameras and smart sensors monitored from central hub.',
+    category: 'politics',
+    author_bn: 'আনিকা রহমান',
+    author_en: 'Anika Rahman',
+    author_role_bn: 'নগর প্রতিবেদক',
+    author_role_en: 'Urban Affairs Reporter',
+    image: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-13T14:55:00.000Z',
+    views: 29420,
+    featured: false,
+    tags_bn: ['ঢাকা', 'ট্র্যাফিক', 'প্রযুক্তি', 'নগর'],
+    tags_en: ['Dhaka', 'Traffic', 'Technology', 'City'],
+    content_bn: `
+      <p>রাজধানীর যানজট নিরসনে পরীক্ষামূলকভাবে চালু হওয়া আর্টিফিশিয়াল ইন্টেলিজেন্স (এআই) নিয়ন্ত্রিত ট্র্যাফিক লাইট সিস্টেমে প্রথম সপ্তাহে ইতিবাচক ফল মিলেছে। গাড়ির দীর্ঘ সারি শনাক্ত করে সিস্টেম নিজ থেকেই সবুজ সংকেতের স্থায়িত্ব বাড়িয়ে বা কমিয়ে দিচ্ছে।</p>
+      <p>পুলিশের ট্র্যাফিক বিভাগ জানিয়েছে, আগামী কয়েক মাসের মধ্যে পর্যায়ক্রমে শহরের গুরুত্বপূর্ণ ৫০টি মোড়ে এই আধুনিক ব্যবস্থা চালু করা হবে।</p>
+    `,
+    content_en: `
+      <p>Encouraging results have emerged within the first week of deploying an artificial intelligence-controlled adaptive traffic light system in the capital. The algorithm senses queued traffic and calibrates green intervals in real time.</p>
+      <p>Dhaka Traffic Police confirmed that 50 vital intersections will be connected to the intelligent network over the next quarter.</p>
+    `,
+  },
+  {
+    id: 4,
+    slug: 'bangladesh-cricket-asia-cup-prep',
+    title_bn: 'এশিয়া কাপে অবিস্মরণীয় পারফরম্যান্সে টাইগারদের বিশ্বকাপ স্বপ্ন আরও উজ্জ্বল',
+    title_en: 'Tigers’ World Cup aspirations shine bright after unforgettable Asia Cup show',
+    subheadline_bn: 'তরুণ অলরাউন্ডারদের নৈপুণ্যে টিম ম্যানেজমেন্টের নতুন পরিকল্পনা সফল',
+    subheadline_en: 'New strategic blueprint bears fruit behind heroics of emerging all-rounders',
+    summary_bn: 'ব্যাটিং ও বোলিং উভয় বিভাগেই দায়িত্বশীল আচরণে ক্রিকেটপ্রেমীদের প্রত্যাশা পূরণ করেছে জাতীয় ক্রিকেট দল।',
+    summary_en: 'Disciplined execution with bat and ball answers high expectations of passionate cricket supporters nationwide.',
+    category: 'sports',
+    author_bn: 'তৌহিদুর রহমান',
+    author_en: 'Touhidur Rahman',
+    author_role_bn: 'ক্রীড়া সম্পাদক',
+    author_role_en: 'Sports Editor',
+    image: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-14T07:20:00.000Z',
+    views: 56600,
+    featured: false,
+    tags_bn: ['ক্রিকেট', 'টাইগার্স', 'এশিয়া কাপ', 'খেলা'],
+    tags_en: ['Cricket', 'Tigers', 'Asia Cup', 'Sports'],
+    content_bn: `
+      <p>আন্তর্জাতিক ক্রিকেট মঞ্চে নিজেদের আধিপত্যের প্রমাণ রেখে আরও একটি স্মরণীয় সিরিজ শেষ করল বাংলাদেশ জাতীয় দল। দলের জ্যেষ্ঠ ও তরুণ খেলোয়াড়দের চমৎকার রসায়ন টিম স্পিরিটকে অনন্য উচ্চতায় নিয়ে গেছে।</p>
+      <p>কোচিং স্টাফরা জানিয়েছেন, আসন্ন বৈশ্বিক আসরকে সামনে রেখে ফিল্ডিং ফিটনেস ও ডেথ ওভার বোলিংয়ে বিশেষ প্রশিক্ষণ অব্যাহত রাখা হবে।</p>
+    `,
+    content_en: `
+      <p>Demonstrating commanding authority on the international stage, Bangladesh capped off another memorable tournament run. Seamless chemistry between seasoned veterans and young dynamos lifted team morale to peak levels.</p>
+      <p>The coaching staff reaffirmed that tailored high-intensity drills in fielding and death-over bowling will remain the cornerstone of preparation for upcoming world events.</p>
+    `,
+  },
+  {
+    id: 5,
+    slug: 'tech-startups-funding-rise',
+    title_bn: 'বাংলাদেশি প্রযুক্তি স্টার্টআপে আন্তর্জাতিক ভেঞ্চার ক্যাপিটালের কোটি ডলার বিনিয়োগ',
+    title_en: 'International venture capital injects millions into Bangladeshi tech startups',
+    subheadline_bn: 'ফিনটেক, এগ্রিটেক ও স্বাস্থ্য প্রযুক্তিতে স্থানীয় তরুণদের উদ্ভাবন বৈশ্বিক নজর কাড়ছে',
+    subheadline_en: 'Homegrown innovations across FinTech, AgriTech, and HealthTech capture global limelight',
+    summary_bn: 'স্থানীয় ডিজিটাল সেবাগুলোর উচ্চ প্রবৃদ্ধি দেখে সিলিকন ভ্যালি ও সিঙ্গাপুরের শীর্ষ বিনিয়োগকারীরা বিনিয়োগে এগিয়ে এসেছেন।',
+    summary_en: 'Top investors from Silicon Valley and Singapore commit funds after witnessing hyper-growth in domestic tech ecosystems.',
+    category: 'technology',
+    author_bn: 'নাজমুল ইসলাম',
+    author_en: 'Nazmul Islam',
+    author_role_bn: 'প্রযুক্তি বিশ্লেষক',
+    author_role_en: 'Technology Analyst',
+    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-13T12:10:00.000Z',
+    views: 38110,
+    featured: false,
+    tags_bn: ['প্রযুক্তি', 'স্টার্টআপ', 'বিনিয়োগ', 'ডিজিটাল'],
+    tags_en: ['Technology', 'Startup', 'Investment', 'Digital'],
+    content_bn: `
+      <p>বাংলাদেশের প্রযুক্তি উদ্ভাবকদের জন্য এক গৌরবময় মুহূর্ত। মোবাইল ফিন্যান্সিয়াল সার্ভিস এবং এগ্রিকালচারাল সাপ্লাই চেইন নিয়ে কাজ করা দুটি স্থানীয় স্টার্টআপ সফলভাবে সিরিজ-বি ফান্ডিং সম্পন্ন করেছে।</p>
+      <p>বিশ্লেষকরা বলছেন, দেশে তরুণ জনগোষ্ঠীর স্মার্টফোন ও ইন্টারনেট ব্যবহারের বিস্তার নতুন সব ব্যবসায়িক সম্ভাবনার সৃষ্টি করেছে।</p>
+    `,
+    content_en: `
+      <p>A milestone moment for Bangladesh’s startup landscape as two homegrown companies specializing in digital finance and agricultural supply chains closed robust Series-B funding rounds.</p>
+      <p>Industry analysts emphasize that deep internet penetration and a tech-savvy demographic are unlocking unprecedented scalable consumer platforms.</p>
+    `,
+  },
+  {
+    id: 6,
+    slug: 'lifestyle-fashion-shifts-dhaka',
+    title_bn: 'ঐতিহ্যবাহী তাঁত ও টেকসই ফ্যাশনে তরুণ প্রজন্মের নতুন আগ্রহ',
+    title_en: 'Young generation embraces handloom heritage and sustainable fashion',
+    subheadline_bn: 'খাদি ও জামদানি কাপড়ে আধুনিক কাটছাঁটের পোশাক দারুণ জনপ্রিয় হচ্ছে',
+    subheadline_en: 'Modern cuts tailored from Khadi and Jamdani capture trendy urban wardrobes',
+    summary_bn: 'পরিবেশবান্ধব প্রাকৃতিক রঙের ব্যবহার ও আরামদায়ক কাপড়ের প্রতি সচেতনতা বাড়ছে তরুণ ক্রেতাদের মাঝে।',
+    summary_en: 'Consciousness of eco-friendly organic dyes and breathable fabrics rises rapidly among trendy urban consumers.',
+    category: 'lifestyle',
+    author_bn: 'নুসরাত জাহান',
+    author_en: 'Nusrat Jahan',
+    author_role_bn: 'লাইফস্টাইল সম্পাদক',
+    author_role_en: 'Lifestyle Editor',
+    image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-12T18:15:00.000Z',
+    views: 21705,
+    featured: false,
+    tags_bn: ['ফ্যাশন', 'লাইফস্টাইল', 'ঐতিহ্য', 'তাঁত'],
+    tags_en: ['Fashion', 'Lifestyle', 'Heritage', 'Handloom'],
+    content_bn: `
+      <p>বাঙালির শতাব্দীপ্রাচীন তাঁতশিল্পকে বিশ্বমানের আধুনিক পোশাকে রূপ দিচ্ছেন তরুণ ফ্যাশন ডিজাইনাররা। সাধারণ সুতি, খাদি ও তসর সিল্কের সাথে মিশ্রিত পাশ্চাত্য নকশা এখন উৎসব ও দৈনন্দিন জীবনে সমানভাবে জনপ্রিয়।</p>
+    `,
+    content_en: `
+      <p>New wave fashion designers are transforming Bengal’s historic textile craft into runway-ready contemporary apparel. Natural cotton, hand-spun khadi, and muslin weave easily into casual daily wear.</p>
+    `,
+  },
+  {
+    id: 7,
+    slug: 'education-access-digital-learning',
+    title_bn: 'বিশ্ববিদ্যালয় পর্যায়ে গবেষণায় সরকারি অনুদান বৃদ্ধি ও নতুন পাঠ্যক্রম',
+    title_en: 'Higher education research grants bolstered alongside modern curriculum',
+    subheadline_bn: 'বিজ্ঞান ও কৃত্রিম বুদ্ধিমত্তা শিক্ষায় বিশ্ববিদ্যালয়গুলোকে বিশেষ সহায়তা',
+    subheadline_en: 'Targeted institutional endowments allocated for STEM and AI disciplines',
+    summary_bn: 'বিশ্ববিদ্যালয় মঞ্জুরি কমিশন জানিয়েছে, আন্তর্জাতিক মানের গবেষণাগার নির্মাণে বিশেষ তহবিল গঠন করা হয়েছে।',
+    summary_en: 'University Grants Commission creates dedicated funding mechanism to construct world-class research laboratories.',
+    category: 'education',
+    author_bn: 'রুমি আকতার',
+    author_en: 'Rumi Akhtar',
+    author_role_bn: 'শিক্ষা বিষয়ক প্রতিবেদক',
+    author_role_en: 'Education Correspondent',
+    image: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-12T08:42:00.000Z',
+    views: 24030,
+    featured: false,
+    tags_bn: ['শিক্ষা', 'গবেষণা', 'বিশ্ববিদ্যালয়'],
+    tags_en: ['Education', 'Research', 'University'],
+    content_bn: `
+      <p>জ্ঞানভিত্তিক সমাজ গড়ার প্রত্যয়ে দেশের উচ্চশিক্ষা প্রতিষ্ঠানগুলোতে মৌলিক গবেষণায় বরাদ্দ দ্বিগুণ করা হয়েছে। দেশ-বিদেশের খ্যাতিমান অধ্যাপকদের তত্ত্বাবধানে শুরু হচ্ছে পিএইচডি গবেষণা কার্যক্রম।</p>
+    `,
+    content_en: `
+      <p>Funding for fundamental research across the country’s universities has doubled in an effort to accelerate innovation. Collaborative doctoral programs under reputed international faculties are now underway.</p>
+    `,
+  },
+  {
+    id: 8,
+    slug: 'healthcare-urban-initiatives',
+    title_bn: 'উপজেলা ও জেলা হাসপাতালে টেলিমেডিসিনে বিশেষজ্ঞ চিকিৎসকের সেবা চালু',
+    title_en: 'Specialist telemedicine clinics launched across district and upazila hospitals',
+    subheadline_bn: 'গ্রামের সাধারণ রোগীরাও সরাসরি ঢাকার শীর্ষ বিশেষজ্ঞ চিকিৎসকদের পরামর্শ পাবেন',
+    subheadline_en: 'Rural patients to receive real-time direct consultation from premier Dhaka specialists',
+    summary_bn: 'ডিজিটাল হেলথ কার্ডের মাধ্যমে চিকিৎসা ইতিহাস সংরক্ষিত রেখে দ্রুত চিকিৎসা দেওয়ার নতুন দিগন্ত উন্মোচিত হয়েছে।',
+    summary_en: 'Digital health cards store historical medical records to ensure swift and accurate diagnosis.',
+    category: 'health',
+    author_bn: 'আসিফ মাহমুদ',
+    author_en: 'Asif Mahmud',
+    author_role_bn: 'চিকিৎসা ও স্বাস্থ্য প্রতিবেদক',
+    author_role_en: 'Health & Medical Reporter',
+    image: 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-11T11:20:00.000Z',
+    views: 19450,
+    featured: false,
+    tags_bn: ['স্বাস্থ্য', 'টেলিমেডিসিন', 'হাসপাতাল', 'চিকিৎসা'],
+    tags_en: ['Health', 'Telemedicine', 'Hospital', 'Medical'],
+    content_bn: `
+      <p>স্বাস্থ্য মন্ত্রণালয়ের উদ্যোগে দেশের ১০০টি উপজেলা স্বাস্থ্য কমপ্লেক্সে উচ্চগতির ইন্টারনেট সংযুক্ত টেলিমেডিসিন বুথ স্থাপন করা হয়েছে। এর ফলে প্রত্যন্ত অঞ্চলের মানুষকে বিশেষায়িত পরামর্শের জন্য আর দীর্ঘ পথ পাড়ি দিয়ে রাজধানীতে আসতে হবে না।</p>
+    `,
+    content_en: `
+      <p>Under a health ministry initiative, high-speed connected telemedicine pods have been established across 100 upazila health complexes. Remote populations will no longer need to undertake grueling journeys to Dhaka for specialist counsel.</p>
+    `,
+  },
+  {
+    id: 9,
+    slug: 'international-trade-summit-dhaka',
+    title_bn: 'ঢাকায় অনুষ্ঠিত আন্তর্জাতিক বাণিজ্য সম্মেলনে ৪০ দেশের চুক্তি স্বাক্ষর',
+    title_en: '40 nations ink multi-sector trade accords at Dhaka International Summit',
+    subheadline_bn: 'দক্ষিণ এশিয়া ও ইউরোপের মধ্যে নতুন বাণিজ্যিক করিডোর তৈরির প্রতিশ্রুতি',
+    subheadline_en: 'Pledge to establish streamlined trade corridors between South Asia and Europe',
+    summary_bn: 'আন্তর্জাতিক বিনিয়োগকারীদের উপস্থিতিতে তথ্যপ্রযুক্তি, নবায়নযোগ্য জ্বালানি ও জাহাজ নির্মাণে ব্যাপক আগ্রহ তৈরি হয়েছে।',
+    summary_en: 'Strong overseas appetite shown in IT outsourcing, renewable energy, and shipbuilding sectors.',
+    category: 'international',
+    author_bn: 'রেজাউল করিম',
+    author_en: 'Rezaul Karim',
+    author_role_bn: 'কূটনৈতিক সংবাদদাতা',
+    author_role_en: 'Diplomatic Correspondent',
+    image: 'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-13T06:00:00.000Z',
+    views: 42300,
+    featured: false,
+    tags_bn: ['আন্তর্জাতিক', 'কূটনীতি', 'বাণিজ্য', 'সম্মেলন'],
+    tags_en: ['International', 'Diplomacy', 'Trade', 'Summit'],
+    content_bn: `
+      <p>বঙ্গবন্ধু আন্তর্জাতিক সম্মেলন কেন্দ্রে অনুষ্ঠিত দুই দিনব্যাপী শীর্ষ সম্মেলনে বিশ্বব্যাংক, এডিবি এবং শীর্ষস্থানীয় বহুজাতিক প্রতিষ্ঠানের প্রতিনিধিরা অংশগ্রহণ করেন। আঞ্চলিক বাণিজ্য সম্প্রসারণে ডিজিটাল কাস্টমস ও বন্দরের আধুনিকায়ন ত্বরান্বিত করার আহ্বান জানানো হয়।</p>
+    `,
+    content_en: `
+      <p>Representatives from the World Bank, ADB, and multinational conglomerates congregated at the two-day summit at BICC. Delegations stressed expedited paperless customs clearing and seaport capacity expansions.</p>
+    `,
+  },
+  {
+    id: 10,
+    slug: 'entertainment-dhallywood-new-film',
+    title_bn: 'আন্তর্জাতিক কান চলচ্চিত্র উৎসবে পুরস্কৃত হলো বাংলাদেশি পূর্ণদৈর্ঘ্য চলচ্চিত্র',
+    title_en: 'Bangladeshi feature film wins prestigious prize at Cannes Film Festival',
+    subheadline_bn: 'মৌলিক গল্প ও জীবন্ত অভিনয়ে বিশ্বমঞ্চে প্রশংসিত তরুণ পরিচালক',
+    subheadline_en: 'Young director hailed on world stage for authentic storytelling and visceral acting',
+    summary_bn: 'দেশ-বিদেশের চলচ্চিত্র সমালোচকরা বলছেন, বাংলা সিনেমা এখন বৈশ্বিক মানের শৈল্পিক উৎকর্ষে উত্তীর্ণ।',
+    summary_en: 'International critics celebrate the artistic maturity and storytelling power of modern Bangla cinema.',
+    category: 'entertainment',
+    author_bn: 'সিমা ইসলাম',
+    author_en: 'Sima Islam',
+    author_role_bn: 'বিনোদন ও সংস্কৃতি বিভাগ',
+    author_role_en: 'Entertainment & Culture Desk',
+    image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-12T16:00:00.000Z',
+    views: 51800,
+    featured: false,
+    tags_bn: ['বিনোদন', 'সিনেমা', 'কান', 'সংস্কৃতি'],
+    tags_en: ['Entertainment', 'Cinema', 'Cannes', 'Culture'],
+    content_bn: `
+      <p>কান চলচ্চিত্র উৎসবের বিশেষ প্রদর্শনীতে দাঁড়িয়ে করতালির মাধ্যমে দর্শকদের অভিবাদন পেল বাংলাদেশের নতুন চলচ্চিত্র। নির্মাতারা জানিয়েছেন, শিগগিরই ছবিটি দেশের সব সিনেপ্লেক্সে মুক্তি পাবে।</p>
+    `,
+    content_en: `
+      <p>A standing ovation greeted the premiere of Bangladesh’s latest cinema at Cannes. Producers announced the nationwide theatrical release is set for next month.</p>
+    `,
+  },
+  {
+    id: 11,
+    slug: 'politics-local-govt-reform',
+    title_bn: 'স্থানীয় সরকার নির্বাচনে স্বচ্ছতা নিশ্চিতে নতুন নির্বাচনী আচরণবিধি চূড়ান্ত',
+    title_en: 'New electoral code finalized to ensure transparency in local body polls',
+    subheadline_bn: 'প্রার্থীদের আয়-ব্যয়ের হিসাব জনগণের জন্য উন্মুক্ত রাখার কঠোর নির্দেশনা',
+    subheadline_en: 'Strict mandates enacted requiring candidates to disclose public campaign accounts',
+    summary_bn: 'নির্বাচন কমিশন জানিয়েছে, সুষ্ঠু ও নিরপেক্ষ ভোটের স্বার্থে সব ধরনের অনিয়মে কঠোর প্রশাসনিক ব্যবস্থা নেওয়া হবে।',
+    summary_en: 'Election Commission reiterates zero-tolerance stance against violations to guarantee impartial voting.',
+    category: 'politics',
+    author_bn: 'জহিরুল হক',
+    author_en: 'Zahirul Haq',
+    author_role_bn: 'রাজনৈতিক বিশ্লেষক',
+    author_role_en: 'Political Analyst',
+    image: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-11T13:00:00.000Z',
+    views: 31600,
+    featured: false,
+    tags_bn: ['রাজনীতি', 'নির্বাচন', 'স্থানীয় সরকার'],
+    tags_en: ['Politics', 'Election', 'Local Govt'],
+    content_bn: `
+      <p>ভোটারদের অধিকার সুরক্ষা ও প্রার্থী মনোনয়নে গণতন্ত্রের চর্চা বাধ্যতামূলক করতে আইনগত সংস্কার আনা হয়েছে। ডিজিটাল পোর্টালের মাধ্যমে সাধারণ নাগরিকরা প্রার্থীর হলফনামা যাচাই করতে পারবেন।</p>
+    `,
+    content_en: `
+      <p>Statutory reforms enforce democratic candidate vetting and voter integrity. An open digital registry will allow public verification of candidate affidavits.</p>
+    `,
+  },
+  {
+    id: 12,
+    slug: 'national-infrastructure-bridge',
+    title_bn: 'কর্ণফুলী টানেল ও কক্সবাজার রেলপথের সফল পরিচালনায় বদলে গেছে দক্ষিণাঞ্চলের অর্থনীতি',
+    title_en: 'Southern economy transformed by Karnafuli Tunnel and Cox’s Bazar railway link',
+    subheadline_bn: 'পর্যটন ও পণ্য পরিবহনে বিপ্লব, দিনে দিনে বাড়ছে শিল্পের নতুন বিনিয়োগ',
+    subheadline_en: 'Revolution in tourism and cargo hauling drives wave of greenfield industrial ventures',
+    summary_bn: 'চট্টগ্রাম ও কক্সবাজারের যোগাযোগ সহজ হওয়ায় দেশীয় ও বিদেশি বিনিয়োগকারীদের নতুন অর্থনৈতিক অঞ্চলগুলোতে বিপুল বিনিয়োগ।',
+    summary_en: 'Seamless logistics between Chittagong and Cox’s Bazar catalyze heavy investor interest in special economic zones.',
+    category: 'national',
+    author_bn: 'কামরুল হাসান',
+    author_en: 'Kamrul Hasan',
+    author_role_bn: 'চট্টগ্রাম ব্যুরো প্রধান',
+    author_role_en: 'Chittagong Bureau Chief',
+    image: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80',
+    date: '2026-11-10T09:00:00.000Z',
+    views: 45200,
+    featured: false,
+    tags_bn: ['অবকাঠামো', 'টানেল', 'রেলপথ', 'চট্টগ্রাম'],
+    tags_en: ['Infrastructure', 'Tunnel', 'Railway', 'Chittagong'],
+    content_bn: `
+      <p>দক্ষিণ এশিয়ার প্রথম তলদেশীয় টানেল ও নতুন রেলপথের মাধ্যমে বাংলাদেশের উপকূলীয় অর্থনৈতিক বেল্ট এখন সরাসরি আন্তর্জাতিক মহাসড়কে যুক্ত। এর ফলে গড়ে উঠছে নতুন নতুন শিল্পকারখানা ও পর্যটন রিসোর্ট।</p>
+    `,
+    content_en: `
+      <p>South Asia’s premier riverbed underwater tunnel and scenic railway have interlinked the coastal economic belt, stimulating heavy manufacturing logistics and modern hospitality hubs.</p>
+    `,
+  },
+]
+
+export const defaultData = {
+  breakingNews,
+  articles,
+  opinions,
+  photos,
+  videos,
+  categories: [
+    'national',
+    'politics',
+    'international',
+    'economy',
+    'sports',
+    'entertainment',
+    'technology',
+    'education',
+    'health',
+    'lifestyle',
+    'opinion'
+  ],
+}

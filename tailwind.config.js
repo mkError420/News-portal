@@ -3,21 +3,31 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      boxShadow: {
-        news: '0 12px 30px rgba(8, 121, 181, 0.12)',
-      },
       colors: {
         brand: {
-          blue: '#0879B5',
-          dark: '#08679C',
-          secondary: '#1685B9',
-          light: '#8FBCC8',
-          yellow: '#FFC83D',
-          gray: '#F1F3F5',
-          border: '#D5D9DC',
-          text: '#333333',
-          muted: '#666666',
+          red:      '#e30613',
+          darkred:  '#b80010',
+          blue:     '#1a3a5c',
+          darkblue: '#0f2540',
+          gold:     '#c89b2a',
+          bg:       '#f4f4f4',
+          text:     '#1a1a1a',
+          muted:    '#777777',
+          border:   '#dddddd',
+          footer:   '#1a1a1a',
+          light:    '#f9f9f9',
         },
+      },
+      fontFamily: {
+        bengali: ['"Hind Siliguri"', '"Noto Sans Bengali"', 'Arial', 'sans-serif'],
+        'bengali-serif': ['"Noto Serif Bengali"', '"Hind Siliguri"', 'serif'],
+      },
+      boxShadow: {
+        card: '0 2px 8px rgba(0,0,0,0.08)',
+        'card-hover': '0 6px 20px rgba(0,0,0,0.14)',
+      },
+      lineHeight: {
+        bengali: '2.0',
       },
     },
   },

@@ -1,0 +1,181 @@
+import { useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { Home, ChevronRight, Filter, TrendingUp } from 'lucide-react'
+import NewsCard from '../components/NewsCard.jsx'
+import SectionHeader from '../components/SectionHeader.jsx'
+import AdBanner from '../components/AdBanner.jsx'
+import { CATEGORIES_BN, CATEGORIES_EN } from '../utils.js'
+
+export default function CategoryPage({ articles = [], lang = 'bn' }) {
+  const { slug } = useParams()
+  const catKey = (slug || 'national').toLowerCase()
+  const [selectedSubcat, setSelectedSubcat] = useState('all')
+  const [visibleCount, setVisibleCount] = useState(9)
+
+  const catTitleBn = CATEGORIES_BN[catKey] || slug
+  const catTitleEn = CATEGORIES_EN[catKey] || slug
+  const categoryTitle = lang === 'bn' ? catTitleBn : catTitleEn
+
+  // Filter articles by category
+  const filtered = articles.filter(
+    (a) => (a.category || '').toLowerCase() === catKey
+  )
+
+  // Fallback if low article count for this specific category
+  const displayArticles = filtered.length > 0 ? filtered : articles
+
+  const lead = displayArticles[0]
+  const rest = displayArticles.slice(1, visibleCount)
+  const mostReadCategory = [...displayArticles].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
+
+  // Subcategory filters by category
+  const subcategoryMap = {
+    national: [
+      { id: 'all', bn: 'সব সংবাদ', en: 'All' },
+      { id: 'dhaka', bn: 'ঢাকা', en: 'Dhaka' },
+      { id: 'chittagong', bn: 'চট্টগ্রাম', en: 'Chittagong' },
+      { id: 'countrywide', bn: 'সারাদেশ', en: 'Countrywide' },
+      { id: 'crime', bn: 'আইন-আদালত', en: 'Crime & Law' },
+    ],
+    politics: [
+      { id: 'all', bn: 'সব রাজনীতি', en: 'All' },
+      { id: 'election', bn: 'নির্বাচন', en: 'Elections' },
+      { id: 'govt', bn: 'সরকার', en: 'Government' },
+      { id: 'parliament', bn: 'সংসদ', en: 'Parliament' },
+    ],
+    sports: [
+      { id: 'all', bn: 'সব খেলা', en: 'All' },
+      { id: 'cricket', bn: 'ক্রিকেট', en: 'Cricket' },
+      { id: 'football', bn: 'ফুটবল', en: 'Football' },
+      { id: 'other', bn: 'অন্যান্য', en: 'Other' },
+    ],
+    economy: [
+      { id: 'all', bn: 'সব অর্থনীতি', en: 'All' },
+      { id: 'business', bn: 'বাণিজ্য', en: 'Business' },
+      { id: 'bank', bn: 'ব্যাংক ও বিমা', en: 'Banking' },
+      { id: 'market', bn: 'শেয়ারবাজার', en: 'Stock Market' },
+    ],
+  }
+
+  const subcategories = subcategoryMap[catKey] || [
+    { id: 'all', bn: 'সব সংবাদ', en: 'All News' },
+    { id: 'latest', bn: 'সর্বশেষ', en: 'Latest' },
+    { id: 'analysis', bn: 'বিশ্লেষণ', en: 'Analysis' },
+  ]
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
+      {/* Breadcrumb Navigation */}
+      <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200">
+        <Link to="/" className="hover:text-red-600 flex items-center gap-1">
+          <Home size={13} />
+          <span>{lang === 'bn' ? 'প্রচ্ছদ' : 'Home'}</span>
+        </Link>
+        <ChevronRight size={12} className="text-gray-400" />
+        <span className="font-bold text-[#e30613]">{categoryTitle}</span>
+      </nav>
+
+      {/* Category Header Banner */}
+      <div className="bg-white p-5 rounded border-l-4 border-l-[#e30613] border border-gray-200 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a1a]">
+            {categoryTitle}
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            {lang === 'bn'
+              ? `${categoryTitle} বিভাগের সর্বশেষ তাজা খবর ও বিশ্লেষণ`
+              : `Latest news and updates in ${categoryTitle}`}
+          </p>
+        </div>
+
+        {/* Subcategory Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {subcategories.map((sub) => (
+            <button
+              key={sub.id}
+              onClick={() => setSelectedSubcat(sub.id)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                selectedSubcat === sub.id
+                  ? 'bg-[#e30613] text-white shadow'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {lang === 'bn' ? sub.bn : sub.en}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Grid + Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Main Content Area (8 cols) */}
+        <div className="lg:col-span-8 space-y-8">
+          {/* Category Lead Story */}
+          {lead && (
+            <div>
+              <NewsCard article={lead} variant="hero" lang={lang} />
+            </div>
+          )}
+
+          {/* Grid of Other Category Stories */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {rest.map((art) => (
+              <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
+            ))}
+          </div>
+
+          {/* Load More Button */}
+          {visibleCount < displayArticles.length && (
+            <div className="text-center pt-4">
+              <button
+                onClick={() => setVisibleCount((prev) => prev + 6)}
+                className="px-6 py-2.5 bg-white border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white font-bold text-sm rounded transition-colors shadow-sm"
+              >
+                {lang === 'bn' ? 'আরও সংবাদ লোড করুন' : 'Load More News'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar (4 cols) */}
+        <aside className="lg:col-span-4 space-y-6">
+          {/* Most Read in Category */}
+          <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-2 border-b-2 border-[#e30613] pb-2 mb-3">
+              <TrendingUp size={18} className="text-[#e30613]" />
+              <h3 className="font-extrabold text-base text-gray-900">
+                {lang === 'bn' ? `${categoryTitle}ের সর্বাধিক পঠিত` : `Most Read in ${categoryTitle}`}
+              </h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {mostReadCategory.map((art, idx) => (
+                <NewsCard key={art.id} article={art} variant="sidebar" lang={lang} rank={idx + 1} />
+              ))}
+            </div>
+          </div>
+
+          {/* Ad Banner */}
+          <AdBanner size="rectangle" lang={lang} />
+
+          {/* Popular Category Tags */}
+          <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
+            <h4 className="font-bold text-sm text-gray-900 border-b pb-2 mb-3">
+              {lang === 'bn' ? 'সম্পর্কিত টপিক' : 'Related Topics'}
+            </h4>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {(lead?.tags_bn || ['বাংলাদেশ', 'সংবাদ', 'উন্নয়ন', 'প্রশাসন']).map((tag, i) => (
+                <span
+                  key={i}
+                  className="px-2.5 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded text-gray-700 cursor-pointer transition-colors"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
