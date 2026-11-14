@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom'
 import { Home, ChevronRight, PlayCircle, Eye, Clock, X } from 'lucide-react'
 import { formatRelativeTime, formatViews } from '../utils.js'
 
-export default function VideoPage({ videos = [], lang = 'bn' }) {
+export default function VideoPage({ videos = [], settings = null, lang = 'bn' }) {
   const [activeVideo, setActiveVideo] = useState(videos[0] || null)
   const [isPlayingModal, setIsPlayingModal] = useState(false)
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
@@ -54,7 +57,7 @@ export default function VideoPage({ videos = [], lang = 'bn' }) {
                 </div>
               </div>
               <div className="pt-4 border-t border-gray-800 text-xs text-gray-400">
-                {lang === 'bn' ? 'প্রথম আলো মাল্টিমিডিয়া ডেস্ক' : 'Prothom Alo Multimedia Desk'}
+                {lang === 'bn' ? `${siteName} মাল্টিমিডিয়া ডেস্ক` : `${siteName} Multimedia Desk`}
               </div>
             </div>
           </div>

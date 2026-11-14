@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom'
 import { Home, ChevronRight, Camera, X, Download, Share2 } from 'lucide-react'
 import { formatBengaliDate, formatEnglishDate } from '../utils.js'
 
-export default function PhotosPage({ photos = [], lang = 'bn' }) {
+export default function PhotosPage({ photos = [], settings = null, lang = 'bn' }) {
   const [selectedPhoto, setSelectedPhoto] = useState(null)
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
@@ -27,8 +30,8 @@ export default function PhotosPage({ photos = [], lang = 'bn' }) {
           </h1>
           <p className="text-xs text-gray-300 mt-1">
             {lang === 'bn'
-              ? 'প্রথম আলোর ফটোসাংবাদিকদের ক্যামেরায় ধারণ করা সেরা মুহূর্তগুলো'
-              : 'Memorable moments captured by Prothom Alo photojournalists'}
+              ? `${siteName}-এর ফটোসাংবাদিকদের ক্যামেরায় ধারণ করা সেরা মুহূর্তগুলো`
+              : `Memorable moments captured by ${siteName} photojournalists`}
           </p>
         </div>
       </div>

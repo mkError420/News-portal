@@ -3,13 +3,16 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Lock, Mail, ArrowRight, CheckCircle2, AlertCircle, Home } from 'lucide-react'
 import { api } from '../api.js'
 
-export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
+export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const navigate = useNavigate()
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
 
   // If already logged in, redirect to admin
   useEffect(() => {
@@ -66,7 +69,7 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
               className="text-3xl font-extrabold tracking-tight text-white block"
               style={{ color: '#ff4d4d', fontFamily: "'Hind Siliguri', 'Noto Serif Bengali', serif" }}
             >
-              {lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo'}
+              {siteName}
             </span>
           </Link>
           <h2 className="text-sm font-semibold text-gray-200 mt-1">

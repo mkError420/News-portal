@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom'
 import { Home, ChevronRight, FileText, ChevronLeft, ZoomIn, ZoomOut, Download, Calendar } from 'lucide-react'
 import { formatBengaliDate, formatEnglishDate, toBengaliNumber } from '../utils.js'
 
-export default function EPaperPage({ lang = 'bn' }) {
+export default function EPaperPage({ lang = 'bn', settings = null }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [zoomLevel, setZoomLevel] = useState(1)
   const totalPages = 12
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
 
   const pages = [
     { page: 1, title: '১ম পাতা - প্রধান শিরোনাম', en: 'Page 1 - Front Page', img: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80' },
@@ -35,7 +38,7 @@ export default function EPaperPage({ lang = 'bn' }) {
       <div className="bg-[#1a3a5c] text-white p-4 rounded-t-lg shadow flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 font-bold text-sm">
           <FileText size={18} className="text-red-400" />
-          <span>{lang === 'bn' ? 'প্রথম আলো ই-পেপার' : 'Prothom Alo ePaper'}</span>
+          <span>{lang === 'bn' ? `${siteName} ই-পেপার` : `${siteName} ePaper`}</span>
           <span className="text-xs bg-white/20 px-2 py-0.5 rounded font-normal">
             {lang === 'bn' ? formatBengaliDate(new Date()) : formatEnglishDate(new Date())}
           </span>
@@ -98,7 +101,7 @@ export default function EPaperPage({ lang = 'bn' }) {
           {/* Replica Header */}
           <div className="border-b-4 border-black p-4 text-center bg-amber-50/20">
             <h1 className="text-4xl sm:text-6xl font-black text-[#e30613] tracking-tight">
-              {lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo'}
+              {siteName}
             </h1>
             <div className="flex justify-between items-center text-xs text-gray-700 font-bold border-t border-b border-gray-300 py-1 mt-2">
               <span>{lang === 'bn' ? 'ঢাকা, বাংলাদেশ' : 'Dhaka, Bangladesh'}</span>

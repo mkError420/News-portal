@@ -33,11 +33,14 @@ import {
   toBengaliNumber,
 } from '../utils.js'
 
-export default function ArticlePage({ articles = [], categories = [], lang = 'bn' }) {
+export default function ArticlePage({ articles = [], categories = [], settings = null, lang = 'bn' }) {
   const { slug } = useParams()
   const article = articles.find((a) => a.slug === slug || String(a.id) === String(slug)) ||
     articles.find((a) => a.slug === slug) ||
     articles[0]
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
 
   // Reader state
   const [fontSizeLevel, setFontSizeLevel] = useState(1) // 0: small, 1: normal, 2: large
@@ -51,7 +54,7 @@ export default function ArticlePage({ articles = [], categories = [], lang = 'bn
       id: 1,
       author: lang === 'bn' ? 'মাহমুদুল হাসান' : 'Mahmudul Hasan',
       date: '2026-11-14T09:00:00.000Z',
-      text: lang === 'bn' ? 'খুবই তথ্যবহুল ও সময়োপযোগী প্রতিবেদন। ধন্যবাদ প্রথম আলোকে।' : 'Very informative and timely report. Thanks to Prothom Alo.',
+      text: lang === 'bn' ? `খুবই তথ্যবহুল ও সময়োপযোগী প্রতিবেদন। ধন্যবাদ ${siteName}-কে।` : `Very informative and timely report. Thanks to ${siteName}.`,
       likes: 12,
     },
     {
@@ -90,7 +93,7 @@ export default function ArticlePage({ articles = [], categories = [], lang = 'bn
   const subhead = (lang === 'bn' ? article.subheadline_bn : article.subheadline_en) || article.subheadline_bn
   const content = (lang === 'bn' ? article.content_bn : article.content_en) || article.content_bn || article.summary_bn
   const author = (lang === 'bn' ? article.author_bn : article.author_en) || article.author_bn || article.author || 'প্রতিবেদক'
-  const authorRole = (lang === 'bn' ? article.author_role_bn : article.author_role_en) || article.author_role_bn || 'প্রথম আলো'
+  const authorRole = (lang === 'bn' ? article.author_role_bn : article.author_role_en) || article.author_role_bn || siteName
   const catKey = (article.category || 'national').toLowerCase()
   const matchedCat = (categories || []).find(
     (c) => (c.slug || '').toLowerCase() === catKey || (c.name || '').toLowerCase() === catKey
@@ -281,7 +284,7 @@ export default function ArticlePage({ articles = [], categories = [], lang = 'bn
             </div>
             <div className="mt-2 text-xs text-gray-500 flex justify-between items-center px-1">
               <span>{lang === 'bn' ? (article.imageCaption || 'ফাইল ছবি') : 'File photo'}</span>
-              <span className="font-semibold">{lang === 'bn' ? 'ছবি: প্রথম আলো' : 'Photo: Prothom Alo'}</span>
+              <span className="font-semibold">{article.imageCredit || (lang === 'bn' ? `ছবি: ${siteName}` : `Photo: ${siteName}`)}</span>
             </div>
           </div>
 

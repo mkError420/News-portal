@@ -319,6 +319,7 @@ export default function App() {
             element={
               <LoginPage
                 lang={lang}
+                settings={newsData.settings}
               />
             }
           />
@@ -330,6 +331,7 @@ export default function App() {
               <CategoryPage
                 articles={newsData.articles}
                 categories={newsData.categories}
+                settings={newsData.settings}
                 lang={lang}
               />
             }
@@ -342,6 +344,7 @@ export default function App() {
               <ArticlePage
                 articles={newsData.articles}
                 categories={newsData.categories}
+                settings={newsData.settings}
                 lang={lang}
               />
             }
@@ -353,6 +356,7 @@ export default function App() {
             element={
               <OpinionPage
                 opinions={newsData.opinions}
+                settings={newsData.settings}
                 lang={lang}
               />
             }
@@ -364,6 +368,7 @@ export default function App() {
             element={
               <PhotosPage
                 photos={newsData.photos}
+                settings={newsData.settings}
                 lang={lang}
               />
             }
@@ -375,6 +380,7 @@ export default function App() {
             element={
               <VideoPage
                 videos={newsData.videos}
+                settings={newsData.settings}
                 lang={lang}
               />
             }
@@ -386,6 +392,7 @@ export default function App() {
             element={
               <SearchPage
                 articles={newsData.articles}
+                settings={newsData.settings}
                 lang={lang}
               />
             }
@@ -394,7 +401,7 @@ export default function App() {
           {/* 9. ePaper Digital Reader */}
           <Route
             path="/epaper"
-            element={<EPaperPage lang={lang} />}
+            element={<EPaperPage lang={lang} settings={newsData.settings} />}
           />
 
           {/* 10. Admin CMS Dashboard */}

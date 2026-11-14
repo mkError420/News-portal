@@ -5,8 +5,11 @@ import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
 import { formatBengaliDate, formatEnglishDate } from '../utils.js'
 
-export default function OpinionPage({ opinions = [], lang = 'bn' }) {
+export default function OpinionPage({ opinions = [], settings = null, lang = 'bn' }) {
   const [activeOpinion, setActiveOpinion] = useState(opinions[0])
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
@@ -124,8 +127,8 @@ export default function OpinionPage({ opinions = [], lang = 'bn' }) {
             </h3>
             <p className="text-xs text-gray-600 leading-relaxed">
               {lang === 'bn'
-                ? 'প্রথম আলোর সম্পাদকীয় পাতায় প্রকাশিত লেখকদের মতামত সম্পূর্ণ তাদের নিজস্ব। আমরা মতের বৈচিত্র্য ও মুক্তচিন্তাকে প্রাধান্য দিই।'
-                : 'Views expressed in opinion pieces belong solely to the authors. We champion constructive diversity of perspectives and free expression.'}
+                ? `${siteName}-এর সম্পাদকীয় পাতায় প্রকাশিত লেখকদের মতামত সম্পূর্ণ তাদের নিজস্ব। আমরা মতের বৈচিত্র্য ও মুক্তচিন্তাকে প্রাধান্য দিই।`
+                : `Views expressed in ${siteName} opinion pieces belong solely to the authors. We champion constructive diversity of perspectives and free expression.`}
             </p>
           </div>
           <AdBanner size="rectangle" lang={lang} />

@@ -142,7 +142,7 @@ export default function AdminPage({
   }
 
   const handleResetSiteSettingsToDefault = () => {
-    if (confirm(lang === 'bn' ? 'আপনি কি প্রথম আলোর ডিফল্ট সেটিংস ফিরিয়ে আনতে চান?' : 'Reset to default portal settings?')) {
+    if (confirm(lang === 'bn' ? 'আপনি কি ডিফল্ট সেটিংস ফিরিয়ে আনতে চান?' : 'Reset to default portal settings?')) {
       setSiteForm({ ...defaultSiteSettings })
       onUpdateSettings?.({ ...defaultSiteSettings })
       triggerToast(lang === 'bn' ? 'ডিফল্ট সেটিংস রিসেট করা হয়েছে।' : 'Reset to default settings.')
@@ -195,7 +195,7 @@ export default function AdminPage({
         } else {
           setCurrentUser(typeof user === 'object' ? user : { role: 'superadmin', email: 'admin@mknews.com' })
           setAuthChecking(false)
-          api.getStats().then(setServerStats).catch(() => {})
+          api.getStats().then(setServerStats).catch(() => { })
         }
       })
       .catch((err) => {
@@ -225,13 +225,13 @@ export default function AdminPage({
     summary_bn: '',
     summary_en: '',
     category: formattedCategories[0]?.slug || 'national',
-    author_bn: 'প্রথম আলো ডেস্ক',
-    author_en: 'Prothom Alo Desk',
+    author_bn: siteForm.site_name_bn ? `${siteForm.site_name_bn} ডেস্ক` : 'ডেস্ক',
+    author_en: siteForm.site_name_en ? `${siteForm.site_name_en} Desk` : 'Desk',
     author_role_bn: 'প্রতিবেদক',
     author_role_en: 'Staff Reporter',
     image: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
     imageCaption: '',
-    imageCredit: 'ছবি: প্রথম আলো',
+    imageCredit: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
     content_bn: '',
     content_en: '',
     featured: false,
@@ -270,8 +270,8 @@ export default function AdminPage({
     title_bn: '',
     title_en: '',
     image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
-    credit_bn: 'ছবি: প্রথম আলো',
-    credit_en: 'Photo: Prothom Alo',
+    credit_bn: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
+    credit_en: siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Source',
     caption_bn: '',
   })
 
@@ -287,7 +287,7 @@ export default function AdminPage({
   const handleLogout = async () => {
     try {
       await api.logout()
-    } catch {}
+    } catch { }
     localStorage.removeItem('admin_auth')
     navigate('/login', { replace: true })
   }
@@ -474,7 +474,7 @@ export default function AdminPage({
   const handleDeleteBreakingClick = async (id) => {
     try {
       await api.deleteBreakingNews(id)
-    } catch {}
+    } catch { }
     onDeleteBreaking?.(id)
     refreshStats()
     triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ সরানো হয়েছে।' : 'Breaking news item removed.', 'info')
@@ -525,8 +525,8 @@ export default function AdminPage({
       title_bn: '',
       title_en: '',
       image: '',
-      credit_bn: 'ছবি: প্রথম আলো',
-      credit_en: 'Photo: Prothom Alo',
+      credit_bn: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
+      credit_en: siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Source',
       caption_bn: '',
     })
   }
@@ -626,9 +626,8 @@ export default function AdminPage({
           <div className="hidden md:flex items-center gap-2 text-xs">
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  serverHealth.database === 'connected' ? 'bg-green-400 animate-pulse' : 'bg-amber-400'
-                }`}
+                className={`w-2 h-2 rounded-full ${serverHealth.database === 'connected' ? 'bg-green-400 animate-pulse' : 'bg-amber-400'
+                  }`}
               />
               <span className="text-gray-200">
                 {serverHealth.database === 'connected' ? (
@@ -710,11 +709,10 @@ export default function AdminPage({
                   }
                   setActiveTab(tab.id)
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${
-                  activeTab === tab.id
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${activeTab === tab.id
                     ? 'bg-red-50 text-[#e30613] border-l-4 border-l-[#e30613] shadow-xs'
                     : 'text-gray-700 hover:bg-gray-100 hover:text-red-600'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2.5">
                   <span className={activeTab === tab.id ? 'text-[#e30613]' : 'text-gray-400'}>{tab.icon}</span>
@@ -722,9 +720,8 @@ export default function AdminPage({
                 </div>
                 {tab.count !== null && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      activeTab === tab.id ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-600'
-                    }`}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === tab.id ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-600'
+                      }`}
                   >
                     {toBengaliNumber(tab.count)}
                   </span>
@@ -989,11 +986,10 @@ export default function AdminPage({
                   {/* Featured Only Toggle */}
                   <button
                     onClick={() => setFilterFeaturedOnly(!filterFeaturedOnly)}
-                    className={`px-3 py-1.5 rounded border text-xs font-bold transition-colors flex items-center gap-1 ${
-                      filterFeaturedOnly
+                    className={`px-3 py-1.5 rounded border text-xs font-bold transition-colors flex items-center gap-1 ${filterFeaturedOnly
                         ? 'bg-[#e30613] text-white border-[#e30613]'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <Star size={13} className={filterFeaturedOnly ? 'fill-current' : ''} />
                     <span>শীর্ষ সংবাদ</span>
@@ -1056,7 +1052,7 @@ export default function AdminPage({
                           </span>
                         </td>
                         <td className="p-3 text-gray-600 font-medium">
-                          {art.author_bn || 'প্রথম আলো ডেস্ক'}
+                          {art.author_bn || (siteForm.site_name_bn ? `${siteForm.site_name_bn} ডেস্ক` : 'ডেস্ক')}
                         </td>
                         <td className="p-3 text-center font-bold text-gray-800">
                           {toBengaliNumber(art.views || 0)}
@@ -1064,9 +1060,8 @@ export default function AdminPage({
                         <td className="p-3 text-center">
                           <button
                             onClick={() => handleToggleFeatured(art)}
-                            className={`p-1 rounded transition-colors ${
-                              art.featured ? 'text-amber-500 hover:text-gray-400' : 'text-gray-300 hover:text-amber-500'
-                            }`}
+                            className={`p-1 rounded transition-colors ${art.featured ? 'text-amber-500 hover:text-gray-400' : 'text-gray-300 hover:text-amber-500'
+                              }`}
                             title="Toggle Lead Story"
                           >
                             <Star size={16} className={art.featured ? 'fill-current' : ''} />
@@ -1399,11 +1394,10 @@ export default function AdminPage({
                           key={cat.slug}
                           type="button"
                           onClick={() => setFormData({ ...formData, category: cat.slug })}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
-                            isSelected
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${isSelected
                               ? 'bg-[#e30613] text-white shadow-xs scale-102 ring-2 ring-red-400'
                               : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           {isSelected && <Check size={12} className="stroke-[3]" />}
                           <span>{cat.name_bn}</span>
@@ -1424,7 +1418,7 @@ export default function AdminPage({
                     type="text"
                     value={formData.author_bn}
                     onChange={(e) => setFormData({ ...formData, author_bn: e.target.value })}
-                    placeholder="প্রথম আলো ডেস্ক"
+                    placeholder={siteForm.site_name_bn ? `${siteForm.site_name_bn} ডেস্ক` : 'ডেস্ক'}
                     className="w-full text-sm p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                   />
                 </div>
@@ -1973,7 +1967,7 @@ export default function AdminPage({
                         required
                         value={siteForm.site_name_bn}
                         onChange={(e) => setSiteForm({ ...siteForm, site_name_bn: e.target.value })}
-                        placeholder="যেমন: প্রথম আলো"
+                        placeholder="যেমন: শীর্ষ সংবাদ"
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none font-semibold text-gray-900"
                       />
                     </div>
@@ -1986,7 +1980,7 @@ export default function AdminPage({
                         required
                         value={siteForm.site_name_en}
                         onChange={(e) => setSiteForm({ ...siteForm, site_name_en: e.target.value })}
-                        placeholder="e.g. Prothom Alo"
+                        placeholder="e.g. Daily News"
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none font-semibold text-gray-900"
                       />
                     </div>
@@ -2029,7 +2023,7 @@ export default function AdminPage({
                         type="url"
                         value={siteForm.logo_url}
                         onChange={(e) => setSiteForm({ ...siteForm, logo_url: e.target.value })}
-                        placeholder="https://... (খালি রাখলে প্রথম আলোর বিখ্যাত লাল সূর্য ও শিখা প্রতীক ব্যবহৃত হবে)"
+                        placeholder="https://... (খালি রাখলে মূল ভেক্টর সূর্য প্রতীক ব্যবহৃত হবে)"
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
                       <p className="text-[10px] text-gray-500 mt-1">
@@ -2104,7 +2098,7 @@ export default function AdminPage({
                         rows={2}
                         value={siteForm.about_bn}
                         onChange={(e) => setSiteForm({ ...siteForm, about_bn: e.target.value })}
-                        placeholder="প্রথম আলো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় দৈনিক..."
+                        placeholder="অনলাইন সংবাদ পোর্টালের বিস্তারিত পরিচিতি..."
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
                     </div>
@@ -2116,7 +2110,7 @@ export default function AdminPage({
                         rows={2}
                         value={siteForm.about_en}
                         onChange={(e) => setSiteForm({ ...siteForm, about_en: e.target.value })}
-                        placeholder="Prothom Alo is the leading and most trusted news publication..."
+                        placeholder="A leading and trusted 24/7 digital news publication..."
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
                     </div>
@@ -2274,7 +2268,7 @@ export default function AdminPage({
                         type="text"
                         value={siteForm.copyright_bn}
                         onChange={(e) => setSiteForm({ ...siteForm, copyright_bn: e.target.value })}
-                        placeholder="স্বত্ব © ২০২৬ প্রথম আলো | সর্বস্বত্ব সংরক্ষিত।"
+                        placeholder="স্বত্ব © ২০২৬ | সর্বস্বত্ব সংরক্ষিত।"
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
                     </div>
@@ -2286,7 +2280,7 @@ export default function AdminPage({
                         type="text"
                         value={siteForm.copyright_en}
                         onChange={(e) => setSiteForm({ ...siteForm, copyright_en: e.target.value })}
-                        placeholder="Copyright © 2026 Prothom Alo | All rights reserved."
+                        placeholder="Copyright © 2026 | All rights reserved."
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
                     </div>

@@ -74,8 +74,8 @@ export default function Footer({ lang = 'bn', settings = null, categories = [] }
           </div>
           <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
             {lang === 'bn'
-              ? (settings?.about_bn || 'প্রথম আলো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় বাংলা দৈনিক ও অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।')
-              : (settings?.about_en || 'Prothom Alo is the leading and most trusted news publication in Bangladesh, delivering impartial and accurate news 24/7.')}
+              ? (settings?.about_bn || `${siteName} দেশের সর্বাধিক পঠিত ও জনপ্রিয় অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।`)
+              : (settings?.about_en || `${siteName} is a leading and trusted digital news publication, delivering impartial and accurate news 24/7.`)}
           </p>
           <div className="text-xs text-gray-400 space-y-1.5 pt-2 border-t border-gray-800">
             <p className="font-semibold text-gray-200">
@@ -207,8 +207,8 @@ export default function Footer({ lang = 'bn', settings = null, categories = [] }
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
             {lang === 'bn'
-              ? (settings?.copyright_bn || 'স্বত্ব © ২০২৬ প্রথম আলো | সর্বস্বত্ব সংরক্ষিত।')
-              : (settings?.copyright_en || 'Copyright © 2026 Prothom Alo | All rights reserved.')}
+              ? (settings?.copyright_bn || `স্বত্ব © ২০২৬ ${siteName} | সর্বস্বত্ব সংরক্ষিত।`)
+              : (settings?.copyright_en || `Copyright © 2026 ${siteName} | All rights reserved.`)}
           </span>
           <span className="text-[11px] text-gray-600">
             {lang === 'bn' ? 'ডিজিটাল রূপান্তর ও অনলাইন সংস্করণ' : 'Digital Platform & Online Edition'}
