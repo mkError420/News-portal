@@ -1892,7 +1892,7 @@ export default function AdminPage({
                           >
                             <div className="flex items-center gap-2">
                               <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                ch.passed ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-700'
+                                chk.passed ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-700'
                               }`}>
                                 {chk.passed ? '✓' : '×'}
                               </span>
