@@ -12,7 +12,7 @@ import {
 } from '../utils.js'
 import { api } from '../api.js'
 
-export default function Header({ lang = 'bn', onLangChange, onSearch }) {
+export default function Header({ lang = 'bn', onLangChange, onSearch, settings = null }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
@@ -85,7 +85,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
             </span>
             <span className="hidden lg:inline-block text-gray-400">|</span>
             <span className="hidden lg:inline-block text-gray-300 text-[11px] whitespace-nowrap">
-              {lang === 'bn' ? 'সংস্করণ: বাংলাদেশ' : 'Edition: Bangladesh'}
+              {lang === 'bn' ? (settings?.edition_bn ? `সংস্করণ: ${settings.edition_bn}` : 'সংস্করণ: বাংলাদেশ') : (settings?.edition_en ? `Edition: ${settings.edition_en}` : 'Edition: Bangladesh')}
             </span>
           </div>
 
@@ -151,7 +151,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           {/* Logo Brand with Authentic Prothom Alo Calligraphy & Symbol */}
           <div className="flex items-center gap-3">
-            <ProthomAloLogo lang={lang} />
+            <ProthomAloLogo lang={lang} settings={settings} />
           </div>
 
           {/* Leaderboard Ad Placeholder (Desktop 728x90) */}
@@ -161,7 +161,9 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
                 {lang === 'bn' ? 'বিজ্ঞাপন' : 'Advertisement'}
               </span>
               <span className="text-xs text-gray-500 font-medium">
-                {lang === 'bn' ? 'বিজ্ঞাপনের জন্য যোগাযোগ করুন: ads@prothomalo.com' : 'For advertisement queries: ads@prothomalo.com'}
+                {lang === 'bn'
+                  ? `বিজ্ঞাপনের জন্য যোগাযোগ করুন: ${settings?.ad_email || 'ads@prothomalo.com'}`
+                  : `For advertisement queries: ${settings?.ad_email || 'ads@prothomalo.com'}`}
               </span>
             </div>
           </div>
@@ -298,7 +300,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
         <div className="p-4 bg-[#1a3a5c] text-white flex items-center justify-between">
           <div>
             <span className="text-xl font-bold tracking-tight text-red-400 block">
-              {lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo'}
+              {(lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) || (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')}
             </span>
             <span className="text-[11px] text-gray-300">{todayStr}</span>
           </div>

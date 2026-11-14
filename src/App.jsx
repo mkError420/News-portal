@@ -72,6 +72,7 @@ export default function App() {
         api.getArticles(),
         api.getBreakingNews(),
         api.getCategories(),
+        api.getSettings(),
       ])
       if (!active) return
 
@@ -88,6 +89,9 @@ export default function App() {
       }
       if (results[2].status === 'fulfilled' && Array.isArray(results[2].value) && results[2].value.length > 0) {
         updates.categories = results[2].value
+      }
+      if (results[3].status === 'fulfilled' && results[3].value && typeof results[3].value === 'object') {
+        updates.settings = results[3].value
       }
 
       setNewsData((prev) => {
@@ -235,20 +239,38 @@ export default function App() {
     persistData(updated)
   }
 
+  // --- Website Settings Handler ---
+  const handleUpdateSettings = async (newSettings) => {
+    try {
+      await api.saveSettings(newSettings)
+    } catch (err) {
+      console.warn('Backend settings update notice:', err)
+    }
+    const updated = {
+      ...newsData,
+      settings: {
+        ...(newsData.settings || {}),
+        ...newSettings,
+      },
+    }
+    persistData(updated)
+  }
+
   const handleResetData = () => {
     localStorage.removeItem(STORAGE_KEY)
     window.location.reload()
   }
 
+  const dynamicSiteName = (lang === 'bn' ? newsData.settings?.site_name_bn : newsData.settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
+  const dynamicTagline = (lang === 'bn' ? newsData.settings?.tagline_bn : newsData.settings?.tagline_en) ||
+    (lang === 'bn' ? 'সংবাদ, বিশ্লেষণ, বিনোদন ও আন্তর্জাতিক খবর' : 'Latest Bangladesh and World News')
+
   return (
     <div className="min-h-screen flex flex-col bg-[#ffffff] text-[#1a1a1a]">
       <Helmet>
         <html lang={lang} />
-        <title>
-          {lang === 'bn'
-            ? 'প্রথম আলো | সংবাদ, বিশ্লেষণ, বিনোদন ও আন্তর্জাতিক খবর'
-            : 'Prothom Alo | Latest Bangladesh and World News'}
-        </title>
+        <title>{`${dynamicSiteName} | ${dynamicTagline}`}</title>
       </Helmet>
 
       {/* Top Header (Hide only on admin dashboard for clean CMS view) */}
@@ -257,6 +279,7 @@ export default function App() {
           <Header
             lang={lang}
             onLangChange={handleLangChange}
+            settings={newsData.settings}
           />
 
           {/* Breaking News Ticker (Hide on login page) */}
@@ -394,17 +417,19 @@ export default function App() {
                 onAddVideo={handleAddVideo}
                 onDeleteVideo={handleDeleteVideo}
                 onResetData={handleResetData}
+                settings={newsData.settings}
+                onUpdateSettings={handleUpdateSettings}
                 lang={lang}
               />
             }
           />
 
           {/* 11. Static Pages */}
-          <Route path="/about" element={<StaticPage lang={lang} />} />
-          <Route path="/privacy" element={<StaticPage lang={lang} />} />
-          <Route path="/terms" element={<StaticPage lang={lang} />} />
-          <Route path="/contact" element={<StaticPage lang={lang} />} />
-          <Route path="/advertise" element={<StaticPage lang={lang} />} />
+          <Route path="/about" element={<StaticPage lang={lang} settings={newsData.settings} />} />
+          <Route path="/privacy" element={<StaticPage lang={lang} settings={newsData.settings} />} />
+          <Route path="/terms" element={<StaticPage lang={lang} settings={newsData.settings} />} />
+          <Route path="/contact" element={<StaticPage lang={lang} settings={newsData.settings} />} />
+          <Route path="/advertise" element={<StaticPage lang={lang} settings={newsData.settings} />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -412,7 +437,7 @@ export default function App() {
       </main>
 
       {/* Footer (Hide on admin dashboard) */}
-      {!location.pathname.startsWith('/admin') && <Footer lang={lang} />}
+      {!location.pathname.startsWith('/admin') && <Footer lang={lang} settings={newsData.settings} />}
     </div>
   )
 }

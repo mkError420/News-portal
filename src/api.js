@@ -110,6 +110,24 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  // --- Website Settings CRUD ---
+  async getSettings() {
+    try {
+      const res = await client.get('/settings')
+      if (res.data?.settings && typeof res.data.settings === 'object') {
+        return res.data.settings
+      }
+    } catch (err) {
+      console.warn('Unable to load settings from server, fallback to local:', err)
+    }
+    return null
+  },
+
+  async saveSettings(settings) {
+    const res = await client.post('/settings', settings)
+    return requireSuccess(res.data)
+  },
+
   async getStats() {
     const res = await client.get('/stats')
     return res.data

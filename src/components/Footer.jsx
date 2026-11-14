@@ -4,8 +4,11 @@ import { FacebookIcon, TwitterIcon, YoutubeIcon, InstagramIcon, LinkedinIcon } f
 import ProthomAloLogo from './ProthomAloLogo.jsx'
 import { NAV_ITEMS, UI_TEXT } from '../utils.js'
 
-export default function Footer({ lang = 'bn' }) {
+export default function Footer({ lang = 'bn', settings = null }) {
   const t = UI_TEXT[lang] || UI_TEXT.bn
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
 
   return (
     <footer className="bg-[#1a1a1a] text-gray-300 mt-12 border-t-4 border-[#e30613] font-bengali">
@@ -15,7 +18,7 @@ export default function Footer({ lang = 'bn' }) {
           <div className="flex items-center gap-2 text-white font-semibold text-sm">
             <Smartphone size={18} className="text-red-500" />
             <span>
-              {lang === 'bn' ? 'প্রথম আলো মোবাইল অ্যাপ ডাউনলোড করুন' : 'Download Prothom Alo Mobile App'}
+              {lang === 'bn' ? `${siteName} মোবাইল অ্যাপ ডাউনলোড করুন` : `Download ${siteName} Mobile App`}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -48,28 +51,34 @@ export default function Footer({ lang = 'bn' }) {
         {/* Col 1: Brand & Editorial details */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white/10 p-2.5 rounded inline-block backdrop-blur-xs">
-            <ProthomAloLogo lang={lang} size="default" />
+            <ProthomAloLogo lang={lang} size="default" settings={settings} />
           </div>
           <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
             {lang === 'bn'
-              ? 'প্রথম আলো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় বাংলা দৈনিক ও অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।'
-              : 'Prothom Alo is the leading and most trusted news publication in Bangladesh, delivering impartial and accurate news 24/7.'}
+              ? (settings?.about_bn || 'প্রথম আলো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় বাংলা দৈনিক ও অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।')
+              : (settings?.about_en || 'Prothom Alo is the leading and most trusted news publication in Bangladesh, delivering impartial and accurate news 24/7.')}
           </p>
           <div className="text-xs text-gray-400 space-y-1.5 pt-2 border-t border-gray-800">
             <p className="font-semibold text-gray-200">
-              {lang === 'bn' ? 'সম্পাদক ও প্রকাশক: মতিউর রহমান' : 'Editor & Publisher: Matiur Rahman'}
+              {lang === 'bn'
+                ? (settings?.editor_bn || 'সম্পাদক ও প্রকাশক: মতিউর রহমান')
+                : (settings?.editor_en || 'Editor & Publisher: Matiur Rahman')}
             </p>
             <p className="flex items-center gap-1.5">
               <MapPin size={13} className="text-red-500 flex-shrink-0" />
-              <span>{lang === 'bn' ? 'প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫' : 'Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215'}</span>
+              <span>
+                {lang === 'bn'
+                  ? (settings?.address_bn || 'প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫')
+                  : (settings?.address_en || 'Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215')}
+              </span>
             </p>
             <p className="flex items-center gap-1.5">
               <Phone size={13} className="text-red-500 flex-shrink-0" />
-              <span>+৮৮০ ২ ৮১৮০০৭৮-৮১</span>
+              <span>{settings?.phone || '+৮৮০ ২ ৮১৮০০৭৮-৮১'}</span>
             </p>
             <p className="flex items-center gap-1.5">
               <Mail size={13} className="text-red-500 flex-shrink-0" />
-              <span>info@prothomalo.com</span>
+              <span>{settings?.email || 'info@prothomalo.com'}</span>
             </p>
           </div>
         </div>
@@ -152,15 +161,17 @@ export default function Footer({ lang = 'bn' }) {
           </h5>
           <div className="flex items-center gap-2">
             {[
-              { icon: <FacebookIcon size={14} />, bg: '#1877f2', label: 'Facebook' },
-              { icon: <TwitterIcon size={14} />, bg: '#1da1f2', label: 'Twitter' },
-              { icon: <YoutubeIcon size={14} />, bg: '#ff0000', label: 'YouTube' },
-              { icon: <InstagramIcon size={14} />, bg: '#e1306c', label: 'Instagram' },
-              { icon: <LinkedinIcon size={14} />, bg: '#0a66c2', label: 'LinkedIn' },
-            ].map(({ icon, bg, label }) => (
+              { icon: <FacebookIcon size={14} />, bg: '#1877f2', label: 'Facebook', url: settings?.facebook_url || 'https://facebook.com/DailyProthomAlo' },
+              { icon: <TwitterIcon size={14} />, bg: '#1da1f2', label: 'Twitter', url: settings?.twitter_url || 'https://twitter.com/ProthomAlo' },
+              { icon: <YoutubeIcon size={14} />, bg: '#ff0000', label: 'YouTube', url: settings?.youtube_url || 'https://youtube.com/c/ProthomAlo' },
+              { icon: <InstagramIcon size={14} />, bg: '#e1306c', label: 'Instagram', url: settings?.instagram_url || 'https://instagram.com/prothomalo' },
+              { icon: <LinkedinIcon size={14} />, bg: '#0a66c2', label: 'LinkedIn', url: settings?.linkedin_url || 'https://linkedin.com/company/prothom-alo' },
+            ].map(({ icon, bg, label, url }) => (
               <a
                 key={label}
-                href="#"
+                href={url}
+                target="_blank"
+                rel="noreferrer"
                 title={label}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-white hover:opacity-85 transition-opacity"
                 style={{ backgroundColor: bg }}
@@ -177,8 +188,8 @@ export default function Footer({ lang = 'bn' }) {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
             {lang === 'bn'
-              ? 'স্বত্ব © ২০২৬ প্রথম আলো | সর্বস্বত্ব সংরক্ষিত।'
-              : 'Copyright © 2026 Prothom Alo | All rights reserved.'}
+              ? (settings?.copyright_bn || 'স্বত্ব © ২০২৬ প্রথম আলো | সর্বস্বত্ব সংরক্ষিত।')
+              : (settings?.copyright_en || 'Copyright © 2026 Prothom Alo | All rights reserved.')}
           </span>
           <span className="text-[11px] text-gray-600">
             {lang === 'bn' ? 'ডিজিটাল রূপান্তর ও অনলাইন সংস্করণ' : 'Digital Platform & Online Edition'}

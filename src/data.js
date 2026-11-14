@@ -547,6 +547,33 @@ export const initialCategories = [
   { id: 13, slug: 'video', name_bn: 'ভিডিও সংবাদ', name_en: 'Video Reports' },
 ]
 
+export const defaultSiteSettings = {
+  site_name_bn: 'প্রথম আলো',
+  site_name_en: 'Prothom Alo',
+  tagline_bn: 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক',
+  tagline_en: 'Online Edition • Fearless in Pursuit of Truth',
+  logo_url: '',
+  favicon_url: '',
+  editor_bn: 'সম্পাদক ও প্রকাশক: মতিউর রহমান',
+  editor_en: 'Editor & Publisher: Matiur Rahman',
+  about_bn: 'প্রথম আলো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় বাংলা দৈনিক ও অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।',
+  about_en: 'Prothom Alo is the leading and most trusted news publication in Bangladesh, delivering impartial and accurate news 24/7.',
+  address_bn: 'প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫, বাংলাদেশ',
+  address_en: 'Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215, Bangladesh',
+  phone: '+৮৮০ ২ ৮১৮০০৭৮-৮১',
+  email: 'info@prothomalo.com',
+  ad_email: 'ads@prothomalo.com',
+  facebook_url: 'https://facebook.com/DailyProthomAlo',
+  twitter_url: 'https://twitter.com/ProthomAlo',
+  youtube_url: 'https://youtube.com/c/ProthomAlo',
+  instagram_url: 'https://instagram.com/prothomalo',
+  linkedin_url: 'https://linkedin.com/company/prothom-alo',
+  copyright_bn: 'স্বত্ব © ২০২৬ প্রথম আলো | সর্বস্বত্ব সংরক্ষিত।',
+  copyright_en: 'Copyright © 2026 Prothom Alo | All rights reserved.',
+  edition_bn: 'বাংলাদেশ',
+  edition_en: 'Bangladesh',
+}
+
 export const defaultData = {
   breakingNews,
   articles,
@@ -554,4 +581,5 @@ export const defaultData = {
   photos,
   videos,
   categories: initialCategories,
+  settings: defaultSiteSettings,
 }

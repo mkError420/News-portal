@@ -1,9 +1,16 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Home, ChevronRight, ShieldCheck, FileText, Mail, Phone, MapPin, Send, HelpCircle } from 'lucide-react'
 
-export default function StaticPage({ lang = 'bn' }) {
+export default function StaticPage({ lang = 'bn', settings = null }) {
   const location = useLocation()
   const path = location.pathname.replace('/', '')
+
+  const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
+    (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
+  const address = (lang === 'bn' ? settings?.address_bn : settings?.address_en) ||
+    (lang === 'bn' ? 'প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫, বাংলাদেশ।' : 'Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215, Bangladesh.')
+  const phone = settings?.phone || '+৮৮০ ২ ৮১৮০০৭৮-৮১'
+  const email = settings?.email || 'info@prothomalo.com'
 
   const titles = {
     about: { bn: 'আমাদের সম্পর্কে', en: 'About Us' },
@@ -39,8 +46,8 @@ export default function StaticPage({ lang = 'bn' }) {
           <div className="space-y-6 text-sm text-gray-700">
             <p className="leading-relaxed">
               {lang === 'bn'
-                ? 'প্রথম আলোর যে কোনো সংবাদ, বিজ্ঞাপন বা প্রযুক্তিগত সমস্যার জন্য নিচের ঠিকানায় যোগাযোগ করতে পারেন।'
-                : 'For any news queries, advertisement, or technical assistance, reach out via the contacts below.'}
+                ? `${siteName}-এর যে কোনো সংবাদ, বিজ্ঞাপন বা প্রযুক্তিগত সমস্যার জন্য নিচের ঠিকানায় যোগাযোগ করতে পারেন।`
+                : `For any news queries, advertisement, or technical assistance regarding ${siteName}, reach out via the contacts below.`}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
               <div className="p-4 bg-gray-50 rounded-lg border space-y-3">
@@ -49,15 +56,13 @@ export default function StaticPage({ lang = 'bn' }) {
                   <span>{lang === 'bn' ? 'প্রধান কার্যালয়' : 'Head Office'}</span>
                 </h3>
                 <p className="text-xs text-gray-600">
-                  {lang === 'bn'
-                    ? 'প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫, বাংলাদেশ।'
-                    : 'Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215, Bangladesh.'}
+                  {address}
                 </p>
                 <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                  <Phone size={13} className="text-red-600" /> +৮৮০ ২ ৮১৮০০৭৮-৮১
+                  <Phone size={13} className="text-red-600" /> {phone}
                 </p>
                 <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                  <Mail size={13} className="text-red-600" /> info@prothomalo.com
+                  <Mail size={13} className="text-red-600" /> {email}
                 </p>
               </div>
 
@@ -97,8 +102,8 @@ export default function StaticPage({ lang = 'bn' }) {
           <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
             <p>
               {lang === 'bn'
-                ? 'প্রথম আলো বাংলাদেশের সর্বাধিক জনপ্রিয় অনলাইন ও প্রিন্ট মিডিয়া। আপনার পণ্য ও সেবার প্রচারে আমাদের বিজ্ঞাপন সেবা গ্রহণ করুন।'
-                : 'Prothom Alo is the largest and most influential media platform in Bangladesh. Promote your products and services with our trusted advertising network.'}
+                ? `${siteName} বাংলাদেশের সর্বাধিক জনপ্রিয় অনলাইন ও প্রিন্ট মিডিয়া। আপনার পণ্য ও সেবার প্রচারে আমাদের বিজ্ঞাপন সেবা গ্রহণ করুন।`
+                : `${siteName} is the largest and most influential media platform in Bangladesh. Promote your products and services with our trusted advertising network.`}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
               <div className="p-4 border rounded-lg bg-gray-50 text-center">
@@ -118,7 +123,9 @@ export default function StaticPage({ lang = 'bn' }) {
               </div>
             </div>
             <p className="text-xs text-gray-600">
-              {lang === 'bn' ? 'বিজ্ঞাপনের বিস্তারিত জানতে ইমেইল করুন: ads@prothomalo.com অথবা কল করুন: +৮৮০ ১৭০০-০০০০০০' : 'For ad rates and packages, email ads@prothomalo.com or call +880 1700-000000'}
+              {lang === 'bn'
+                ? `বিজ্ঞাপনের বিস্তারিত জানতে ইমেইল করুন: ${settings?.ad_email || 'ads@prothomalo.com'} অথবা কল করুন: ${phone}`
+                : `For ad rates and packages, email ${settings?.ad_email || 'ads@prothomalo.com'} or call ${phone}`}
             </p>
           </div>
         )}
@@ -128,8 +135,8 @@ export default function StaticPage({ lang = 'bn' }) {
           <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
             <p>
               {lang === 'bn'
-                ? '১৯৯৮ সালের ৪ নভেম্বর প্রথম আলো প্রথম প্রকাশিত হয়। নিরপেক্ষ, বস্তুনিষ্ঠ ও সাহসী সাংবাদিকতার মাধ্যমে প্রথম আলো বাংলাদেশের মানুষের ভালোবাসা ও আস্থা অর্জন করেছে।'
-                : 'Prothom Alo was founded on 4 November 1998. Through impartial, courageous, and credible journalism, Prothom Alo has earned the deepest trust of readers at home and abroad.'}
+                ? (settings?.about_bn || `${siteName} নিরপেক্ষ, বস্তুনিষ্ঠ ও সাহসী সাংবাদিকতার মাধ্যমে দেশের মানুষের ভালোবাসা ও আস্থা অর্জন করেছে।`)
+                : (settings?.about_en || `Through impartial, courageous, and credible journalism, ${siteName} has earned the deepest trust of readers.`)}
             </p>
             <h3 className="text-base font-bold text-gray-900 pt-3">
               {lang === 'bn' ? 'আমাদের লক্ষ্য ও উদ্দেশ্য' : 'Our Mission & Values'}

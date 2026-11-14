@@ -27,9 +27,17 @@ import {
   Layers,
   FolderPlus,
   Check,
+  Globe,
+  Building,
+  Phone,
+  Mail,
+  Share2,
+  Sliders,
+  Image as ImageIcon,
 } from 'lucide-react'
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
+import { defaultSiteSettings } from '../data.js'
 import {
   CATEGORIES_BN,
   CATEGORIES_EN,
@@ -44,6 +52,7 @@ export default function AdminPage({
   opinions = [],
   photos = [],
   videos = [],
+  settings = null,
   onAddArticle,
   onUpdateArticle,
   onDeleteArticle,
@@ -59,6 +68,7 @@ export default function AdminPage({
   onAddVideo,
   onDeleteVideo,
   onResetData,
+  onUpdateSettings,
   lang = 'bn',
 }) {
   const navigate = useNavigate()
@@ -76,6 +86,67 @@ export default function AdminPage({
   const triggerToast = (message, type = 'success') => {
     setToast({ show: true, message, type })
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000)
+  }
+
+  // --- Dynamic Website Settings State ---
+  const [siteForm, setSiteForm] = useState(() => ({
+    site_name_bn: settings?.site_name_bn || defaultSiteSettings.site_name_bn,
+    site_name_en: settings?.site_name_en || defaultSiteSettings.site_name_en,
+    tagline_bn: settings?.tagline_bn || defaultSiteSettings.tagline_bn,
+    tagline_en: settings?.tagline_en || defaultSiteSettings.tagline_en,
+    logo_url: settings?.logo_url || '',
+    favicon_url: settings?.favicon_url || '',
+    editor_bn: settings?.editor_bn || defaultSiteSettings.editor_bn,
+    editor_en: settings?.editor_en || defaultSiteSettings.editor_en,
+    about_bn: settings?.about_bn || defaultSiteSettings.about_bn,
+    about_en: settings?.about_en || defaultSiteSettings.about_en,
+    address_bn: settings?.address_bn || defaultSiteSettings.address_bn,
+    address_en: settings?.address_en || defaultSiteSettings.address_en,
+    phone: settings?.phone || defaultSiteSettings.phone,
+    email: settings?.email || defaultSiteSettings.email,
+    ad_email: settings?.ad_email || defaultSiteSettings.ad_email,
+    facebook_url: settings?.facebook_url || defaultSiteSettings.facebook_url,
+    twitter_url: settings?.twitter_url || defaultSiteSettings.twitter_url,
+    youtube_url: settings?.youtube_url || defaultSiteSettings.youtube_url,
+    instagram_url: settings?.instagram_url || defaultSiteSettings.instagram_url,
+    linkedin_url: settings?.linkedin_url || defaultSiteSettings.linkedin_url,
+    copyright_bn: settings?.copyright_bn || defaultSiteSettings.copyright_bn,
+    copyright_en: settings?.copyright_en || defaultSiteSettings.copyright_en,
+    edition_bn: settings?.edition_bn || defaultSiteSettings.edition_bn,
+    edition_en: settings?.edition_en || defaultSiteSettings.edition_en,
+  }))
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+
+  useEffect(() => {
+    if (settings) {
+      setSiteForm((prev) => ({
+        ...prev,
+        ...settings,
+      }))
+    }
+  }, [settings])
+
+  const handleSaveSettings = async (e) => {
+    if (e) e.preventDefault()
+    setIsSavingSettings(true)
+    try {
+      await api.saveSettings(siteForm)
+      onUpdateSettings?.(siteForm)
+      triggerToast(lang === 'bn' ? 'ওয়েবসাইট সেটিংস ও বিবরণ সফলভাবে সংরক্ষিত হয়েছে!' : 'Website settings updated successfully!')
+    } catch (err) {
+      onUpdateSettings?.(siteForm)
+      triggerToast(lang === 'bn' ? 'সেটিংস সংরক্ষিত হয়েছে।' : 'Settings saved.', 'info')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  const handleResetSiteSettingsToDefault = () => {
+    if (confirm(lang === 'bn' ? 'আপনি কি প্রথম আলোর ডিফল্ট সেটিংস ফিরিয়ে আনতে চান?' : 'Reset to default portal settings?')) {
+      setSiteForm({ ...defaultSiteSettings })
+      onUpdateSettings?.({ ...defaultSiteSettings })
+      triggerToast(lang === 'bn' ? 'ডিফল্ট সেটিংস রিসেট করা হয়েছে।' : 'Reset to default settings.')
+    }
   }
 
   const refreshStats = async () => {
@@ -545,7 +616,7 @@ export default function AdminPage({
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
           {/* Logo & Portal Branding */}
           <div className="flex items-center gap-3">
-            <ProthomAloLogo lang={lang} size="small" />
+            <ProthomAloLogo lang={lang} size="small" settings={siteForm} />
             <span className="hidden sm:inline-block bg-[#e30613] text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wider shadow-xs">
               CMS ড্যাশবোর্ড
             </span>
@@ -628,7 +699,7 @@ export default function AdminPage({
               { id: 'breaking', icon: <Flame size={16} />, bn: 'ব্রেকিং নিউজ টিকার', en: 'Breaking Ticker', count: breakingNews.length },
               { id: 'opinions', icon: <PenTool size={16} />, bn: 'কলাম ও মতামত', en: 'Opinions & Editorials', count: opinions.length },
               { id: 'media', icon: <Camera size={16} />, bn: 'ছবি ও ভিডিও গ্যালারি', en: 'Photos & Videos', count: photos.length + videos.length },
-              { id: 'settings', icon: <Settings size={16} />, bn: 'সেটিংস, জরিপ ও ব্যাকআপ', en: 'Settings & DB Backup', count: null },
+              { id: 'settings', icon: <Globe size={16} />, bn: 'ওয়েবসাইট সেটিংস ও বিবরণ', en: 'Website Settings & Details', count: null },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1823,76 +1894,490 @@ export default function AdminPage({
             </div>
           )}
 
-          {/* ================= TAB 8: SETTINGS & BACKUP ================= */}
+          {/* ================= TAB 8: WEBSITE SETTINGS & DETAILS ================= */}
           {activeTab === 'settings' && (
-            <div className="bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm space-y-6">
-              <h3 className="text-lg font-bold text-gray-900 border-b pb-3 flex items-center gap-2">
-                <Settings size={18} className="text-[#e30613]" />
-                <span>সিস্টেম সেটিংস, অনলাইন জরিপ ও ডাটাবেজ ব্যাকআপ</span>
-              </h3>
+            <div className="space-y-6">
+              {/* Header Title & Top Save Button */}
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <Globe size={22} className="text-[#e30613]" />
+                    <span>ওয়েবসাইট সেটিংস ও বিবরণ (Website Settings & Details)</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    ওয়েবসাইটের নাম, লোগো, স্লোগান, সম্পাদকীয় তথ্য, যোগাযোগের ঠিকানা ও সোশ্যাল লিংক সরাসরি পরিচালনা করুন।
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleResetSiteSettingsToDefault}
+                    className="px-3.5 py-2 text-xs font-semibold text-gray-600 hover:text-red-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    ডিফল্ট ফিরিয়ে আনুন
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                    className="flex items-center gap-2 bg-[#e30613] hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                  >
+                    <Save size={15} />
+                    <span>{isSavingSettings ? 'সংরক্ষণ হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}</span>
+                  </button>
+                </div>
+              </div>
 
-              {/* Database Status Card */}
-              <div className="p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-3 text-xs">
-                <h4 className="font-bold text-gray-800 text-sm">MySQL ডাটাবেজ সংযোগ স্ট্যাটাস</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                  <div className="p-3 bg-white rounded-lg border">
-                    <span className="text-gray-500 block">ডাটাবেজ স্ট্যাটাস:</span>
-                    <span className={`font-bold text-sm ${serverHealth.database === 'connected' ? 'text-green-700' : 'text-amber-700'}`}>
-                      {serverHealth.database === 'connected' ? 'Connected (MySQL Online)' : 'Standalone Sync'}
+              {/* 🌟 Interactive Live Header & Logo Preview Card */}
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b pb-2.5">
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-amber-500" />
+                    <span>লাইভ ব্র্যান্ডিং প্রিভিউ (Live Header Preview)</span>
+                  </span>
+                  <span className="text-[10px] bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
+                    সরাসরি দৃশ্যমান
+                  </span>
+                </div>
+                <div className="p-4 bg-[#f8f9fa] border rounded-lg flex flex-wrap items-center justify-between gap-4">
+                  <div className="bg-white p-3 rounded-lg border shadow-xs">
+                    <ProthomAloLogo lang={lang} size="default" settings={siteForm} />
+                  </div>
+                  <div className="text-right space-y-1 text-xs">
+                    <span className="inline-block bg-[#1a3a5c] text-white text-[10px] font-semibold px-2 py-0.5 rounded">
+                      {lang === 'bn' ? `সংস্করণ: ${siteForm.edition_bn || 'বাংলাদেশ'}` : `Edition: ${siteForm.edition_en || 'Bangladesh'}`}
                     </span>
-                  </div>
-                  <div className="p-3 bg-white rounded-lg border">
-                    <span className="text-gray-500 block">হোস্টিং কনফিগ:</span>
-                    <span className="font-bold text-gray-800 text-sm">sql201.infinityfree.com</span>
-                  </div>
-                  <div className="p-3 bg-white rounded-lg border">
-                    <span className="text-gray-500 block">অ্যাডমিন ইউজার:</span>
-                    <span className="font-bold text-gray-800 text-sm">admin@mknews.com</span>
+                    <p className="text-[11px] text-gray-500">
+                      বিজ্ঞাপন: <span className="font-semibold text-gray-700">{siteForm.ad_email || 'ads@prothomalo.com'}</span>
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Database 1-Click Backup Export */}
-              <div className="p-5 bg-blue-50 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h4 className="font-bold text-sm text-blue-900 flex items-center gap-1.5">
-                    <Download size={16} />
-                    <span>cPanel / phpMyAdmin SQL ব্যাকআপ ফাইল</span>
+              {/* Settings Form */}
+              <form onSubmit={handleSaveSettings} className="space-y-6">
+                {/* 1. Brand & Identity */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <h4 className="text-sm font-bold text-gray-900 border-b pb-2.5 flex items-center gap-2">
+                    <Building size={16} className="text-[#e30613]" />
+                    <span>১. ব্র্যান্ড ও ওয়েবসাইটের নাম (Branding, Name & Logo)</span>
                   </h4>
-                  <p className="text-xs text-blue-700 mt-1">
-                    প্রয়োজনে cPanel-এ ইমপোর্টের জন্য নিরাপদ `cpanel-database.sql` ফাইলটি সরাসরি ডাউনলোড করুন।
-                  </p>
-                </div>
-                <button
-                  onClick={handleDownloadSQL}
-                  className="flex items-center gap-2 bg-[#1a3a5c] hover:bg-[#122942] text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors shadow-xs"
-                >
-                  <Download size={14} />
-                  <span>SQL ডাউনলোড করুন</span>
-                </button>
-              </div>
 
-              {/* Reset to Sample Data */}
-              <div className="p-5 bg-red-50 border border-red-200 rounded-xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h4 className="font-bold text-sm text-red-900 flex items-center gap-1.5">
-                    <RefreshCw size={16} />
-                    <span>ডাটা রিসেট (Reset to Default Sample Data)</span>
-                  </h4>
-                  <p className="text-xs text-red-700 mt-1">
-                    লোকাল ক্যাশ বা ডেটা সম্পূর্ণ মুছে ফেলে প্রথম আলোর অরিজিনাল ডেমো ডেটায় ফিরে যেতে পারেন।
-                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        ওয়েবসাইটের নাম (বাংলা) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={siteForm.site_name_bn}
+                        onChange={(e) => setSiteForm({ ...siteForm, site_name_bn: e.target.value })}
+                        placeholder="যেমন: প্রথম আলো"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none font-semibold text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Website Name (English) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={siteForm.site_name_en}
+                        onChange={(e) => setSiteForm({ ...siteForm, site_name_en: e.target.value })}
+                        placeholder="e.g. Prothom Alo"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none font-semibold text-gray-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        স্লোগান / মূল বার্তা (বাংলা)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.tagline_bn}
+                        onChange={(e) => setSiteForm({ ...siteForm, tagline_bn: e.target.value })}
+                        placeholder="অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Tagline / Slogan (English)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.tagline_en}
+                        onChange={(e) => setSiteForm({ ...siteForm, tagline_en: e.target.value })}
+                        placeholder="Online Edition • Fearless in Pursuit of Truth"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1 flex items-center justify-between">
+                        <span>কাস্টম লোগো ছবির লিংক (Custom Logo Image URL)</span>
+                        <span className="text-[10px] text-gray-400 font-normal">ঐচ্ছিক</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={siteForm.logo_url}
+                        onChange={(e) => setSiteForm({ ...siteForm, logo_url: e.target.value })}
+                        placeholder="https://... (খালি রাখলে প্রথম আলোর বিখ্যাত লাল সূর্য ও শিখা প্রতীক ব্যবহৃত হবে)"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        টিপ: কোনো কাস্টম লোগোর ইমেজ URL বসালে তা দৃশ্যমান হবে, খালি রাখলে ডিফল্ট প্রতীক থাকবে।
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">সংস্করণ (বাংলা)</label>
+                        <input
+                          type="text"
+                          value={siteForm.edition_bn}
+                          onChange={(e) => setSiteForm({ ...siteForm, edition_bn: e.target.value })}
+                          placeholder="বাংলাদেশ"
+                          className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Edition (English)</label>
+                        <input
+                          type="text"
+                          value={siteForm.edition_en}
+                          onChange={(e) => setSiteForm({ ...siteForm, edition_en: e.target.value })}
+                          placeholder="Bangladesh"
+                          className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    if (confirm('আপনি কি সমস্ত ডেটা রিসেট করতে চান?')) {
-                      onResetData?.()
-                    }
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors shadow-xs"
-                >
-                  ডেটা রিসেট করুন
-                </button>
+
+                {/* 2. Editorial & Leadership */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <h4 className="text-sm font-bold text-gray-900 border-b pb-2.5 flex items-center gap-2">
+                    <PenTool size={16} className="text-[#e30613]" />
+                    <span>২. সম্পাদকীয় ও প্রকাশক পরিচিতি (Editorial & Publisher Details)</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        সম্পাদক ও প্রকাশক (বাংলা)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.editor_bn}
+                        onChange={(e) => setSiteForm({ ...siteForm, editor_bn: e.target.value })}
+                        placeholder="সম্পাদক ও প্রকাশক: মতিউর রহমান"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Editor & Publisher (English)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.editor_en}
+                        onChange={(e) => setSiteForm({ ...siteForm, editor_en: e.target.value })}
+                        placeholder="Editor & Publisher: Matiur Rahman"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        পোর্টাল সংক্ষিপ্ত বিবরণ / বায়ো (বাংলা)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={siteForm.about_bn}
+                        onChange={(e) => setSiteForm({ ...siteForm, about_bn: e.target.value })}
+                        placeholder="প্রথম আলো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় দৈনিক..."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Portal Brief Bio (English)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={siteForm.about_en}
+                        onChange={(e) => setSiteForm({ ...siteForm, about_en: e.target.value })}
+                        placeholder="Prothom Alo is the leading and most trusted news publication..."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Office & Contact Details */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <h4 className="text-sm font-bold text-gray-900 border-b pb-2.5 flex items-center gap-2">
+                    <Phone size={16} className="text-[#e30613]" />
+                    <span>৩. যোগাযোগের তথ্য ও অফিসের ঠিকানা (Office & Contact Info)</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        প্রধান কার্যালয় ঠিকানা (বাংলা)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.address_bn}
+                        onChange={(e) => setSiteForm({ ...siteForm, address_bn: e.target.value })}
+                        placeholder="প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Head Office Address (English)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.address_en}
+                        onChange={(e) => setSiteForm({ ...siteForm, address_en: e.target.value })}
+                        placeholder="Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        ফোন / হেল্পলাইন নম্বর
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.phone}
+                        onChange={(e) => setSiteForm({ ...siteForm, phone: e.target.value })}
+                        placeholder="+৮৮০ ২ ৮১৮০০৭৮-৮১"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        সাধারণ যোগাযোগ ইমেইল
+                      </label>
+                      <input
+                        type="email"
+                        value={siteForm.email}
+                        onChange={(e) => setSiteForm({ ...siteForm, email: e.target.value })}
+                        placeholder="info@prothomalo.com"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        বিজ্ঞাপনের যোগাযোগ ইমেইল
+                      </label>
+                      <input
+                        type="email"
+                        value={siteForm.ad_email}
+                        onChange={(e) => setSiteForm({ ...siteForm, ad_email: e.target.value })}
+                        placeholder="ads@prothomalo.com"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Social Media Links */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <h4 className="text-sm font-bold text-gray-900 border-b pb-2.5 flex items-center gap-2">
+                    <Share2 size={16} className="text-[#e30613]" />
+                    <span>৪. সামাজিক যোগাযোগ লিংক (Social Media Links)</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">Facebook URL</label>
+                      <input
+                        type="url"
+                        value={siteForm.facebook_url}
+                        onChange={(e) => setSiteForm({ ...siteForm, facebook_url: e.target.value })}
+                        placeholder="https://facebook.com/..."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">Twitter / X URL</label>
+                      <input
+                        type="url"
+                        value={siteForm.twitter_url}
+                        onChange={(e) => setSiteForm({ ...siteForm, twitter_url: e.target.value })}
+                        placeholder="https://twitter.com/..."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">YouTube URL</label>
+                      <input
+                        type="url"
+                        value={siteForm.youtube_url}
+                        onChange={(e) => setSiteForm({ ...siteForm, youtube_url: e.target.value })}
+                        placeholder="https://youtube.com/..."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">Instagram URL</label>
+                      <input
+                        type="url"
+                        value={siteForm.instagram_url}
+                        onChange={(e) => setSiteForm({ ...siteForm, instagram_url: e.target.value })}
+                        placeholder="https://instagram.com/..."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">LinkedIn URL</label>
+                      <input
+                        type="url"
+                        value={siteForm.linkedin_url}
+                        onChange={(e) => setSiteForm({ ...siteForm, linkedin_url: e.target.value })}
+                        placeholder="https://linkedin.com/..."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Copyright Notices */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <h4 className="text-sm font-bold text-gray-900 border-b pb-2.5 flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-[#e30613]" />
+                    <span>৫. কপিরাইট ও ফুটার টেক্সট (Copyright Notice)</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        কপিরাইট টেক্সট (বাংলা)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.copyright_bn}
+                        onChange={(e) => setSiteForm({ ...siteForm, copyright_bn: e.target.value })}
+                        placeholder="স্বত্ব © ২০২৬ প্রথম আলো | সর্বস্বত্ব সংরক্ষিত।"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">
+                        Copyright Notice (English)
+                      </label>
+                      <input
+                        type="text"
+                        value={siteForm.copyright_en}
+                        onChange={(e) => setSiteForm({ ...siteForm, copyright_en: e.target.value })}
+                        placeholder="Copyright © 2026 Prothom Alo | All rights reserved."
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save Bar */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSavingSettings}
+                    className="flex items-center gap-2 bg-[#e30613] hover:bg-red-700 text-white px-7 py-3 rounded-lg text-sm font-bold transition-all shadow-md disabled:opacity-50"
+                  >
+                    <Save size={16} />
+                    <span>{isSavingSettings ? 'সংরক্ষণ হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Database Status, 1-Click Backup Export & Reset Card */}
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-5">
+                <h4 className="text-sm font-bold text-gray-900 border-b pb-2 flex items-center gap-2">
+                  <Database size={16} className="text-[#1a3a5c]" />
+                  <span>ডাটাবেজ সিস্টেম হেলথ ও ব্যাকআপ টুলস</span>
+                </h4>
+
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3 bg-white rounded-lg border">
+                      <span className="text-gray-500 block">ডাটাবেজ স্ট্যাটাস:</span>
+                      <span className={`font-bold text-sm ${serverHealth.database === 'connected' ? 'text-green-700' : 'text-amber-700'}`}>
+                        {serverHealth.database === 'connected' ? 'Connected (MySQL Online)' : 'Standalone Sync'}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-white rounded-lg border">
+                      <span className="text-gray-500 block">হোস্টিং কনফিগ:</span>
+                      <span className="font-bold text-gray-800 text-sm">sql201.infinityfree.com</span>
+                    </div>
+                    <div className="p-3 bg-white rounded-lg border">
+                      <span className="text-gray-500 block">অ্যাডমিন ইউজার:</span>
+                      <span className="font-bold text-gray-800 text-sm">admin@mknews.com</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Database 1-Click Backup Export */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
+                    <div>
+                      <h5 className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
+                        <Download size={14} />
+                        <span>cPanel / phpMyAdmin SQL ব্যাকআপ ফাইল</span>
+                      </h5>
+                      <p className="text-[11px] text-blue-700 mt-0.5">
+                        নিরাপদ `cpanel-database.sql` ফাইলটি ডাউনলোড করুন।
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadSQL}
+                      className="flex items-center gap-1.5 bg-[#1a3a5c] hover:bg-[#122942] text-white font-bold text-xs px-3.5 py-2 rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      <Download size={13} />
+                      <span>SQL ডাউনলোড</span>
+                    </button>
+                  </div>
+
+                  {/* Reset to Sample Data */}
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3">
+                    <div>
+                      <h5 className="font-bold text-xs text-red-900 flex items-center gap-1.5">
+                        <RefreshCw size={14} />
+                        <span>ডাটা রিসেট (Sample Data)</span>
+                      </h5>
+                      <p className="text-[11px] text-red-700 mt-0.5">
+                        লোকাল ক্যাশ মুছে ডিফল্ট ডেমো ডেটায় ফিরুন।
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('আপনি কি সমস্ত ডেটা রিসেট করতে চান?')) {
+                          onResetData?.()
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      ডেটা রিসেট
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
