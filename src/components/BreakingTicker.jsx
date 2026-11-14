@@ -19,16 +19,25 @@ export default function BreakingTicker({ items = [], lang = 'bn' }) {
         {/* Ticker Animation Strip */}
         <div className="flex-1 overflow-hidden relative group">
           <div className="ticker-track flex items-center whitespace-nowrap text-sm font-medium group-hover:[animation-play-state:paused]">
-            {marqueeItems.map((item, index) => (
-              <Link
-                key={`${item.id}-${index}`}
-                to={`/article/${item.slug}`}
-                className="inline-flex items-center hover:underline hover:text-yellow-200 transition-colors mr-8 group/link"
-              >
-                <span>{lang === 'bn' ? item.title_bn : item.title_en}</span>
-                <span className="mx-4 text-white/40 text-xs">◆</span>
-              </Link>
-            ))}
+            {marqueeItems.map((item, index) => {
+              const headline = (lang === 'bn' ? item.title_bn : item.title_en) ||
+                item.title_bn ||
+                item.title_en ||
+                item.title ||
+                ''
+              const targetUrl = item.slug ? `/article/${item.slug}` : '/'
+
+              return (
+                <Link
+                  key={`${item.id || index}-${index}`}
+                  to={targetUrl}
+                  className="inline-flex items-center hover:underline hover:text-yellow-200 transition-colors mr-8 group/link"
+                >
+                  <span>{headline}</span>
+                  <span className="mx-4 text-white/40 text-xs">◆</span>
+                </Link>
+              )
+            })}
           </div>
         </div>
       </div>

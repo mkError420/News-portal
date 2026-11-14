@@ -280,6 +280,8 @@ export default function App() {
             lang={lang}
             onLangChange={handleLangChange}
             settings={newsData.settings}
+            categories={newsData.categories}
+            articles={newsData.articles}
           />
 
           {/* Breaking News Ticker (Hide on login page) */}
@@ -304,6 +306,8 @@ export default function App() {
                 opinions={newsData.opinions}
                 photos={newsData.photos}
                 videos={newsData.videos}
+                categories={newsData.categories}
+                settings={newsData.settings}
                 lang={lang}
               />
             }
@@ -325,6 +329,7 @@ export default function App() {
             element={
               <CategoryPage
                 articles={newsData.articles}
+                categories={newsData.categories}
                 lang={lang}
               />
             }
@@ -336,6 +341,7 @@ export default function App() {
             element={
               <ArticlePage
                 articles={newsData.articles}
+                categories={newsData.categories}
                 lang={lang}
               />
             }
@@ -437,7 +443,13 @@ export default function App() {
       </main>
 
       {/* Footer (Hide on admin dashboard) */}
-      {!location.pathname.startsWith('/admin') && <Footer lang={lang} settings={newsData.settings} />}
+      {!location.pathname.startsWith('/admin') && (
+        <Footer
+          lang={lang}
+          settings={newsData.settings}
+          categories={newsData.categories}
+        />
+      )}
     </div>
   )
 }

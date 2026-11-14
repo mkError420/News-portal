@@ -66,6 +66,14 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  async recordArticleView(id) {
+    try {
+      await client.post(`/articles?action=view&id=${encodeURIComponent(id)}`)
+    } catch {
+      // view tracking is non-blocking
+    }
+  },
+
   async getBreakingNews() {
     const res = await client.get('/breaking-news')
     if (!Array.isArray(res.data?.breakingNews)) {

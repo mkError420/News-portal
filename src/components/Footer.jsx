@@ -1,14 +1,33 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Smartphone, Mail, Phone, MapPin } from 'lucide-react'
 import { FacebookIcon, TwitterIcon, YoutubeIcon, InstagramIcon, LinkedinIcon } from './SocialIcons.jsx'
 import ProthomAloLogo from './ProthomAloLogo.jsx'
 import { NAV_ITEMS, UI_TEXT } from '../utils.js'
 
-export default function Footer({ lang = 'bn', settings = null }) {
+export default function Footer({ lang = 'bn', settings = null, categories = [] }) {
   const t = UI_TEXT[lang] || UI_TEXT.bn
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
     (lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo')
+
+  const dynamicCategories = useMemo(() => {
+    if (Array.isArray(categories) && categories.length > 0) {
+      return categories.map((cat) => {
+        const slug = (cat.slug || '').toLowerCase().trim()
+        let path = `/category/${slug}`
+        if (slug === 'opinion') path = '/opinion'
+        if (slug === 'photos') path = '/photos'
+        if (slug === 'video' || slug === 'videos') path = '/video'
+        return {
+          path,
+          label_bn: cat.name_bn || cat.name || slug,
+          label_en: cat.name_en || cat.name || slug,
+        }
+      })
+    }
+    return NAV_ITEMS.slice(1)
+  }, [categories])
 
   return (
     <footer className="bg-[#1a1a1a] text-gray-300 mt-12 border-t-4 border-[#e30613] font-bengali">
@@ -89,7 +108,7 @@ export default function Footer({ lang = 'bn', settings = null }) {
             {lang === 'bn' ? 'বিভাগসমূহ' : 'Categories'}
           </h4>
           <ul className="space-y-2 text-xs">
-            {NAV_ITEMS.slice(1, 8).map((cat) => (
+            {dynamicCategories.slice(0, 7).map((cat) => (
               <li key={cat.path}>
                 <Link to={cat.path} className="hover:text-white transition-colors flex items-center gap-1 text-gray-400">
                   <span className="text-red-600">›</span>
@@ -106,7 +125,7 @@ export default function Footer({ lang = 'bn', settings = null }) {
             {lang === 'bn' ? 'অন্যান্য' : 'More Features'}
           </h4>
           <ul className="space-y-2 text-xs">
-            {NAV_ITEMS.slice(8).map((cat) => (
+            {dynamicCategories.slice(7, 14).map((cat) => (
               <li key={cat.path}>
                 <Link to={cat.path} className="hover:text-white transition-colors flex items-center gap-1 text-gray-400">
                   <span className="text-red-600">›</span>

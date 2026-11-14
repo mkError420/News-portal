@@ -22,6 +22,7 @@ import { FacebookIcon, TwitterIcon } from '../components/SocialIcons.jsx'
 import NewsCard from '../components/NewsCard.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
+import { api } from '../api.js'
 import {
   formatBengaliDate,
   formatEnglishDate,
@@ -32,9 +33,11 @@ import {
   toBengaliNumber,
 } from '../utils.js'
 
-export default function ArticlePage({ articles = [], lang = 'bn' }) {
+export default function ArticlePage({ articles = [], categories = [], lang = 'bn' }) {
   const { slug } = useParams()
-  const article = articles.find((a) => a.slug === slug) || articles[0]
+  const article = articles.find((a) => a.slug === slug || String(a.id) === String(slug)) ||
+    articles.find((a) => a.slug === slug) ||
+    articles[0]
 
   // Reader state
   const [fontSizeLevel, setFontSizeLevel] = useState(1) // 0: small, 1: normal, 2: large
@@ -62,10 +65,13 @@ export default function ArticlePage({ articles = [], lang = 'bn' }) {
   const [authorName, setAuthorName] = useState('')
   const [commentText, setCommentText] = useState('')
 
-  // Scroll to top on article change
+  // Scroll to top and record view
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [slug])
+    if (article?.id) {
+      api.recordArticleView(article.id)
+    }
+  }, [slug, article?.id])
 
   if (!article) {
     return (
@@ -86,7 +92,12 @@ export default function ArticlePage({ articles = [], lang = 'bn' }) {
   const author = (lang === 'bn' ? article.author_bn : article.author_en) || article.author_bn || article.author || 'প্রতিবেদক'
   const authorRole = (lang === 'bn' ? article.author_role_bn : article.author_role_en) || article.author_role_bn || 'প্রথম আলো'
   const catKey = (article.category || 'national').toLowerCase()
-  const catTitle = lang === 'bn' ? (CATEGORIES_BN[catKey] || article.category) : (CATEGORIES_EN[catKey] || article.category)
+  const matchedCat = (categories || []).find(
+    (c) => (c.slug || '').toLowerCase() === catKey || (c.name || '').toLowerCase() === catKey
+  )
+  const catTitle = lang === 'bn'
+    ? (matchedCat?.name_bn || CATEGORIES_BN[catKey] || article.category)
+    : (matchedCat?.name_en || CATEGORIES_EN[catKey] || article.category)
 
   const pubDateStr = lang === 'bn' ? formatBengaliDate(article.date) : formatEnglishDate(article.date)
   const relativeTime = formatRelativeTime(article.date, lang)
@@ -214,9 +225,8 @@ export default function ArticlePage({ articles = [], lang = 'bn' }) {
 
               <button
                 onClick={() => setIsPlayingAudio(!isPlayingAudio)}
-                className={`ml-3 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
-                  isPlayingAudio ? 'bg-red-600 text-white' : 'bg-white border text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`ml-3 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${isPlayingAudio ? 'bg-red-600 text-white' : 'bg-white border text-gray-700 hover:bg-gray-100'
+                  }`}
               >
                 {isPlayingAudio ? <VolumeX size={13} /> : <Volume2 size={13} />}
                 <span>{isPlayingAudio ? (lang === 'bn' ? 'থামান' : 'Stop') : (lang === 'bn' ? 'শুনুন' : 'Listen')}</span>

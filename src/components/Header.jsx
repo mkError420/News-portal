@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { Menu, X, Search, Globe, User, Bell, LogOut, Flame } from 'lucide-react'
 import ProthomAloLogo from './ProthomAloLogo.jsx'
@@ -12,7 +12,14 @@ import {
 } from '../utils.js'
 import { api } from '../api.js'
 
-export default function Header({ lang = 'bn', onLangChange, onSearch, settings = null }) {
+export default function Header({
+  lang = 'bn',
+  onLangChange,
+  onSearch,
+  settings = null,
+  categories = [],
+  articles = [],
+}) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
@@ -61,6 +68,57 @@ export default function Header({ lang = 'bn', onLangChange, onSearch, settings =
       alert(lang === 'bn' ? 'লগআউট করা যায়নি। আবার চেষ্টা করুন।' : 'Unable to log out. Please try again.')
     }
   }
+
+  // --- Dynamic Category Navigation Bar (synced with dashboard) ---
+  const navItems = useMemo(() => {
+    const list = [{ path: '/', label_bn: 'প্রচ্ছদ', label_en: 'Home' }]
+
+    if (Array.isArray(categories) && categories.length > 0) {
+      categories.forEach((cat) => {
+        const slug = (cat.slug || '').toLowerCase().trim()
+        if (!slug || slug === 'home' || slug === 'index') return
+        let path = `/category/${slug}`
+        if (slug === 'opinion') path = '/opinion'
+        if (slug === 'photos') path = '/photos'
+        if (slug === 'video' || slug === 'videos') path = '/video'
+        list.push({
+          path,
+          label_bn: cat.name_bn || cat.name || slug,
+          label_en: cat.name_en || cat.name || slug,
+        })
+      })
+    } else {
+      list.push(...NAV_ITEMS.slice(1))
+    }
+
+    if (!list.some((item) => item.path === '/epaper')) {
+      list.push({ path: '/epaper', label_bn: 'ই-পেপার', label_en: 'ePaper' })
+    }
+
+    return list
+  }, [categories])
+
+  // --- Dynamic Trending Topics (derived from latest article tags) ---
+  const dynamicTrending = useMemo(() => {
+    const tagSet = new Set()
+    const list = []
+    if (Array.isArray(articles) && articles.length > 0) {
+      for (const a of articles) {
+        const tags = lang === 'bn' ? (a.tags_bn || a.tags || []) : (a.tags_en || a.tags || [])
+        const arr = Array.isArray(tags) ? tags : typeof tags === 'string' ? tags.split(',') : []
+        for (const t of arr) {
+          const clean = String(t).trim()
+          if (clean && !tagSet.has(clean.toLowerCase())) {
+            tagSet.add(clean.toLowerCase())
+            list.push({ bn: clean, en: clean, query: clean })
+            if (list.length >= 8) break
+          }
+        }
+        if (list.length >= 8) break
+      }
+    }
+    return list.length > 0 ? list : TRENDING_TOPICS
+  }, [articles, lang])
 
   return (
     <>
@@ -201,7 +259,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch, settings =
       <nav className="bg-white border-b-2 border-[#e30613] shadow-sm sticky top-0 z-30 font-bengali">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
           <div className="flex items-center overflow-x-auto scrollbar-none py-0">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
@@ -229,7 +287,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch, settings =
             <span>{lang === 'bn' ? 'আলোচিত বিষয়:' : 'Trending Topics:'}</span>
           </span>
           <div className="flex items-center gap-1.5 flex-nowrap">
-            {TRENDING_TOPICS.map((topic, i) => (
+            {dynamicTrending.map((topic, i) => (
               <button
                 key={i}
                 onClick={() => {
@@ -325,7 +383,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch, settings =
 
         {/* Category Links */}
         <div className="flex-1 overflow-y-auto py-2">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}

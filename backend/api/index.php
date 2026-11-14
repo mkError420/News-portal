@@ -519,6 +519,16 @@ if ($resource === 'articles') {
         json_response(['articles' => $items]);
     }
 
+    // INCREMENT ARTICLE VIEW COUNT
+    if ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'view') {
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('UPDATE articles SET views = views + 1 WHERE id = ?');
+            $stmt->execute([$id]);
+        }
+        json_response(['success' => true]);
+    }
+
     // CREATE OR UPDATE ARTICLE
     if ($method === 'POST' || $method === 'PUT') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);

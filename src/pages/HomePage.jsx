@@ -18,7 +18,15 @@ import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
 import { PRAYER_TIMES, CURRENCY_RATES, formatRelativeTime } from '../utils.js'
 
-export default function HomePage({ articles = [], opinions = [], photos = [], videos = [], lang = 'bn' }) {
+export default function HomePage({
+  articles = [],
+  opinions = [],
+  photos = [],
+  videos = [],
+  categories = [],
+  settings = null,
+  lang = 'bn',
+}) {
   // Sidebar tab state: 'latest' | 'mostRead'
   const [sidebarTab, setSidebarTab] = useState('latest')
   // Poll state
@@ -34,17 +42,46 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
   const leadIds = new Set([leadArticle?.id, ...otherLeadArticles.map((article) => article.id)])
   const topStories = articles.filter((article) => !leadIds.has(article.id)).slice(0, 4)
 
-  // Categorized articles
-  const nationalArticles = articles.filter((a) => a.category === 'national' || a.category === 'National')
-  const politicsArticles = articles.filter((a) => a.category === 'politics' || a.category === 'Politics')
-  const sportsArticles = articles.filter((a) => a.category === 'sports' || a.category === 'Sports')
-  const economyArticles = articles.filter((a) => a.category === 'economy' || a.category === 'Economy')
-  const entertainmentArticles = articles.filter((a) => a.category === 'entertainment' || a.category === 'Entertainment')
-  const techArticles = articles.filter((a) => a.category === 'technology' || a.category === 'Technology')
-  const internationalArticles = articles.filter((a) => a.category === 'international' || a.category === 'International')
-  const healthArticles = articles.filter((a) => a.category === 'health' || a.category === 'Health')
-  const lifestyleArticles = articles.filter((a) => a.category === 'lifestyle' || a.category === 'Lifestyle')
-  const educationArticles = articles.filter((a) => a.category === 'education' || a.category === 'Education')
+  // Categorized articles helper
+  const getCatArticles = (slug) => {
+    const s = (slug || '').toLowerCase().trim()
+    return articles.filter((a) => {
+      const c = (a.category || '').toLowerCase().trim()
+      return c === s
+    })
+  }
+
+  const nationalArticles = getCatArticles('national')
+  const politicsArticles = getCatArticles('politics')
+  const sportsArticles = getCatArticles('sports')
+  const economyArticles = getCatArticles('economy')
+  const entertainmentArticles = getCatArticles('entertainment')
+  const techArticles = getCatArticles('technology')
+  const internationalArticles = getCatArticles('international')
+  const healthArticles = getCatArticles('health')
+  const lifestyleArticles = getCatArticles('lifestyle')
+  const educationArticles = getCatArticles('education')
+
+  // Identify custom categories created dynamically in dashboard
+  const standardSlugs = new Set([
+    'national',
+    'politics',
+    'sports',
+    'economy',
+    'entertainment',
+    'technology',
+    'international',
+    'health',
+    'lifestyle',
+    'education',
+    'opinion',
+    'photos',
+    'video',
+  ])
+  const customCategorySections = (categories || []).filter((cat) => {
+    const s = (cat.slug || '').toLowerCase().trim()
+    return !standardSlugs.has(s) && articles.some((a) => (a.category || '').toLowerCase().trim() === s)
+  })
 
   // Latest articles (sorted by date descending)
   const latestArticles = [...articles].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 5)
@@ -346,6 +383,27 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
               ))}
             </div>
           </section>
+
+          {/* Dynamic Extra Custom Categories Created in Dashboard */}
+          {customCategorySections.map((cat) => {
+            const catArticles = getCatArticles(cat.slug)
+            if (catArticles.length === 0) return null
+            return (
+              <section key={cat.slug}>
+                <SectionHeader
+                  title_bn={cat.name_bn || cat.name || cat.slug}
+                  title_en={cat.name_en || cat.name || cat.slug}
+                  lang={lang}
+                  link={`/category/${cat.slug}`}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {catArticles.slice(0, 4).map((art) => (
+                    <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+                  ))}
+                </div>
+              </section>
+            )
+          })}
         </div>
 
         {/* ================= RIGHT SIDEBAR (4 cols) ================= */}

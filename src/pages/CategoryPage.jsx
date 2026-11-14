@@ -6,27 +6,39 @@ import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
 import { CATEGORIES_BN, CATEGORIES_EN } from '../utils.js'
 
-export default function CategoryPage({ articles = [], lang = 'bn' }) {
+export default function CategoryPage({ articles = [], categories = [], lang = 'bn' }) {
   const { slug } = useParams()
   const catKey = (slug || 'national').toLowerCase()
   const [selectedSubcat, setSelectedSubcat] = useState('all')
   const [visibleCount, setVisibleCount] = useState(9)
 
-  const catTitleBn = CATEGORIES_BN[catKey] || slug
-  const catTitleEn = CATEGORIES_EN[catKey] || slug
-  const categoryTitle = lang === 'bn' ? catTitleBn : catTitleEn
-
-  // Filter articles by category
-  const filtered = articles.filter(
-    (a) => (a.category || '').toLowerCase() === catKey
+  const matchedCat = (categories || []).find(
+    (c) => (c.slug || '').toLowerCase() === catKey || (c.name || '').toLowerCase() === catKey
   )
 
-  // Fallback if low article count for this specific category
-  const displayArticles = filtered.length > 0 ? filtered : articles
+  const catTitleBn = matchedCat?.name_bn || CATEGORIES_BN[catKey] || matchedCat?.name || slug
+  const catTitleEn = matchedCat?.name_en || CATEGORIES_EN[catKey] || matchedCat?.name || slug
+  const categoryTitle = lang === 'bn' ? catTitleBn : catTitleEn
 
-  const lead = displayArticles[0]
-  const rest = displayArticles.slice(1, visibleCount)
-  const mostReadCategory = [...displayArticles].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
+  // Filter articles by category (slug, en name, or bn name)
+  const filtered = articles.filter((a) => {
+    const artCat = (a.category || '').toLowerCase().trim()
+    return (
+      artCat === catKey ||
+      (matchedCat && (
+        artCat === (matchedCat.slug || '').toLowerCase() ||
+        artCat === (matchedCat.name_en || '').toLowerCase() ||
+        artCat === (matchedCat.name_bn || '').toLowerCase()
+      ))
+    )
+  })
+
+  const hasArticles = filtered.length > 0
+  const displayArticles = hasArticles ? filtered : articles.slice(0, 8)
+
+  const lead = hasArticles ? filtered[0] : null
+  const rest = hasArticles ? filtered.slice(1, visibleCount) : displayArticles
+  const mostReadCategory = [...(hasArticles ? filtered : articles)].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
 
   // Subcategory filters by category
   const subcategoryMap = {
@@ -94,11 +106,10 @@ export default function CategoryPage({ articles = [], lang = 'bn' }) {
             <button
               key={sub.id}
               onClick={() => setSelectedSubcat(sub.id)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                selectedSubcat === sub.id
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${selectedSubcat === sub.id
                   ? 'bg-[#e30613] text-white shadow'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               {lang === 'bn' ? sub.bn : sub.en}
             </button>
@@ -110,6 +121,15 @@ export default function CategoryPage({ articles = [], lang = 'bn' }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Content Area (8 cols) */}
         <div className="lg:col-span-8 space-y-8">
+          {/* Empty Category Notice if no articles found */}
+          {!hasArticles && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs font-semibold">
+              {lang === 'bn'
+                ? `"${categoryTitle}" বিভাগে এখনও কোনো সংবাদ নেই। নিচে অন্যান্য বিভাগের সর্বশেষ সংবাদ দেখুন:`
+                : `No articles published in "${categoryTitle}" yet. Below are latest stories across other sections:`}
+            </div>
+          )}
+
           {/* Category Lead Story */}
           {lead && (
             <div>
