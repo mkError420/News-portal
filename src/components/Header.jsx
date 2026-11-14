@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Search, Globe, User, Bell, Sparkles } from 'lucide-react'
+import { Menu, X, Search, Globe, User, Bell, LogOut } from 'lucide-react'
 import { NAV_ITEMS, formatBengaliDate, formatEnglishDate, UI_TEXT } from '../utils.js'
 import { api } from '../api.js'
 
@@ -38,6 +38,15 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
       setSearchOpen(false)
       setMobileOpen(false)
     }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await api.logout()
+    } catch {}
+    localStorage.removeItem('admin_auth')
+    setIsAuth(false)
+    navigate('/')
   }
 
   return (
@@ -79,19 +88,20 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
 
             <span className="text-gray-500 hidden sm:inline">|</span>
 
-            {/* Dedicated Login Link */}
+            {/* Login / Logout Link (No redundant Dashboard in navbar) */}
             {isAuth ? (
-              <Link
-                to="/admin"
-                className="flex items-center gap-1 text-yellow-300 hover:text-white font-bold transition-colors"
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 text-gray-200 hover:text-red-300 transition-colors font-medium text-xs"
+                title={lang === 'bn' ? 'লগআউট করুন' : 'Logout'}
               >
-                <Sparkles size={12} />
-                <span>{lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}</span>
-              </Link>
+                <LogOut size={12} />
+                <span>{lang === 'bn' ? 'লগআউট' : 'Logout'}</span>
+              </button>
             ) : (
               <Link
                 to="/login"
-                className="flex items-center gap-1 text-gray-200 hover:text-yellow-300 transition-colors font-medium"
+                className="flex items-center gap-1 text-gray-200 hover:text-yellow-300 transition-colors font-medium text-xs"
               >
                 <User size={12} />
                 <span>{t.login}</span>
@@ -103,7 +113,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
               to="/admin"
               className="hidden md:inline-flex items-center gap-1 bg-[#e30613] hover:bg-red-700 text-white px-2.5 py-0.5 rounded text-[11px] font-semibold transition-colors"
             >
-              <span>{lang === 'bn' ? 'অ্যাডমিন প্যানেল' : 'Admin'}</span>
+              <span>{lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
             </Link>
           </div>
         </div>
@@ -295,7 +305,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
             onClick={() => setMobileOpen(false)}
             className="block px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
           >
-            ⚡ {lang === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Admin CMS Portal'}
+            ⚡ {lang === 'bn' ? 'অ্যাডমিন প্যানেল' : 'Admin Panel'}
           </NavLink>
         </div>
 
@@ -311,13 +321,25 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
             <Globe size={13} />
             <span>{lang === 'bn' ? 'Switch to English' : 'বাংলা সংস্করণ'}</span>
           </button>
-          <Link
-            to="/login"
-            onClick={() => setMobileOpen(false)}
-            className="text-red-600 font-bold hover:underline"
-          >
-            {isAuth ? (lang === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard') : t.login}
-          </Link>
+          {isAuth ? (
+            <button
+              onClick={() => {
+                handleLogout()
+                setMobileOpen(false)
+              }}
+              className="text-red-600 font-bold hover:underline"
+            >
+              {lang === 'bn' ? 'লগআউট' : 'Logout'}
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              onClick={() => setMobileOpen(false)}
+              className="text-red-600 font-bold hover:underline"
+            >
+              {t.login}
+            </Link>
+          )}
         </div>
       </aside>
     </>
