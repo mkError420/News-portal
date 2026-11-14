@@ -29,7 +29,6 @@ const LANG_STORAGE_KEY = 'prothom_alo_portal_lang'
 
 export default function App() {
   const location = useLocation()
-  const isAdminOrLoginPage = location.pathname.startsWith('/admin') || location.pathname === '/login'
 
   // 1. Language State ('bn' | 'en')
   const [lang, setLang] = useState(() => {
@@ -65,27 +64,38 @@ export default function App() {
     return defaultData
   })
 
-  // 3. Sync with backend API if connected
+  // 3. Load authoritative news from the backend when it is available.
   useEffect(() => {
-    // Check if backend API has articles
-    api.getArticles().then((serverArticles) => {
-      if (serverArticles && serverArticles.length > 0) {
-        setNewsData((prev) => ({
-          ...prev,
-          articles: serverArticles,
-        }))
-      }
-    })
+    let active = true
+    const syncData = async () => {
+      const results = await Promise.allSettled([api.getArticles(), api.getBreakingNews()])
+      if (!active) return
 
-    // Check if backend API has breaking news
-    api.getBreakingNews().then((serverBreaking) => {
-      if (serverBreaking && serverBreaking.length > 0) {
-        setNewsData((prev) => ({
-          ...prev,
-          breakingNews: serverBreaking,
-        }))
+      const updates = {}
+      if (results[0].status === 'fulfilled') {
+        updates.articles = results[0].value
+      } else {
+        console.error('Unable to load articles from the database:', results[0].reason)
       }
-    })
+      if (results[1].status === 'fulfilled') {
+        updates.breakingNews = results[1].value
+      } else {
+        console.error('Unable to load breaking news from the database:', results[1].reason)
+      }
+
+      setNewsData((prev) => {
+        const updated = { ...prev, ...updates }
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+        } catch (err) {
+          console.error('LocalStorage save error:', err)
+        }
+        return updated
+      })
+    }
+
+    syncData()
+    return () => { active = false }
   }, [])
 
   // Persist data updates to LocalStorage
@@ -140,13 +150,8 @@ export default function App() {
     persistData(updated)
   }
 
-  // --- Reset Data Handler ---
-  const handleResetData = () => {
-    persistData(defaultData)
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#f4f4f4] text-[#1a1a1a]">
+    <div className="min-h-screen flex flex-col bg-[#ffffff] text-[#1a1a1a]">
       <Helmet>
         <html lang={lang} />
         <title>
@@ -288,7 +293,6 @@ export default function App() {
                 onDeleteArticle={handleDeleteArticle}
                 onAddBreaking={handleAddBreaking}
                 onDeleteBreaking={handleDeleteBreaking}
-                onResetData={handleResetData}
                 lang={lang}
               />
             }

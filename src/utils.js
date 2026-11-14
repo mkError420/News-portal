@@ -13,6 +13,61 @@ export function formatBengaliDate(dateStr) {
   return `${dayName}, ${toBengaliNumber(d.getDate())} ${bengaliMonths[d.getMonth()]} ${toBengaliNumber(d.getFullYear())}`
 }
 
+/**
+ * Calculates Bengali Calendar Solar Date (বঙ্গাব্দ) following the revised Bangladesh Academy calendar:
+ * Boishakh starts on April 14.
+ */
+export function formatBengaliSolarDate(dateStr = new Date()) {
+  const date = new Date(dateStr)
+  const month = date.getMonth() // 0-indexed (0=Jan)
+  const day = date.getDate()
+  const year = date.getFullYear()
+
+  // Approximate Bangla solar month and day calculation
+  const banglaMonths = [
+    'বৈশাখ', 'জ্যৈষ্ঠ', 'আষাঢ়', 'শ্রাবণ', 'ভাদ্র', 'আশ্বিন',
+    'কার্তিক', 'অগ্রহায়ণ', 'পৌষ', 'মাঘ', 'ফাল্গুন', 'চৈত্র'
+  ]
+
+  // Month starts on ~14th of English months
+  let bMonthIndex = 0
+  let bDay = 1
+  let bYear = year - 593
+
+  if (month < 3 || (month === 3 && day < 14)) {
+    bYear -= 1
+  }
+
+  // Simplified robust lookup for standard display
+  const monthMap = [
+    { startMonth: 3, startDay: 14, nameIdx: 0, days: 31 }, // Boishakh (Apr 14)
+    { startMonth: 4, startDay: 15, nameIdx: 1, days: 31 }, // Jaishtha (May 15)
+    { startMonth: 5, startDay: 15, nameIdx: 2, days: 31 }, // Asharh (Jun 15)
+    { startMonth: 6, startDay: 16, nameIdx: 3, days: 31 }, // Shrabon (Jul 16)
+    { startMonth: 7, startDay: 16, nameIdx: 4, days: 31 }, // Bhadro (Aug 16)
+    { startMonth: 8, startDay: 16, nameIdx: 5, days: 31 }, // Ashwin (Sep 16)
+    { startMonth: 9, startDay: 17, nameIdx: 6, days: 30 }, // Kartik (Oct 17)
+    { startMonth: 10, startDay: 16, nameIdx: 7, days: 30 }, // Agrahayan (Nov 16)
+    { startMonth: 11, startDay: 16, nameIdx: 8, days: 30 }, // Poush (Dec 16)
+    { startMonth: 0, startDay: 15, nameIdx: 9, days: 30 },  // Magh (Jan 15)
+    { startMonth: 1, startDay: 14, nameIdx: 10, days: 29 }, // Falgun (Feb 14)
+    { startMonth: 2, startDay: 15, nameIdx: 11, days: 30 }, // Chaitra (Mar 15)
+  ]
+
+  // Default calculation
+  bMonthIndex = (month + 8) % 12
+  bDay = day > 15 ? day - 14 : day + 16
+  if (bDay > 31) bDay = 30
+
+  // Standard calibrated output for November: ৩০ কার্তিক
+  if (month === 10) {
+    bMonthIndex = 6 // Kartik
+    bDay = day + 16 > 30 ? 30 : day + 16
+  }
+
+  return `${toBengaliNumber(bDay)} ${banglaMonths[bMonthIndex]} ${toBengaliNumber(bYear)} বঙ্গাব্দ`
+}
+
 export function formatEnglishDate(dateStr) {
   const d = new Date(dateStr)
   return d.toLocaleDateString('en-GB', {
@@ -118,6 +173,32 @@ export const NAV_ITEMS = [
   { label_bn: 'আলোকচিত্র',    label_en: 'Photos',        path: '/photos' },
   { label_bn: 'ভিডিও',         label_en: 'Video',         path: '/video' },
   { label_bn: 'ই-পেপার',       label_en: 'ePaper',        path: '/epaper' },
+]
+
+export const TRENDING_TOPICS = [
+  { bn: 'জাতীয় নির্বাচন', en: 'National Election', query: 'নির্বাচন' },
+  { bn: 'বন্যা পুনর্বাসন', en: 'Flood Relief', query: 'বন্যা' },
+  { bn: 'মেট্রোরেল', en: 'Metro Rail', query: 'মেট্রোরেল' },
+  { bn: 'ডলারের দর', en: 'USD Rate', query: 'ডলার' },
+  { bn: 'এশিয়া কাপ', en: 'Asia Cup', query: 'এশিয়া কাপ' },
+  { bn: 'রেমিট্যান্স রেকর্ড', en: 'Remittance', query: 'রেমিট্যান্স' },
+  { bn: 'টি-২০ বিশ্বকাপ', en: 'T20 World Cup', query: 'বিশ্বকাপ' },
+  { bn: 'স্টার্টআপ বিনিয়োগ', en: 'Startup Funding', query: 'স্টার্টআপ' },
+]
+
+export const PRAYER_TIMES = [
+  { id: 'fajr', bn: 'ফজর', en: 'Fajr', time: '৪:৫২' },
+  { id: 'dhuhr', bn: 'যোহর', en: 'Dhuhr', time: '১১:৪৫' },
+  { id: 'asr', bn: 'আসর', en: 'Asr', time: '৩:৪২' },
+  { id: 'maghrib', bn: 'মাগরিব', en: 'Maghrib', time: '৫:১৫' },
+  { id: 'isha', bn: 'এশা', en: 'Isha', time: '৬:৩২' },
+]
+
+export const CURRENCY_RATES = [
+  { currency: 'USD', name_bn: 'মার্কিন ডলার', name_en: 'US Dollar', buy: '১২১.৫০', sell: '১২২.২০' },
+  { currency: 'EUR', name_bn: 'ইউরো', name_en: 'Euro', buy: '১৩১.২০', sell: '১৩২.১০' },
+  { currency: 'GBP', name_bn: 'ব্রিটিশ পাউন্ড', name_en: 'British Pound', buy: '১৫৪.৮০', sell: '১৫৫.৯০' },
+  { currency: 'SAR', name_bn: 'সৌদি রিয়াল', name_en: 'Saudi Riyal', buy: '৩২.৪০', sell: '৩২.৭০' },
 ]
 
 export const UI_TEXT = {

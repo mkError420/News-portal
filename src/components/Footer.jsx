@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Smartphone, Mail, Phone, MapPin } from 'lucide-react'
 import { FacebookIcon, TwitterIcon, YoutubeIcon, InstagramIcon, LinkedinIcon } from './SocialIcons.jsx'
+import ProthomAloLogo from './ProthomAloLogo.jsx'
 import { NAV_ITEMS, UI_TEXT } from '../utils.js'
 
 export default function Footer({ lang = 'bn' }) {
@@ -46,14 +47,9 @@ export default function Footer({ lang = 'bn' }) {
       <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 text-sm">
         {/* Col 1: Brand & Editorial details */}
         <div className="lg:col-span-2 space-y-4">
-          <Link to="/" className="inline-block">
-            <span
-              className="font-extrabold tracking-tight text-white block"
-              style={{ fontSize: '2.2rem', color: '#e30613' }}
-            >
-              {lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo'}
-            </span>
-          </Link>
+          <div className="bg-white/10 p-2.5 rounded inline-block backdrop-blur-xs">
+            <ProthomAloLogo lang={lang} size="default" />
+          </div>
           <p className="text-gray-400 text-xs leading-relaxed max-w-sm">
             {lang === 'bn'
               ? 'প্রথম আলো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় বাংলা দৈনিক ও অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।'

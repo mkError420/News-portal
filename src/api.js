@@ -1,143 +1,95 @@
 import axios from 'axios'
 
-const API_BASE = '/api'
-
 const client = axios.create({
-  baseURL: API_BASE,
-  timeout: 5000,
+  baseURL: '/api',
+  timeout: 10000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
+client.interceptors.response.use(
+  (response) => response,
+  (error) => Promise.reject(new Error(
+    error.response?.data?.message || error.message || 'The server could not be reached.'
+  ))
+)
+
+function requireSuccess(data) {
+  if (!data || data.success === false) {
+    throw new Error(data?.message || 'The server could not complete the request.')
+  }
+  return data
+}
+
 export const api = {
-  // --- Health Check ---
   async getHealth() {
-    try {
-      const res = await client.get('/health')
-      return res.data
-    } catch {
-      return { status: 'standalone', database: 'localStorage' }
-    }
+    const res = await client.get('/health')
+    return res.data
   },
 
-  // --- Auth ---
   async login(email, password) {
-    try {
-      const res = await client.post('/login', { email, password })
-      if (res.data && res.data.success) {
-        localStorage.setItem('admin_auth', JSON.stringify(res.data.user || { email, role: 'superadmin' }))
-        return res.data
-      }
-    } catch (err) {
-      // Offline fallback: if backend is unreachable, check standard admin credentials locally
-      const cleanEmail = (email || '').trim().toLowerCase()
-      if (
-        (cleanEmail === 'admin@mknews.com' || cleanEmail === 'admin@prothomalo.com' || cleanEmail === 'admin') &&
-        (password === 'admin123' || password === 'admin')
-      ) {
-        const localUser = { id: 1, email: cleanEmail, name: 'System Administrator', role: 'superadmin' }
-        localStorage.setItem('admin_auth', JSON.stringify(localUser))
-        return { success: true, user: localUser, mode: 'local' }
-      }
-      throw err.response?.data?.message ? new Error(err.response.data.message) : new Error('Invalid email or password')
-    }
-    throw new Error('Invalid email or password')
+    const res = await client.post('/login', { email, password })
+    return requireSuccess(res.data)
   },
 
   async checkAuth() {
-    try {
-      const res = await client.get('/me')
-      if (res.data?.authenticated) {
-        return res.data.user || true
-      }
-    } catch {}
-    // Check localStorage fallback
-    const local = localStorage.getItem('admin_auth')
-    if (local) {
-      try {
-        return JSON.parse(local)
-      } catch {}
-    }
-    return null
+    const res = await client.get('/me')
+    return res.data?.authenticated ? res.data.user : null
   },
 
   async logout() {
-    try {
-      await client.post('/logout')
-    } catch {}
-    localStorage.removeItem('admin_auth')
-    return { success: true }
+    const res = await client.post('/logout')
+    return requireSuccess(res.data)
   },
 
-  // --- Articles ---
   async getArticles() {
-    try {
-      const res = await client.get('/articles')
-      if (res.data?.articles && Array.isArray(res.data.articles) && res.data.articles.length > 0) {
-        return res.data.articles
-      }
-    } catch {}
-    return null
+    const res = await client.get('/articles')
+    if (!Array.isArray(res.data?.articles)) {
+      throw new Error('The server returned an invalid articles response.')
+    }
+    return res.data.articles
   },
 
   async saveArticle(article, isEdit = false) {
-    try {
-      const method = isEdit ? 'put' : 'post'
-      const res = await client[method]('/articles', article)
-      return res.data
-    } catch (err) {
-      return { success: true, localOnly: true }
+    const res = await client[isEdit ? 'put' : 'post']('/articles', article)
+    const data = requireSuccess(res.data)
+    if (!isEdit && (!Number.isInteger(Number(data.id)) || Number(data.id) < 1)) {
+      throw new Error('The server did not return the saved article ID.')
     }
+    return data
   },
 
   async deleteArticle(id) {
-    try {
-      const res = await client.delete(`/articles?id=${id}`)
-      return res.data
-    } catch {
-      return { success: true, localOnly: true }
-    }
+    const res = await client.delete(`/articles?id=${encodeURIComponent(id)}`)
+    return requireSuccess(res.data)
   },
 
-  // --- Breaking News ---
   async getBreakingNews() {
-    try {
-      const res = await client.get('/breaking-news')
-      if (res.data?.breakingNews && Array.isArray(res.data.breakingNews)) {
-        return res.data.breakingNews
-      }
-    } catch {}
-    return null
+    const res = await client.get('/breaking-news')
+    if (!Array.isArray(res.data?.breakingNews)) {
+      throw new Error('The server returned an invalid breaking-news response.')
+    }
+    return res.data.breakingNews
   },
 
   async saveBreakingNews(item) {
-    try {
-      const res = await client.post('/breaking-news', item)
-      return res.data
-    } catch {
-      return { success: true, localOnly: true }
+    const res = await client.post('/breaking-news', item)
+    const data = requireSuccess(res.data)
+    if (!data.item || !Number.isInteger(Number(data.item.id)) || Number(data.item.id) < 1) {
+      throw new Error('The server did not return the saved breaking-news item.')
     }
+    return data
   },
 
   async deleteBreakingNews(id) {
-    try {
-      const res = await client.delete(`/breaking-news?id=${id}`)
-      return res.data
-    } catch {
-      return { success: true, localOnly: true }
-    }
+    const res = await client.delete(`/breaking-news?id=${encodeURIComponent(id)}`)
+    return requireSuccess(res.data)
   },
 
-  // --- Stats ---
   async getStats() {
-    try {
-      const res = await client.get('/stats')
-      return res.data
-    } catch {
-      return null
-    }
+    const res = await client.get('/stats')
+    return res.data
   },
 }
-

@@ -1,12 +1,26 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Camera, PlayCircle, TrendingUp, Vote, CheckCircle2, DollarSign, CloudSun } from 'lucide-react'
+import {
+  Camera,
+  PlayCircle,
+  TrendingUp,
+  Vote,
+  CheckCircle2,
+  CloudSun,
+  Clock,
+  Flame,
+  Newspaper,
+  DollarSign,
+  Award,
+} from 'lucide-react'
 import NewsCard from '../components/NewsCard.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
-import { CATEGORIES_BN, CATEGORIES_EN, toBengaliNumber } from '../utils.js'
+import { PRAYER_TIMES, CURRENCY_RATES, formatRelativeTime } from '../utils.js'
 
 export default function HomePage({ articles = [], opinions = [], photos = [], videos = [], lang = 'bn' }) {
+  // Sidebar tab state: 'latest' | 'mostRead'
+  const [sidebarTab, setSidebarTab] = useState('latest')
   // Poll state
   const [pollVoted, setPollVoted] = useState(false)
   const [selectedOption, setSelectedOption] = useState(null)
@@ -16,17 +30,24 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
 
   // Segregate articles
   const leadArticle = articles.find((a) => a.featured) || articles[0]
-  const otherLeadArticles = articles.filter((a) => a.id !== leadArticle?.id).slice(0, 2)
-  const topStories = articles.slice(3, 9)
+  const otherLeadArticles = articles.filter((a) => a.id !== leadArticle?.id).slice(0, 3)
+  const leadIds = new Set([leadArticle?.id, ...otherLeadArticles.map((article) => article.id)])
+  const topStories = articles.filter((article) => !leadIds.has(article.id)).slice(0, 4)
 
-  // By category
+  // Categorized articles
   const nationalArticles = articles.filter((a) => a.category === 'national' || a.category === 'National')
   const politicsArticles = articles.filter((a) => a.category === 'politics' || a.category === 'Politics')
   const sportsArticles = articles.filter((a) => a.category === 'sports' || a.category === 'Sports')
   const economyArticles = articles.filter((a) => a.category === 'economy' || a.category === 'Economy')
   const entertainmentArticles = articles.filter((a) => a.category === 'entertainment' || a.category === 'Entertainment')
   const techArticles = articles.filter((a) => a.category === 'technology' || a.category === 'Technology')
+  const internationalArticles = articles.filter((a) => a.category === 'international' || a.category === 'International')
+  const healthArticles = articles.filter((a) => a.category === 'health' || a.category === 'Health')
+  const lifestyleArticles = articles.filter((a) => a.category === 'lifestyle' || a.category === 'Lifestyle')
+  const educationArticles = articles.filter((a) => a.category === 'education' || a.category === 'Education')
 
+  // Latest articles (sorted by date descending)
+  const latestArticles = [...articles].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 5)
   // Most Read sorted by views
   const mostRead = [...articles].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
 
@@ -39,35 +60,35 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">
-      {/* ================= 1. HERO TOP SECTION ================= */}
+      {/* ================= 1. HERO TOP SECTION (প্রধান শীর্ষ সংবাদ) ================= */}
       <section className="mb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           {/* Main Big Lead Story (7 cols) */}
           <div className="lg:col-span-7">
             {leadArticle && <NewsCard article={leadArticle} variant="hero" lang={lang} />}
           </div>
 
           {/* Secondary Top Stories (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col gap-4 justify-between">
+          <div className="lg:col-span-5 flex flex-col gap-3 justify-between">
             {otherLeadArticles.map((art) => (
               <NewsCard key={art.id} article={art} variant="list" lang={lang} />
             ))}
             {/* Quick in-feed banner */}
-            <div className="mt-2">
+            <div className="mt-1">
               <AdBanner size="infeed" lang={lang} />
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================= 2. THREE-COLUMN TOP STORIES ================= */}
-      <section className="mb-10">
+      {/* ================= 2. FOUR-COLUMN CURATED HIGHLIGHTS (আজকের নির্বাচিত) ================= */}
+      <section className="mb-8">
         <SectionHeader
           title_bn="আজকের নির্বাচিত সংবাদ"
-          title_en="Today's Selected Stories"
+          title_en="Today's Curated Stories"
           lang={lang}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {topStories.map((art) => (
             <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
           ))}
@@ -94,13 +115,14 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
                 { bn: 'সারাদেশ', en: 'Nationwide' },
                 { bn: 'রাজধানী', en: 'Capital' },
                 { bn: 'প্রশাসন', en: 'Governance' },
+                { bn: 'অপরাধ', en: 'Crime' },
               ]}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {nationalArticles[0] && (
                 <NewsCard article={nationalArticles[0]} variant="grid" lang={lang} />
               )}
-              <div className="space-y-1 divide-y divide-gray-100 bg-white p-3 rounded border border-gray-200">
+              <div className="space-y-1 divide-y divide-gray-100 bg-white p-3.5 rounded border border-gray-200 shadow-2xs">
                 {nationalArticles.slice(1, 5).map((art) => (
                   <NewsCard key={art.id} article={art} variant="text" lang={lang} />
                 ))}
@@ -115,6 +137,11 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
               title_en="Politics"
               lang={lang}
               link="/category/politics"
+              subcategories={[
+                { bn: 'সরকার', en: 'Government' },
+                { bn: 'নির্বাচন', en: 'Election' },
+                { bn: 'সংসদ', en: 'Parliament' },
+              ]}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {politicsArticles.slice(0, 2).map((art) => (
@@ -123,7 +150,7 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
             </div>
           </section>
 
-          {/* Section: খেলা (Sports) */}
+          {/* Section: খেলা (Sports) with Live Match Highlight Ticker */}
           <section>
             <SectionHeader
               title_bn="খেলাধুলা"
@@ -133,8 +160,30 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
               subcategories={[
                 { bn: 'ক্রিকেট', en: 'Cricket' },
                 { bn: 'ফুটবল', en: 'Football' },
+                { bn: 'বিশ্বকাপ', en: 'World Cup' },
               ]}
             />
+
+            {/* Prothom Alo Live Score / Tournament Match Strip */}
+            <div className="bg-[#1a3a5c] text-white p-3 rounded-lg mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="bg-red-600 text-white font-bold px-2 py-0.5 rounded text-[10px] uppercase animate-pulse">
+                  LIVE
+                </span>
+                <span className="font-semibold">
+                  {lang === 'bn' ? 'এশিয়া কাপ ফাইনাল: বাংলাদেশ বনাম ভারত' : 'Asia Cup Final: BD vs IND'}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 font-mono font-bold text-yellow-300">
+                <span>BAN 286/7 (50 ov)</span>
+                <span>•</span>
+                <span className="text-gray-300">IND 274 (48.4 ov)</span>
+              </div>
+              <span className="text-[11px] text-green-300 font-semibold">
+                {lang === 'bn' ? 'বাংলাদেশ ১২ রানে জয়ী 🏆' : 'Bangladesh won by 12 runs 🏆'}
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {sportsArticles.slice(0, 3).map((art) => (
                 <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
@@ -142,16 +191,52 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
             </div>
           </section>
 
-          {/* Section: অর্থনীতি ও বাণিজ্য (Economy) */}
+          {/* Section: অর্থনীতি ও বাণিজ্য (Economy) with Currency Rate Strip */}
           <section>
             <SectionHeader
               title_bn="অর্থনীতি ও ব্যবসা"
               title_en="Economy & Business"
               lang={lang}
               link="/category/economy"
+              subcategories={[
+                { bn: 'ব্যাংক', en: 'Banking' },
+                { bn: 'শেয়ারবাজার', en: 'Stock Market' },
+                { bn: 'রপ্তানি', en: 'Exports' },
+              ]}
             />
+
+            {/* Live Exchange Rate & Gold Bar */}
+            <div className="bg-gray-50 border border-gray-200 rounded p-2.5 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {CURRENCY_RATES.map((curr) => (
+                <div key={curr.currency} className="bg-white p-2 rounded border border-gray-100 flex items-center justify-between">
+                  <span className="font-bold text-gray-700">{curr.currency}</span>
+                  <span className="font-semibold text-red-600">৳ {curr.buy}</span>
+                </div>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {economyArticles.slice(0, 2).map((art) => (
+                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+              ))}
+            </div>
+          </section>
+
+          {/* Section: আন্তর্জাতিক (World) */}
+          <section>
+            <SectionHeader
+              title_bn="আন্তর্জাতিক"
+              title_en="International"
+              lang={lang}
+              link="/category/international"
+              subcategories={[
+                { bn: 'এশিয়া', en: 'Asia' },
+                { bn: 'আমেরিকা', en: 'America' },
+                { bn: 'মধ্যপ্রাচ্য', en: 'Middle East' },
+              ]}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {internationalArticles.slice(0, 2).map((art) => (
                 <NewsCard key={art.id} article={art} variant="list" lang={lang} />
               ))}
             </div>
@@ -164,6 +249,11 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
               title_en="Entertainment"
               lang={lang}
               link="/category/entertainment"
+              subcategories={[
+                { bn: 'সিনেমা', en: 'Cinema' },
+                { bn: 'নাটক', en: 'Drama' },
+                { bn: 'ওটিটি', en: 'OTT' },
+              ]}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {entertainmentArticles.slice(0, 2).map((art) => (
@@ -172,13 +262,18 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
             </div>
           </section>
 
-          {/* Section: প্রযুক্তি (Technology) */}
+          {/* Section: বিজ্ঞান ও প্রযুক্তি (Science & Tech) */}
           <section>
             <SectionHeader
               title_bn="বিজ্ঞান ও প্রযুক্তি"
               title_en="Science & Technology"
               lang={lang}
               link="/category/technology"
+              subcategories={[
+                { bn: 'কৃত্রিম বুদ্ধিমত্তা', en: 'AI' },
+                { bn: 'গ্যাজেট', en: 'Gadgets' },
+                { bn: 'ইন্টারনেট', en: 'Internet' },
+              ]}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {techArticles.slice(0, 2).map((art) => (
@@ -187,7 +282,37 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
             </div>
           </section>
 
-          {/* Section: মতামত ও কলাম (Opinion Columnists) */}
+          {/* Section: শিক্ষা ও চাকরি */}
+          <section>
+            <SectionHeader
+              title_bn="শিক্ষা ও চাকরি"
+              title_en="Education & Jobs"
+              lang={lang}
+              link="/category/education"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {educationArticles.slice(0, 2).map((art) => (
+                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+              ))}
+            </div>
+          </section>
+
+          {/* Section: স্বাস্থ্য ও জীবনযাপন */}
+          <section>
+            <SectionHeader
+              title_bn="স্বাস্থ্য ও জীবনযাপন"
+              title_en="Health & Lifestyle"
+              lang={lang}
+              link="/category/lifestyle"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...lifestyleArticles, ...healthArticles].slice(0, 4).map((art) => (
+                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+              ))}
+            </div>
+          </section>
+
+          {/* Section: মতামত ও সম্পাদকীয় (Opinion Columnists) */}
           <section className="bg-white p-5 rounded border border-gray-200 shadow-sm">
             <SectionHeader
               title_bn="মতামত ও সম্পাদকীয়"
@@ -197,7 +322,10 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
             />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               {opinions.map((op) => (
-                <div key={op.id} className="flex flex-col items-center text-center p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100">
+                <div
+                  key={op.id}
+                  className="flex flex-col items-center text-center p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                >
                   <img
                     src={op.author_image}
                     alt={op.author_bn}
@@ -220,52 +348,114 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
           </section>
         </div>
 
-        {/* RIGHT SIDEBAR (4 cols) */}
+        {/* ================= RIGHT SIDEBAR (4 cols) ================= */}
         <aside className="lg:col-span-4 space-y-6">
-          {/* Widget 1: সর্বাধিক পঠিত (Most Read) */}
-          <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-2 border-b-2 border-[#e30613] pb-2 mb-3">
-              <TrendingUp size={18} className="text-[#e30613]" />
-              <h3 className="font-extrabold text-lg text-gray-900">
-                {lang === 'bn' ? 'সর্বাধিক পঠিত' : 'Most Read'}
-              </h3>
+          {/* Widget 1: Signature Prothom Alo Tabbed Widget [সর্বশেষ | সর্বাধিক পঠিত] */}
+          <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+            {/* Tabs Header */}
+            <div className="flex border-b border-gray-200 text-sm font-bold">
+              <button
+                onClick={() => setSidebarTab('latest')}
+                className={`flex-1 py-3 text-center transition-colors flex items-center justify-center gap-1.5 border-b-2 ${
+                  sidebarTab === 'latest'
+                    ? 'border-[#e30613] text-[#e30613] bg-red-50/40'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 bg-gray-50'
+                }`}
+              >
+                <Clock size={15} />
+                <span>{lang === 'bn' ? 'সর্বশেষ' : 'Latest'}</span>
+              </button>
+              <button
+                onClick={() => setSidebarTab('mostRead')}
+                className={`flex-1 py-3 text-center transition-colors flex items-center justify-center gap-1.5 border-b-2 ${
+                  sidebarTab === 'mostRead'
+                    ? 'border-[#e30613] text-[#e30613] bg-red-50/40'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 bg-gray-50'
+                }`}
+              >
+                <TrendingUp size={15} />
+                <span>{lang === 'bn' ? 'সর্বাধিক পঠিত' : 'Most Read'}</span>
+              </button>
             </div>
-            <div className="divide-y divide-gray-100">
-              {mostRead.map((art, idx) => (
-                <NewsCard key={art.id} article={art} variant="sidebar" lang={lang} rank={idx + 1} />
-              ))}
+
+            {/* Tab Contents */}
+            <div className="p-3.5 divide-y divide-gray-100">
+              {sidebarTab === 'latest' ? (
+                latestArticles.map((art) => (
+                  <article key={art.id} className="py-2.5 first:pt-1 last:pb-1 group">
+                    <Link to={`/article/${art.slug}`}>
+                      <h4 className="text-sm font-bold text-gray-900 group-hover:text-[#e30613] transition-colors leading-snug line-clamp-2">
+                        {lang === 'bn' ? art.title_bn : art.title_en}
+                      </h4>
+                    </Link>
+                    <span className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                      <Clock size={10} />
+                      <span>{formatRelativeTime(art.date, lang)}</span>
+                    </span>
+                  </article>
+                ))
+              ) : (
+                mostRead.map((art, idx) => (
+                  <NewsCard key={art.id} article={art} variant="sidebar" lang={lang} rank={idx + 1} />
+                ))
+              )}
             </div>
           </div>
 
           {/* Widget 2: Medium Rectangle Ad (300x250) */}
           <AdBanner size="rectangle" lang={lang} />
 
-          {/* Widget 3: আবহাওয়া ও মুদ্রা বিনিময় হার (Weather & Currency) */}
-          <div className="bg-white p-4 rounded border border-gray-200 shadow-sm text-xs">
-            <h4 className="font-bold text-sm text-gray-900 border-b pb-2 mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <CloudSun size={16} className="text-orange-500" />
-                {lang === 'bn' ? 'আজকের তথ্য' : 'Daily Info'}
+          {/* Widget 3: আজকের ই-পেপার (Today's e-Paper Front Page Preview) */}
+          <div className="bg-gradient-to-br from-[#1a3a5c] to-[#0f2540] text-white p-4 rounded-lg shadow-md">
+            <div className="flex items-center gap-2 mb-2 text-yellow-300">
+              <Newspaper size={18} />
+              <span className="font-bold text-xs uppercase tracking-wider">
+                {lang === 'bn' ? 'আজকের মুদ্রিত পত্রিকা' : "Today's Printed Paper"}
               </span>
-              <span className="text-gray-400 font-normal">ঢাকা</span>
-            </h4>
-            <div className="space-y-2.5">
-              <div className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                <span className="text-gray-600">{lang === 'bn' ? 'আবহাওয়া:' : 'Weather:'}</span>
-                <span className="font-bold text-gray-900">{lang === 'bn' ? '২৭° সে. (রৌদ্রোজ্জ্বল)' : '27°C (Sunny)'}</span>
-              </div>
-              <div className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                <span className="text-gray-600">{lang === 'bn' ? '১ মার্কিন ডলার:' : '1 USD:'}</span>
-                <span className="font-bold text-red-600">৳ ১২১.৫০</span>
-              </div>
-              <div className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                <span className="text-gray-600">{lang === 'bn' ? '১ ইউরো:' : '1 EUR:'}</span>
-                <span className="font-bold text-blue-700">৳ ১৩১.২০</span>
-              </div>
+            </div>
+            <p className="text-xs text-gray-200 mb-3 leading-relaxed">
+              {lang === 'bn'
+                ? 'অনলাইন ই-পেপারের মাধ্যমে আসল ছাপা পত্রিকার প্রতিটি পাতা ডিজিটাল অভিজ্ঞতায় পড়ুন।'
+                : 'Read every printed page of today’s physical newspaper with an authentic digital facsimile.'}
+            </p>
+            <Link
+              to="/epaper"
+              className="inline-flex items-center gap-1.5 bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-3.5 py-1.5 rounded transition-colors shadow"
+            >
+              <span>{lang === 'bn' ? 'ই-পেপার পড়ুন →' : 'Read ePaper →'}</span>
+            </Link>
+          </div>
+
+          {/* Widget 4: নামাজের সময়সূচি ও আবহাওয়া (Prayer Times & Weather) */}
+          <div className="bg-white p-4 rounded border border-gray-200 shadow-sm text-xs">
+            <div className="border-b pb-2 mb-3 flex items-center justify-between">
+              <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                <CloudSun size={16} className="text-orange-500" />
+                <span>{lang === 'bn' ? 'নামাজের সময়সূচি' : 'Prayer Times'}</span>
+              </h4>
+              <span className="text-gray-400 font-medium">ঢাকা</span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1 text-center bg-gray-50 p-2 rounded">
+              {PRAYER_TIMES.map((p) => (
+                <div key={p.id} className="p-1">
+                  <span className="block text-gray-500 text-[10px] font-semibold">
+                    {lang === 'bn' ? p.bn : p.en}
+                  </span>
+                  <span className="font-bold text-gray-900 text-xs mt-0.5 block">
+                    {p.time}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-gray-600">
+              <span>{lang === 'bn' ? 'আজকের তাপমাত্রা:' : 'Temperature:'}</span>
+              <span className="font-bold text-gray-900">২৭° সে. (আংশিক মেঘলা)</span>
             </div>
           </div>
 
-          {/* Widget 4: পাঠক জরিপ / Opinion Poll */}
+          {/* Widget 5: পাঠক জরিপ / Online Poll */}
           <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
             <div className="flex items-center gap-1.5 border-b pb-2 mb-3 text-red-600">
               <Vote size={18} />
@@ -344,7 +534,7 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
             )}
           </div>
 
-          {/* Widget 5: Half Page Ad (300x600) */}
+          {/* Widget 6: Half Page Ad (300x600) */}
           <AdBanner size="halfpage" lang={lang} />
         </aside>
       </div>
@@ -483,4 +673,3 @@ export default function HomePage({ articles = [], opinions = [], photos = [], vi
     </div>
   )
 }
-

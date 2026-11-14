@@ -7,7 +7,6 @@ import {
   Flame,
   PenTool,
   Camera,
-  Video,
   Settings,
   LogOut,
   ExternalLink,
@@ -17,19 +16,13 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
-  RotateCcw,
   Sparkles,
   TrendingUp,
   Database,
-  Filter,
   Save,
-  X,
-  Upload,
-  Globe,
-  Check,
 } from 'lucide-react'
 import { api } from '../api.js'
-import { CATEGORIES_BN, CATEGORIES_EN, toBengaliNumber, formatViews, formatRelativeTime } from '../utils.js'
+import { CATEGORIES_BN, CATEGORIES_EN, toBengaliNumber, formatRelativeTime } from '../utils.js'
 
 export default function AdminPage({
   articles = [],
@@ -42,7 +35,6 @@ export default function AdminPage({
   onDeleteArticle,
   onAddBreaking,
   onDeleteBreaking,
-  onResetData,
   lang = 'bn',
 }) {
   const navigate = useNavigate()
@@ -52,6 +44,7 @@ export default function AdminPage({
 
   // Server health state
   const [serverHealth, setServerHealth] = useState({ status: 'checking', database: 'checking' })
+  const [serverStats, setServerStats] = useState(null)
 
   // Notification Toast
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
@@ -61,19 +54,36 @@ export default function AdminPage({
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000)
   }
 
+  const refreshStats = async () => {
+    try {
+      setServerStats(await api.getStats())
+    } catch (err) {
+      console.error('Unable to refresh dashboard statistics:', err)
+    }
+  }
+
   // --- Check Authentication on Load ---
   useEffect(() => {
     api.checkAuth().then((user) => {
       if (!user) {
         navigate('/login', { replace: true })
       } else {
-        setCurrentUser(typeof user === 'object' ? user : { email: 'admin@mknews.com', role: 'superadmin' })
+        setCurrentUser(typeof user === 'object' ? user : { role: 'superadmin' })
         setAuthChecking(false)
+        api.getStats()
+          .then(setServerStats)
+          .catch((err) => console.error('Unable to load dashboard statistics:', err))
       }
+    }).catch((err) => {
+      console.error('Unable to verify the admin session:', err)
+      navigate('/login', { replace: true })
+      setAuthChecking(false)
     })
 
-    // Fetch server health status
-    api.getHealth().then((h) => setServerHealth(h))
+    api.getHealth().then(setServerHealth).catch((err) => {
+      console.error('Unable to check database health:', err)
+      setServerHealth({ status: 'offline', database: 'unavailable' })
+    })
   }, [navigate])
 
   // --- Article Form State ---
@@ -113,8 +123,12 @@ export default function AdminPage({
 
   // Handle Logout
   const handleLogout = async () => {
-    await api.logout()
-    navigate('/login', { replace: true })
+    try {
+      await api.logout()
+      navigate('/login', { replace: true })
+    } catch (err) {
+      triggerToast(err.message || 'Logout failed. Please try again.', 'error')
+    }
   }
 
   // Handle Submit Article (Add or Update)
@@ -132,35 +146,37 @@ export default function AdminPage({
       ? formData.tags_en.split(',').map((t) => t.trim()).filter(Boolean)
       : formData.tags_en
 
-    if (isEditing && formData.id) {
-      // Update
-      const updatedItem = {
+    try {
+      const article = {
         ...formData,
         tags_bn: tagsArrayBn,
         tags_en: tagsArrayEn,
       }
-      onUpdateArticle(updatedItem)
-      await api.saveArticle(updatedItem, true)
-      triggerToast(lang === 'bn' ? 'সংবাদ সফলভাবে আপডেট হয়েছে!' : 'Article updated successfully!')
-    } else {
-      // Create new
-      const newItem = {
-        ...formData,
-        id: Date.now(),
-        slug: `news-${Date.now()}`,
-        date: new Date().toISOString(),
-        views: Math.floor(Math.random() * 2000) + 500,
-        tags_bn: tagsArrayBn,
-        tags_en: tagsArrayEn,
-      }
-      onAddArticle(newItem)
-      await api.saveArticle(newItem, false)
-      triggerToast(lang === 'bn' ? 'নতুন সংবাদ সফলভাবে প্রকাশিত হয়েছে!' : 'New article published successfully!')
-    }
 
-    setFormData(emptyArticleForm)
-    setIsEditing(false)
-    setActiveTab('articles')
+      if (isEditing && formData.id) {
+        await api.saveArticle(article, true)
+        onUpdateArticle(article)
+        refreshStats()
+        triggerToast(lang === 'bn' ? 'সংবাদ সফলভাবে আপডেট হয়েছে!' : 'Article updated successfully!')
+      } else {
+        const newArticle = {
+          ...article,
+          slug: `news-${Date.now()}`,
+          date: new Date().toISOString(),
+          views: 0,
+        }
+        const saved = await api.saveArticle(newArticle)
+        onAddArticle({ ...newArticle, id: saved.id, slug: saved.slug || newArticle.slug })
+        refreshStats()
+        triggerToast(lang === 'bn' ? 'নতুন সংবাদ সফলভাবে প্রকাশিত হয়েছে!' : 'New article published successfully!')
+      }
+
+      setFormData(emptyArticleForm)
+      setIsEditing(false)
+      setActiveTab('articles')
+    } catch (err) {
+      triggerToast(err.message || (lang === 'bn' ? 'সংবাদ সংরক্ষণ করা যায়নি।' : 'Unable to save article.'), 'error')
+    }
   }
 
   // Handle Edit Action
@@ -178,9 +194,14 @@ export default function AdminPage({
   // Handle Delete Action
   const handleDeleteArticleClick = async (id) => {
     if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই সংবাদটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this article?')) {
-      onDeleteArticle(id)
-      await api.deleteArticle(id)
-      triggerToast(lang === 'bn' ? 'সংবাদটি মুছে ফেলা হয়েছে।' : 'Article deleted.', 'info')
+      try {
+        await api.deleteArticle(id)
+        onDeleteArticle(id)
+        refreshStats()
+        triggerToast(lang === 'bn' ? 'সংবাদটি মুছে ফেলা হয়েছে।' : 'Article deleted.', 'info')
+      } catch (err) {
+        triggerToast(err.message || (lang === 'bn' ? 'সংবাদ মুছে ফেলা যায়নি।' : 'Unable to delete article.'), 'error')
+      }
     }
   }
 
@@ -190,23 +211,31 @@ export default function AdminPage({
     if (!newBreakingBn.trim() && !newBreakingEn.trim()) return
 
     const newItem = {
-      id: Date.now(),
       title_bn: newBreakingBn.trim() || newBreakingEn.trim(),
       title_en: newBreakingEn.trim() || newBreakingBn.trim(),
-      slug: `breaking-${Date.now()}`,
     }
-    onAddBreaking(newItem)
-    await api.saveBreakingNews(newItem)
-    setNewBreakingBn('')
-    setNewBreakingEn('')
-    triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ যুক্ত হয়েছে!' : 'Breaking news added!')
+    try {
+      const saved = await api.saveBreakingNews(newItem)
+      onAddBreaking(saved.item)
+      refreshStats()
+      setNewBreakingBn('')
+      setNewBreakingEn('')
+      triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ যুক্ত হয়েছে!' : 'Breaking news added!')
+    } catch (err) {
+      triggerToast(err.message || (lang === 'bn' ? 'ব্রেকিং নিউজ সংরক্ষণ করা যায়নি।' : 'Unable to save breaking news.'), 'error')
+    }
   }
 
   // Handle Breaking News Delete
   const handleDeleteBreakingClick = async (id) => {
-    onDeleteBreaking(id)
-    await api.deleteBreakingNews(id)
-    triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ সরানো হয়েছে।' : 'Breaking news item removed.', 'info')
+    try {
+      await api.deleteBreakingNews(id)
+      onDeleteBreaking(id)
+      refreshStats()
+      triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ সরানো হয়েছে।' : 'Breaking news item removed.', 'info')
+    } catch (err) {
+      triggerToast(err.message || (lang === 'bn' ? 'ব্রেকিং নিউজ সরানো যায়নি।' : 'Unable to remove breaking news.'), 'error')
+    }
   }
 
   // Filtered Articles for Management Table
@@ -264,7 +293,7 @@ export default function AdminPage({
                 {serverHealth.database === 'connected' ? (
                   <span className="text-green-300 font-semibold">MySQL Database: সংযুক্ত (Online)</span>
                 ) : (
-                  <span className="text-amber-300 font-semibold">Database: Local / Standalone Mode</span>
+                  <span className="text-amber-300 font-semibold">Database: Offline / Unavailable</span>
                 )}
               </span>
             </div>
@@ -287,7 +316,7 @@ export default function AdminPage({
               <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center font-bold text-[10px]">
                 A
               </div>
-              <span className="font-semibold text-gray-200">{currentUser?.email || 'admin@mknews.com'}</span>
+              <span className="font-semibold text-gray-200">{currentUser?.email || 'Administrator'}</span>
             </div>
 
             {/* Logout Button */}
@@ -306,12 +335,14 @@ export default function AdminPage({
       {/* Toast Alert */}
       {toast.show && (
         <div className="fixed top-16 right-4 z-50 p-4 bg-white border border-gray-200 rounded-lg shadow-xl flex items-center gap-2 text-xs font-bold animate-in slide-in-from-top-2">
-          {toast.type === 'info' ? (
+          {toast.type === 'error' ? (
+            <AlertCircle size={16} className="text-red-600" />
+          ) : toast.type === 'info' ? (
             <AlertCircle size={16} className="text-amber-500" />
           ) : (
             <CheckCircle2 size={16} className="text-green-600" />
           )}
-          <span className="text-gray-800">{toast.message}</span>
+          <span className={toast.type === 'error' ? 'text-red-800' : 'text-gray-800'}>{toast.message}</span>
         </div>
       )}
 
@@ -374,7 +405,7 @@ export default function AdminPage({
                 <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'মোট সংবাদ' : 'Total Articles'}</span>
-                    <span className="text-2xl font-black text-gray-900 mt-1 block">{toBengaliNumber(articles.length)}</span>
+                    <span className="text-2xl font-black text-gray-900 mt-1 block">{toBengaliNumber(serverStats?.totalArticles ?? articles.length)}</span>
                   </div>
                   <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                     <FileText size={22} />
@@ -384,7 +415,7 @@ export default function AdminPage({
                 <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'মোট পাঠক ভিউ' : 'Total Views'}</span>
-                    <span className="text-2xl font-black text-[#e30613] mt-1 block">{toBengaliNumber(totalViews)}</span>
+                    <span className="text-2xl font-black text-[#e30613] mt-1 block">{toBengaliNumber(serverStats?.totalViews ?? totalViews)}</span>
                   </div>
                   <div className="w-11 h-11 rounded-lg bg-red-50 text-[#e30613] flex items-center justify-center">
                     <TrendingUp size={22} />
@@ -394,7 +425,7 @@ export default function AdminPage({
                 <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'ব্রেকিং নিউজ' : 'Breaking Tickers'}</span>
-                    <span className="text-2xl font-black text-amber-600 mt-1 block">{toBengaliNumber(breakingNews.length)}</span>
+                    <span className="text-2xl font-black text-amber-600 mt-1 block">{toBengaliNumber(serverStats?.totalBreaking ?? breakingNews.length)}</span>
                   </div>
                   <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
                     <Flame size={22} />
@@ -404,7 +435,7 @@ export default function AdminPage({
                 <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'সংবাদ বিভাগ' : 'Active Categories'}</span>
-                    <span className="text-2xl font-black text-green-600 mt-1 block">{toBengaliNumber(12)}</span>
+                    <span className="text-2xl font-black text-green-600 mt-1 block">{toBengaliNumber(serverStats?.categoriesCount ?? 12)}</span>
                   </div>
                   <div className="w-11 h-11 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                     <Database size={22} />
@@ -991,38 +1022,15 @@ export default function AdminPage({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <div className="p-3 bg-white rounded border">
                     <span className="text-gray-500 block">Database Status:</span>
-                    <span className="font-bold text-green-700 text-sm">
-                      {serverHealth.database === 'connected' ? 'Connected (MySQL)' : 'Connected (LocalStorage Persistence)'}
+                    <span className={`font-bold text-sm ${serverHealth.database === 'connected' ? 'text-green-700' : 'text-red-700'}`}>
+                      {serverHealth.database === 'connected' ? 'Connected (MySQL)' : 'Not connected'}
                     </span>
                   </div>
                   <div className="p-3 bg-white rounded border">
                     <span className="text-gray-500 block">PHP Engine Version:</span>
-                    <span className="font-bold text-gray-800 text-sm">{serverHealth.php || '8.x'}</span>
+                    <span className="font-bold text-gray-800 text-sm">{serverHealth.php || 'Unavailable'}</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Data Reset */}
-              <div className="p-4 bg-red-50/70 border border-red-200 rounded-lg space-y-3">
-                <h4 className="font-bold text-red-800 text-sm">{lang === 'bn' ? 'ডিফল্ট ডেটা পুনরুদ্ধার' : 'Reset to Factory Default News'}</h4>
-                <p className="text-xs text-red-700 leading-relaxed">
-                  {lang === 'bn'
-                    ? 'আপনি চাইলে প্রথম আলোর সকল মূল ডেমো সংবাদ, ব্রেকিং নিউজ এবং মিডিয়া ডেটাসেট এক ক্লিকে পুনরুদ্ধার করতে পারেন।'
-                    : 'Restore the standard bilingual news dataset, breaking news, and multimedia sample data.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(lang === 'bn' ? 'সকল তথ্য ডিফল্ট অবস্থায় ফিরিয়ে নেবেন?' : 'Reset to default data?')) {
-                      onResetData()
-                      triggerToast(lang === 'bn' ? 'ডিফল্ট ডেটা সফলভাবে পুনরুদ্ধার হয়েছে।' : 'Data restored to default.')
-                    }
-                  }}
-                  className="flex items-center gap-1.5 bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-sm"
-                >
-                  <RotateCcw size={14} />
-                  <span>{lang === 'bn' ? 'হ্যাঁ, ডিফল্ট ডেটা রিসেট করুন' : 'Confirm Reset Data'}</span>
-                </button>
               </div>
             </div>
           )}

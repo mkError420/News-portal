@@ -7,16 +7,11 @@
 
 require_once __DIR__ . '/../config.php';
 
-// --- CORS & Headers ---
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header("Access-Control-Allow-Origin: $origin");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+// --- Response Headers ---
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+    http_response_code(204);
     exit;
 }
 
@@ -44,7 +39,7 @@ set_exception_handler(function (Throwable $exception): void {
     error_log('News Portal API Error: ' . $exception->getMessage());
     json_response([
         'success' => false,
-        'message' => 'Service error: ' . $exception->getMessage()
+        'message' => 'The server could not complete the request.'
     ], 500);
 });
 
@@ -57,6 +52,11 @@ function db(): ?PDO
     if ($failed) return null;
 
     if ($pdo === null) {
+        if (trim(DB_HOST) === '' || trim(DB_NAME) === '' || trim(DB_USER) === '') {
+            $failed = true;
+            return null;
+        }
+
         try {
             $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
             $pdo = new PDO($dsn, DB_USER, DB_PASS, [
@@ -71,6 +71,18 @@ function db(): ?PDO
     }
 
     return $pdo;
+}
+
+function require_db(): PDO
+{
+    $connection = db();
+    if (!$connection) {
+        json_response([
+            'success' => false,
+            'message' => 'The database is unavailable. Check the server configuration and try again.'
+        ], 503);
+    }
+    return $connection;
 }
 
 function has_column(PDO $pdo, string $table, string $column): bool
@@ -153,19 +165,17 @@ $method = $_SERVER['REQUEST_METHOD'];
 // ROUTE: GET /api/health
 // ----------------------------------------------------
 if ($resource === 'health') {
-    $dbOk = false;
     $dbConn = db();
+    $dbOk = false;
     if ($dbConn) {
-        try {
-            $dbConn->query('SELECT 1');
-            $dbOk = true;
-        } catch (Throwable $e) {}
+        $dbConn->query('SELECT 1');
+        $dbOk = true;
     }
 
     json_response([
-        'status' => 'ok',
+        'status' => $dbOk ? 'ok' : 'degraded',
         'php' => PHP_VERSION,
-        'database' => $dbOk ? 'connected' : 'offline/standalone',
+        'database' => $dbOk ? 'connected' : 'unavailable',
         'authenticated' => is_admin(),
         'server_time' => date('c'),
     ]);
@@ -179,37 +189,12 @@ if ($resource === 'login' && $method === 'POST') {
     $email = strtolower(trim((string) ($input['email'] ?? ($input['username'] ?? ''))));
     $password = (string) ($input['password'] ?? '');
 
-    $adminEmail = strtolower(defined('ADMIN_EMAIL') ? ADMIN_EMAIL : 'admin@mknews.com');
+    $dbConn = require_db();
+    $stmt = $dbConn->prepare('SELECT id, email, password_hash FROM admins WHERE email = ? LIMIT 1');
+    $stmt->execute([$email]);
+    $adminUser = $stmt->fetch();
 
-    $authenticated = false;
-    $adminUser = null;
-    $dbConn = db();
-
-    // 1. Check in database
-    if ($dbConn) {
-        try {
-            $stmt = $dbConn->prepare('SELECT id, email, password_hash FROM admins WHERE email = ? LIMIT 1');
-            $stmt->execute([$email]);
-            $adminUser = $stmt->fetch();
-            if ($adminUser && password_verify($password, $adminUser['password_hash'])) {
-                $authenticated = true;
-            }
-        } catch (Throwable $e) {}
-    }
-
-    // 2. Fallback check for standard admin credentials if DB is offline or table unseeded
-    if (!$authenticated) {
-        if (($email === $adminEmail || $email === 'admin@mknews.com' || $email === 'admin@prothomalo.com' || $email === 'admin') &&
-            ($password === 'admin123' || $password === 'admin')) {
-            $authenticated = true;
-            $adminUser = [
-                'id' => 1,
-                'email' => $email,
-            ];
-        }
-    }
-
-    if ($authenticated) {
+    if ($adminUser && password_verify($password, $adminUser['password_hash'])) {
         session_regenerate_id(true);
         $_SESSION['admin_authenticated'] = true;
         $_SESSION['admin_id'] = $adminUser['id'] ?? 1;
@@ -240,7 +225,7 @@ if ($resource === 'me' && $method === 'GET') {
         'authenticated' => $auth,
         'user' => $auth ? [
             'id' => $_SESSION['admin_id'] ?? 1,
-            'email' => $_SESSION['admin_email'] ?? 'admin@mknews.com',
+            'email' => $_SESSION['admin_email'] ?? '',
             'name' => 'Administrator',
             'role' => 'superadmin',
         ] : null,
@@ -260,46 +245,34 @@ if ($resource === 'logout' && $method === 'POST') {
 // ROUTE: GET /api/categories
 // ----------------------------------------------------
 if ($resource === 'categories' && $method === 'GET') {
-    $dbConn = db();
-    if ($dbConn) {
-        try {
-            $stmt = $dbConn->query('SELECT slug, name_bn, name_en FROM categories ORDER BY id ASC');
-            json_response(['categories' => $stmt->fetchAll()]);
-        } catch (Throwable $e) {}
-    }
-    json_response([
-        'categories' => ['national', 'politics', 'international', 'economy', 'sports', 'entertainment', 'technology', 'education', 'health', 'lifestyle', 'opinion']
-    ]);
+    $dbConn = require_db();
+    $stmt = $dbConn->query('SELECT slug, name AS name_bn, name AS name_en FROM categories ORDER BY id ASC');
+    json_response(['categories' => $stmt->fetchAll()]);
 }
 
 // ----------------------------------------------------
 // ROUTE: /api/breaking-news
 // ----------------------------------------------------
 if ($resource === 'breaking-news') {
-    $dbConn = db();
+    $dbConn = require_db();
 
     if ($method === 'GET') {
-        if ($dbConn) {
-            try {
-                $hasActive = has_column($dbConn, 'breaking_news', 'active');
-                $hasTitleBn = has_column($dbConn, 'breaking_news', 'title_bn');
+        $hasActive = has_column($dbConn, 'breaking_news', 'active');
+        $hasTitleBn = has_column($dbConn, 'breaking_news', 'title_bn');
 
-                $where = $hasActive ? 'WHERE active = 1' : '';
-                $stmt = $dbConn->query("SELECT * FROM breaking_news $where ORDER BY id DESC");
-                $items = array_map(function ($r) use ($hasTitleBn) {
-                    $titleBn = $hasTitleBn ? ($r['title_bn'] ?? '') : ($r['title'] ?? '');
-                    $titleEn = $hasTitleBn ? ($r['title_en'] ?? $titleBn) : ($r['title'] ?? '');
-                    return [
-                        'id' => (int) $r['id'],
-                        'title_bn' => $titleBn,
-                        'title_en' => $titleEn,
-                        'slug' => $r['slug'] ?? ('breaking-' . $r['id']),
-                    ];
-                }, $stmt->fetchAll());
-                json_response(['breakingNews' => $items]);
-            } catch (Throwable $e) {}
-        }
-        json_response(['breakingNews' => []]);
+        $where = $hasActive ? 'WHERE active = 1' : '';
+        $stmt = $dbConn->query("SELECT * FROM breaking_news $where ORDER BY id DESC");
+        $items = array_map(function ($r) use ($hasTitleBn) {
+            $titleBn = $hasTitleBn ? ($r['title_bn'] ?? '') : ($r['title'] ?? '');
+            $titleEn = $hasTitleBn ? ($r['title_en'] ?? $titleBn) : ($r['title'] ?? '');
+            return [
+                'id' => (int) $r['id'],
+                'title_bn' => $titleBn,
+                'title_en' => $titleEn,
+                'slug' => $r['slug'] ?? ('breaking-' . $r['id']),
+            ];
+        }, $stmt->fetchAll());
+        json_response(['breakingNews' => $items]);
     }
 
     if ($method === 'POST') {
@@ -307,41 +280,41 @@ if ($resource === 'breaking-news') {
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $titleBn = trim((string) ($input['title_bn'] ?? ($input['title'] ?? '')));
         $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
+        if ($titleBn === '' && $titleEn === '') {
+            json_response(['success' => false, 'message' => 'A breaking-news headline is required.'], 400);
+        }
         $slug = 'breaking-' . time();
 
-        if ($dbConn) {
-            try {
-                $hasTitleBn = has_column($dbConn, 'breaking_news', 'title_bn');
-                $hasActive = has_column($dbConn, 'breaking_news', 'active');
+        $hasTitleBn = has_column($dbConn, 'breaking_news', 'title_bn');
+        $hasActive = has_column($dbConn, 'breaking_news', 'active');
 
-                if ($hasTitleBn) {
-                    $sql = $hasActive
-                        ? 'INSERT INTO breaking_news (title_bn, title_en, slug, active) VALUES (?, ?, ?, 1)'
-                        : 'INSERT INTO breaking_news (title_bn, title_en, slug) VALUES (?, ?, ?)';
-                    $stmt = $dbConn->prepare($sql);
-                    $stmt->execute([$titleBn, $titleEn, $slug]);
-                } else {
-                    $stmt = $dbConn->prepare('INSERT INTO breaking_news (title, slug) VALUES (?, ?)');
-                    $stmt->execute([$titleBn, $slug]);
-                }
-                $id = (int) $dbConn->lastInsertId();
-                json_response([
-                    'success' => true,
-                    'item' => ['id' => $id, 'title_bn' => $titleBn, 'title_en' => $titleEn, 'slug' => $slug]
-                ]);
-            } catch (Throwable $e) {}
+        if ($hasTitleBn) {
+            $sql = $hasActive
+                ? 'INSERT INTO breaking_news (title_bn, title_en, slug, active) VALUES (?, ?, ?, 1)'
+                : 'INSERT INTO breaking_news (title_bn, title_en, slug) VALUES (?, ?, ?)';
+            $stmt = $dbConn->prepare($sql);
+            $stmt->execute([$titleBn, $titleEn, $slug]);
+        } else {
+            $stmt = $dbConn->prepare('INSERT INTO breaking_news (title, slug) VALUES (?, ?)');
+            $stmt->execute([$titleBn, $slug]);
         }
-        json_response(['success' => true, 'item' => ['id' => time(), 'title_bn' => $titleBn, 'title_en' => $titleEn, 'slug' => $slug]]);
+        $id = (int) $dbConn->lastInsertId();
+        json_response([
+            'success' => true,
+            'item' => ['id' => $id, 'title_bn' => $titleBn, 'title_en' => $titleEn, 'slug' => $slug]
+        ]);
     }
 
     if ($method === 'DELETE') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
         $id = (int) ($_GET['id'] ?? 0);
-        if ($dbConn && $id > 0) {
-            try {
-                $stmt = $dbConn->prepare('DELETE FROM breaking_news WHERE id = ?');
-                $stmt->execute([$id]);
-            } catch (Throwable $e) {}
+        if ($id < 1) {
+            json_response(['success' => false, 'message' => 'A valid breaking-news ID is required.'], 400);
+        }
+        $stmt = $dbConn->prepare('DELETE FROM breaking_news WHERE id = ?');
+        $stmt->execute([$id]);
+        if ($stmt->rowCount() === 0) {
+            json_response(['success' => false, 'message' => 'Breaking news was not found.'], 404);
         }
         json_response(['success' => true, 'deletedId' => $id]);
     }
@@ -351,18 +324,13 @@ if ($resource === 'breaking-news') {
 // ROUTE: /api/articles
 // ----------------------------------------------------
 if ($resource === 'articles') {
-    $dbConn = db();
+    $dbConn = require_db();
 
     // GET ALL ARTICLES
     if ($method === 'GET') {
-        if ($dbConn) {
-            try {
-                $stmt = $dbConn->query('SELECT * FROM articles ORDER BY published_at DESC');
-                $items = array_map(fn ($row) => serialize_article($row), $stmt->fetchAll());
-                json_response(['articles' => $items]);
-            } catch (Throwable $e) {}
-        }
-        json_response(['articles' => []]);
+        $stmt = $dbConn->query('SELECT * FROM articles ORDER BY published_at DESC');
+        $items = array_map(fn ($row) => serialize_article($row), $stmt->fetchAll());
+        json_response(['articles' => $items]);
     }
 
     // CREATE OR UPDATE ARTICLE
@@ -372,6 +340,8 @@ if ($resource === 'articles') {
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $titleBn = trim((string) ($input['title_bn'] ?? ($input['title'] ?? '')));
         $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
+        $titleBn = $titleBn !== '' ? $titleBn : $titleEn;
+        $titleEn = $titleEn !== '' ? $titleEn : $titleBn;
         $category = trim((string) ($input['category'] ?? 'national'));
         $summaryBn = trim((string) ($input['summary_bn'] ?? ($input['summary'] ?? '')));
         $summaryEn = trim((string) ($input['summary_en'] ?? $summaryBn));
@@ -381,16 +351,22 @@ if ($resource === 'articles') {
         }
 
         $id = (int) ($input['id'] ?? 0);
+        if ($method === 'PUT' && $id < 1) {
+            json_response(['success' => false, 'message' => 'A valid article ID is required.'], 400);
+        }
         $slug = trim((string) ($input['slug'] ?? ''));
         if ($slug === '') {
             $slug = 'news-' . time() . '-' . rand(100, 999);
         }
 
-        if ($dbConn) {
-            try {
-                $hasBilingualCols = has_column($dbConn, 'articles', 'title_bn');
+        $hasBilingualCols = has_column($dbConn, 'articles', 'title_bn');
 
-                if ($method === 'PUT' && $id > 0) {
+        if ($method === 'PUT') {
+            $exists = $dbConn->prepare('SELECT id FROM articles WHERE id = ?');
+            $exists->execute([$id]);
+            if (!$exists->fetch()) {
+                json_response(['success' => false, 'message' => 'Article was not found.'], 404);
+            }
                     if ($hasBilingualCols) {
                         $sql = 'UPDATE articles SET title_bn = ?, title_en = ?, category = ?, subheadline_bn = ?, subheadline_en = ?,
                                 summary_bn = ?, summary_en = ?, author_bn = ?, author_en = ?, author_role_bn = ?, author_role_en = ?,
@@ -429,8 +405,8 @@ if ($resource === 'articles') {
                             $id
                         ]);
                     }
-                    json_response(['success' => true, 'id' => $id]);
-                } else {
+            json_response(['success' => true, 'id' => $id]);
+        } else {
                     // INSERT
                     if ($hasBilingualCols) {
                         $sql = 'INSERT INTO articles (slug, title_bn, title_en, category, subheadline_bn, subheadline_en,
@@ -472,26 +448,22 @@ if ($resource === 'articles') {
                             (string) ($input['content_bn'] ?? ($input['content'] ?? ''))
                         ]);
                     }
-                    $id = (int) $dbConn->lastInsertId();
-                    json_response(['success' => true, 'id' => $id, 'slug' => $slug]);
-                }
-            } catch (Throwable $e) {
-                json_response(['success' => false, 'message' => $e->getMessage()], 500);
-            }
+            $id = (int) $dbConn->lastInsertId();
+            json_response(['success' => true, 'id' => $id, 'slug' => $slug]);
         }
-
-        json_response(['success' => true, 'id' => $id ?: time(), 'slug' => $slug]);
     }
 
     // DELETE ARTICLE
     if ($method === 'DELETE') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
         $id = (int) ($_GET['id'] ?? 0);
-        if ($dbConn && $id > 0) {
-            try {
-                $stmt = $dbConn->prepare('DELETE FROM articles WHERE id = ?');
-                $stmt->execute([$id]);
-            } catch (Throwable $e) {}
+        if ($id < 1) {
+            json_response(['success' => false, 'message' => 'A valid article ID is required.'], 400);
+        }
+        $stmt = $dbConn->prepare('DELETE FROM articles WHERE id = ?');
+        $stmt->execute([$id]);
+        if ($stmt->rowCount() === 0) {
+            json_response(['success' => false, 'message' => 'Article was not found.'], 404);
         }
         json_response(['success' => true, 'deletedId' => $id]);
     }
@@ -501,26 +473,20 @@ if ($resource === 'articles') {
 // ROUTE: GET /api/stats
 // ----------------------------------------------------
 if ($resource === 'stats' && $method === 'GET') {
-    $totalArticles = 0;
-    $totalViews = 0;
-    $totalBreaking = 0;
-    $dbConn = db();
-
-    if ($dbConn) {
-        try {
-            $totalArticles = (int) $dbConn->query('SELECT COUNT(*) FROM articles')->fetchColumn();
-            $totalViews = (int) $dbConn->query('SELECT COALESCE(SUM(views), 0) FROM articles')->fetchColumn();
-            $hasActive = has_column($dbConn, 'breaking_news', 'active');
-            $where = $hasActive ? 'WHERE active = 1' : '';
-            $totalBreaking = (int) $dbConn->query("SELECT COUNT(*) FROM breaking_news $where")->fetchColumn();
-        } catch (Throwable $e) {}
-    }
+    if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+    $dbConn = require_db();
+    $totalArticles = (int) $dbConn->query('SELECT COUNT(*) FROM articles')->fetchColumn();
+    $totalViews = (int) $dbConn->query('SELECT COALESCE(SUM(views), 0) FROM articles')->fetchColumn();
+    $hasActive = has_column($dbConn, 'breaking_news', 'active');
+    $where = $hasActive ? 'WHERE active = 1' : '';
+    $totalBreaking = (int) $dbConn->query("SELECT COUNT(*) FROM breaking_news $where")->fetchColumn();
+    $categoriesCount = (int) $dbConn->query('SELECT COUNT(*) FROM categories')->fetchColumn();
 
     json_response([
         'totalArticles' => $totalArticles,
         'totalViews' => $totalViews,
         'totalBreaking' => $totalBreaking,
-        'categoriesCount' => 12,
+        'categoriesCount' => $categoriesCount,
     ]);
 }
 

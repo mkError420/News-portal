@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Search, Globe, User, Bell, LogOut } from 'lucide-react'
-import { NAV_ITEMS, formatBengaliDate, formatEnglishDate, UI_TEXT } from '../utils.js'
+import { Menu, X, Search, Globe, User, Bell, LogOut, Flame } from 'lucide-react'
+import ProthomAloLogo from './ProthomAloLogo.jsx'
+import {
+  NAV_ITEMS,
+  TRENDING_TOPICS,
+  formatBengaliDate,
+  formatEnglishDate,
+  formatBengaliSolarDate,
+  UI_TEXT,
+} from '../utils.js'
 import { api } from '../api.js'
 
 export default function Header({ lang = 'bn', onLangChange, onSearch }) {
@@ -14,9 +22,12 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
 
   const t = UI_TEXT[lang] || UI_TEXT.bn
   const todayStr = lang === 'bn' ? formatBengaliDate(new Date().toISOString()) : formatEnglishDate(new Date().toISOString())
+  const bengaliSolarStr = formatBengaliSolarDate(new Date())
 
   useEffect(() => {
-    api.checkAuth().then((user) => setIsAuth(!!user))
+    api.checkAuth()
+      .then((user) => setIsAuth(!!user))
+      .catch((err) => console.error('Unable to verify the admin session:', err))
   }, [])
 
   useEffect(() => {
@@ -33,7 +44,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     if (localSearch.trim()) {
-      onSearch && onSearch(localSearch.trim())
+      onSearch?.(localSearch.trim())
       navigate(`/search?q=${encodeURIComponent(localSearch.trim())}`)
       setSearchOpen(false)
       setMobileOpen(false)
@@ -43,10 +54,12 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
   const handleLogout = async () => {
     try {
       await api.logout()
-    } catch {}
-    localStorage.removeItem('admin_auth')
-    setIsAuth(false)
-    navigate('/')
+      setIsAuth(false)
+      navigate('/')
+    } catch (err) {
+      console.error('Unable to end the admin session:', err)
+      alert(lang === 'bn' ? 'লগআউট করা যায়নি। আবার চেষ্টা করুন।' : 'Unable to log out. Please try again.')
+    }
   }
 
   return (
@@ -54,18 +67,30 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
       {/* 1. TOP UTILITY BAR (Prothom Alo Navy Blue #1a3a5c) */}
       <div className="bg-[#1a3a5c] text-white text-xs border-b border-[#224b75]">
         <div className="max-w-7xl mx-auto px-4 py-1.5 flex items-center justify-between gap-3 font-bengali">
-          {/* Left: Date & City Weather */}
-          <div className="flex items-center gap-4 text-gray-200">
-            <span className="font-medium tracking-wide">{todayStr}</span>
+          {/* Left: Date, Bengali Calendar & City Weather */}
+          <div className="flex items-center gap-3 sm:gap-4 text-gray-200 overflow-x-auto scrollbar-none py-0.5">
+            <span className="font-medium tracking-wide whitespace-nowrap">{todayStr}</span>
+            {lang === 'bn' && (
+              <>
+                <span className="hidden md:inline-block text-gray-400">|</span>
+                <span className="hidden md:inline-block text-yellow-300 font-medium whitespace-nowrap">
+                  {bengaliSolarStr}
+                </span>
+              </>
+            )}
             <span className="hidden sm:inline-block text-gray-400">|</span>
-            <span className="hidden sm:flex items-center gap-1 text-gray-300">
+            <span className="hidden sm:flex items-center gap-1 text-gray-300 whitespace-nowrap">
               <span>🌤</span>
-              <span>{lang === 'bn' ? '২৭° সে., ঢাকা' : '27°C, Dhaka'}</span>
+              <span>{lang === 'bn' ? 'ঢাকা ২৭° সে., আংশিক মেঘলা' : 'Dhaka 27°C, Partly Cloudy'}</span>
+            </span>
+            <span className="hidden lg:inline-block text-gray-400">|</span>
+            <span className="hidden lg:inline-block text-gray-300 text-[11px] whitespace-nowrap">
+              {lang === 'bn' ? 'সংস্করণ: বাংলাদেশ' : 'Edition: Bangladesh'}
             </span>
           </div>
 
           {/* Right: Language Switcher, Notifications, Login */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {/* Language Switch Pill */}
             <button
               onClick={() => onLangChange && onLangChange(lang === 'bn' ? 'en' : 'bn')}
@@ -120,24 +145,11 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
       </div>
 
       {/* 2. MAIN HEADER ROW (Logo, Header Leaderboard Ad, Search trigger) */}
-      <header className="bg-white border-b border-gray-200 py-3">
+      <header className="bg-white border-b border-gray-200 py-3.5">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
-          {/* Logo Brand */}
+          {/* Logo Brand with Authentic Prothom Alo Calligraphy & Symbol */}
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex flex-col group">
-              <span
-                className="font-extrabold tracking-tight leading-none text-[#e30613] group-hover:opacity-95 transition-opacity"
-                style={{
-                  fontSize: 'clamp(2rem, 4vw, 2.7rem)',
-                  fontFamily: "'Hind Siliguri', 'Noto Serif Bengali', serif",
-                }}
-              >
-                {lang === 'bn' ? 'প্রথম আলো' : 'Prothom Alo'}
-              </span>
-              <span className="text-[11px] font-medium text-gray-500 tracking-wider mt-0.5">
-                {lang === 'bn' ? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক' : 'Online Edition • Fearless in Pursuit of Truth'}
-              </span>
-            </Link>
+            <ProthomAloLogo lang={lang} />
           </div>
 
           {/* Leaderboard Ad Placeholder (Desktop 728x90) */}
@@ -204,6 +216,30 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
           </div>
         </div>
       </nav>
+
+      {/* 4. TRENDING TOPICS STRIP (আলোচিত বিষয় / Trending Topics Bar) */}
+      <div className="bg-[#fcfcfc] border-b border-gray-200 py-1.5 font-bengali text-xs">
+        <div className="max-w-7xl mx-auto px-4 flex items-center gap-2 overflow-x-auto scrollbar-none">
+          <span className="flex-shrink-0 font-bold text-[#e30613] flex items-center gap-1">
+            <Flame size={13} className="text-red-600 fill-current" />
+            <span>{lang === 'bn' ? 'আলোচিত বিষয়:' : 'Trending Topics:'}</span>
+          </span>
+          <div className="flex items-center gap-1.5 flex-nowrap">
+            {TRENDING_TOPICS.map((topic, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  onSearch?.(topic.query)
+                  navigate(`/search?q=${encodeURIComponent(topic.query)}`)
+                }}
+                className="px-2.5 py-0.5 rounded-full bg-white hover:bg-red-50 text-gray-700 hover:text-[#e30613] border border-gray-200 hover:border-red-300 transition-colors whitespace-nowrap text-[12px] font-medium shadow-2xs"
+              >
+                #{lang === 'bn' ? topic.bn : topic.en}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* SEARCH MODAL OVERLAY */}
       {searchOpen && (
@@ -313,7 +349,7 @@ export default function Header({ lang = 'bn', onLangChange, onSearch }) {
         <div className="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs">
           <button
             onClick={() => {
-              onLangChange && onLangChange(lang === 'bn' ? 'en' : 'bn')
+              onLangChange?.(lang === 'bn' ? 'en' : 'bn')
               setMobileOpen(false)
             }}
             className="flex items-center gap-1 font-semibold text-blue-700"

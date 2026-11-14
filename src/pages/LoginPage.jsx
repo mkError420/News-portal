@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Home, KeyRound } from 'lucide-react'
+import { Lock, Mail, ArrowRight, CheckCircle2, AlertCircle, Home } from 'lucide-react'
 import { api } from '../api.js'
 
 export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
@@ -17,7 +17,7 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
       if (user) {
         navigate('/admin', { replace: true })
       }
-    })
+    }).catch((err) => console.error('Unable to verify the admin session:', err))
   }, [navigate])
 
   const handleLogin = async (e) => {
@@ -42,12 +42,6 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  // Quick autofill demo credentials
-  const handleAutoFill = () => {
-    setEmail('admin@mknews.com')
-    setPassword('admin123')
   }
 
   return (
@@ -110,7 +104,7 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@mknews.com"
+                  placeholder="admin@example.com"
                   className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-sans"
                 />
               </div>
@@ -121,14 +115,6 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
                 <label className="block text-xs font-bold text-gray-700">
                   {lang === 'bn' ? 'গোপন পাসওয়ার্ড' : 'Secret Password'}
                 </label>
-                <button
-                  type="button"
-                  onClick={handleAutoFill}
-                  className="text-[11px] font-semibold text-blue-600 hover:text-red-600 flex items-center gap-0.5"
-                >
-                  <KeyRound size={11} />
-                  <span>{lang === 'bn' ? 'অটো-ফিল ডেমো ক্রেডেনশিয়াল' : 'Auto-fill Demo'}</span>
-                </button>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -171,26 +157,6 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess }) {
             </button>
           </form>
 
-          {/* Quick Demo Access Box */}
-          <div className="mt-6 pt-5 border-t border-gray-100 bg-gray-50/80 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-5 text-center text-xs text-gray-500">
-            <p className="font-semibold text-gray-700 mb-1 flex items-center justify-center gap-1">
-              <ShieldCheck size={14} className="text-green-600" />
-              <span>{lang === 'bn' ? 'ডেমো অ্যাডমিন তথ্য (এক ক্লিকে লগইন):' : 'Demo Credentials (1-click test):'}</span>
-            </p>
-            <div className="font-mono text-[11px] bg-white p-2 rounded border border-gray-200 inline-block text-gray-700 shadow-2xs">
-              <span>Email: <strong>admin@mknews.com</strong> | Password: <strong>admin123</strong></span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('admin@mknews.com')
-                setPassword('admin123')
-              }}
-              className="mt-2 block mx-auto text-red-600 font-bold hover:underline"
-            >
-              {lang === 'bn' ? 'এখানে ক্লিক করে পূরণ করুন' : 'Click here to apply demo credentials'}
-            </button>
-          </div>
         </div>
       </div>
     </div>

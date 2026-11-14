@@ -14,10 +14,6 @@ CREATE TABLE admins (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Admin Login: admin@mknews.com / Password: admin123
-INSERT INTO admins (email, password_hash)
-VALUES ('admin@mknews.com', '$2y$12$705b7AB1U6/IggUzxuVjSu01oiNtH7MGt4z437dwBoM0dB6hFQSTq');
-
 -- 2. Categories Table
 DROP TABLE IF EXISTS categories;
 CREATE TABLE categories (
@@ -46,6 +42,8 @@ DROP TABLE IF EXISTS breaking_news;
 CREATE TABLE breaking_news (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(500) NOT NULL,
+  title_bn VARCHAR(500) NOT NULL DEFAULT '',
+  title_en VARCHAR(500) NOT NULL DEFAULT '',
   slug VARCHAR(255) NOT NULL UNIQUE,
   active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -63,11 +61,21 @@ CREATE TABLE articles (
   id INT AUTO_INCREMENT PRIMARY KEY,
   slug VARCHAR(255) NOT NULL UNIQUE,
   title VARCHAR(500) NOT NULL,
+  title_bn VARCHAR(500) NOT NULL DEFAULT '',
+  title_en VARCHAR(500) NOT NULL DEFAULT '',
   category VARCHAR(100) NOT NULL DEFAULT 'national',
   subheadline VARCHAR(500) DEFAULT NULL,
+  subheadline_bn VARCHAR(500) DEFAULT NULL,
+  subheadline_en VARCHAR(500) DEFAULT NULL,
   summary TEXT NOT NULL,
+  summary_bn TEXT DEFAULT NULL,
+  summary_en TEXT DEFAULT NULL,
   author VARCHAR(150) NOT NULL DEFAULT 'প্রথম আলো ডেস্ক',
+  author_bn VARCHAR(150) NOT NULL DEFAULT '',
+  author_en VARCHAR(150) NOT NULL DEFAULT '',
   author_role VARCHAR(150) DEFAULT 'প্রতিবেদক',
+  author_role_bn VARCHAR(150) DEFAULT NULL,
+  author_role_en VARCHAR(150) DEFAULT NULL,
   image VARCHAR(500) NOT NULL,
   image_caption VARCHAR(255) DEFAULT NULL,
   image_credit VARCHAR(255) DEFAULT NULL,
@@ -76,8 +84,12 @@ CREATE TABLE articles (
   read_time VARCHAR(50) DEFAULT '4 min read',
   views INT NOT NULL DEFAULT 0,
   tags JSON DEFAULT NULL,
+  tags_bn JSON DEFAULT NULL,
+  tags_en JSON DEFAULT NULL,
   featured TINYINT(1) NOT NULL DEFAULT 0,
-  content LONGTEXT NOT NULL
+  content LONGTEXT NOT NULL,
+  content_bn LONGTEXT DEFAULT NULL,
+  content_en LONGTEXT DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO articles (
@@ -156,3 +168,21 @@ INSERT INTO articles (
   0,
   '<p>বাংলাদেশের প্রযুক্তি উদ্ভাবকদের জন্য এক গৌরবময় মুহূর্ত। মোবাইল ফিন্যান্সিয়াল সার্ভিস এবং এগ্রিকালচারাল সাপ্লাই চেইন নিয়ে কাজ করা দুটি স্থানীয় স্টার্টআপ সফলভাবে সিরিজ-বি ফান্ডিং সম্পন্ন করেছে।</p>'
 );
+
+UPDATE breaking_news SET title_bn = title, title_en = title;
+
+UPDATE articles
+SET title_bn = title,
+    title_en = title,
+    subheadline_bn = subheadline,
+    subheadline_en = subheadline,
+    summary_bn = summary,
+    summary_en = summary,
+    author_bn = author,
+    author_en = author,
+    author_role_bn = author_role,
+    author_role_en = author_role,
+    tags_bn = tags,
+    tags_en = tags,
+    content_bn = content,
+    content_en = content;
