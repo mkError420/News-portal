@@ -70,6 +70,10 @@ function db(): ?PDO
         }
     }
 
+    if ($pdo) {
+        auto_migrate_all_tables($pdo);
+    }
+
     return $pdo;
 }
 
@@ -82,6 +86,7 @@ function require_db(): PDO
             'message' => 'The database is unavailable. Check the server configuration and try again.'
         ], 503);
     }
+    auto_migrate_all_tables($connection);
     return $connection;
 }
 
@@ -99,13 +104,28 @@ function has_column(PDO $pdo, string $table, string $column): bool
     return in_array($column, $columnsCache[$table], true);
 }
 
-function auto_migrate_seo(PDO $pdo): void
+function auto_migrate_all_tables(PDO $pdo): void
 {
     static $done = false;
     if ($done) return;
     $done = true;
 
-    $seoCols = [
+    // 1. Articles Table Bilingual & SEO Migration
+    $articleCols = [
+        'title_bn' => "VARCHAR(500) NOT NULL DEFAULT ''",
+        'title_en' => "VARCHAR(500) NOT NULL DEFAULT ''",
+        'subheadline_bn' => "VARCHAR(500) NULL DEFAULT ''",
+        'subheadline_en' => "VARCHAR(500) NULL DEFAULT ''",
+        'summary_bn' => "TEXT NULL",
+        'summary_en' => "TEXT NULL",
+        'author_bn' => "VARCHAR(150) NOT NULL DEFAULT 'প্রথম আলো ডেস্ক'",
+        'author_en' => "VARCHAR(150) NOT NULL DEFAULT 'Staff Reporter'",
+        'author_role_bn' => "VARCHAR(150) NULL DEFAULT 'প্রতিবেদক'",
+        'author_role_en' => "VARCHAR(150) NULL DEFAULT 'Reporter'",
+        'tags_bn' => "JSON NULL",
+        'tags_en' => "JSON NULL",
+        'content_bn' => "LONGTEXT NULL",
+        'content_en' => "LONGTEXT NULL",
         'seo_title' => "VARCHAR(255) NULL DEFAULT ''",
         'seo_description' => "TEXT NULL",
         'focus_keyword' => "VARCHAR(150) NULL DEFAULT ''",
@@ -113,15 +133,75 @@ function auto_migrate_seo(PDO $pdo): void
         'og_image' => "VARCHAR(500) NULL DEFAULT ''",
         'schema_type' => "VARCHAR(50) NULL DEFAULT 'NewsArticle'"
     ];
-    foreach ($seoCols as $colName => $colDef) {
+    foreach ($articleCols as $colName => $colDef) {
         if (!has_column($pdo, 'articles', $colName)) {
             try {
                 $pdo->exec("ALTER TABLE `articles` ADD COLUMN `$colName` $colDef");
-            } catch (Throwable $e) {
-                // Ignore if lacks ALTER permissions
-            }
+            } catch (Throwable $e) {}
         }
     }
+
+    // Backfill legacy fields if empty
+    try {
+        if (has_column($pdo, 'articles', 'title')) {
+            $pdo->exec("UPDATE `articles` SET `title_bn` = `title` WHERE (`title_bn` = '' OR `title_bn` IS NULL) AND `title` IS NOT NULL AND `title` != ''");
+            $pdo->exec("UPDATE `articles` SET `title_en` = `title` WHERE (`title_en` = '' OR `title_en` IS NULL) AND `title` IS NOT NULL AND `title` != ''");
+        }
+        if (has_column($pdo, 'articles', 'content')) {
+            $pdo->exec("UPDATE `articles` SET `content_bn` = `content` WHERE (`content_bn` = '' OR `content_bn` IS NULL) AND `content` IS NOT NULL AND `content` != ''");
+        }
+        if (has_column($pdo, 'articles', 'summary')) {
+            $pdo->exec("UPDATE `articles` SET `summary_bn` = `summary` WHERE (`summary_bn` = '' OR `summary_bn` IS NULL) AND `summary` IS NOT NULL AND `summary` != ''");
+        }
+    } catch (Throwable $e) {}
+
+    // 2. Breaking News columns
+    $breakingCols = [
+        'title_bn' => "VARCHAR(500) NOT NULL DEFAULT ''",
+        'title_en' => "VARCHAR(500) NOT NULL DEFAULT ''",
+        'url' => "VARCHAR(500) NULL DEFAULT ''",
+        'article_id' => "INT NULL DEFAULT NULL",
+        'active' => "TINYINT(1) DEFAULT 1",
+        'order_num' => "INT DEFAULT 0"
+    ];
+    foreach ($breakingCols as $colName => $colDef) {
+        if (!has_column($pdo, 'breaking_news', $colName)) {
+            try {
+                $pdo->exec("ALTER TABLE `breaking_news` ADD COLUMN `$colName` $colDef");
+            } catch (Throwable $e) {}
+        }
+    }
+    try {
+        if (has_column($pdo, 'breaking_news', 'title')) {
+            $pdo->exec("UPDATE `breaking_news` SET `title_bn` = `title` WHERE (`title_bn` = '' OR `title_bn` IS NULL) AND `title` IS NOT NULL AND `title` != ''");
+        }
+    } catch (Throwable $e) {}
+
+    // 3. Categories columns
+    $catCols = [
+        'subcategories' => "JSON NULL",
+        'color' => "VARCHAR(30) DEFAULT '#e30613'",
+        'order_num' => "INT DEFAULT 0",
+        'active' => "TINYINT(1) DEFAULT 1"
+    ];
+    foreach ($catCols as $colName => $colDef) {
+        if (!has_column($pdo, 'categories', $colName)) {
+            try {
+                $pdo->exec("ALTER TABLE `categories` ADD COLUMN `$colName` $colDef");
+            } catch (Throwable $e) {}
+        }
+    }
+
+    // 4. Media & Opinions
+    auto_migrate_media_and_opinions($pdo);
+
+    // 5. Roles & Staff
+    auto_migrate_roles_and_staff($pdo);
+}
+
+function auto_migrate_seo(PDO $pdo): void
+{
+    auto_migrate_all_tables($pdo);
 }
 
 function auto_migrate_media_and_opinions(PDO $pdo): void

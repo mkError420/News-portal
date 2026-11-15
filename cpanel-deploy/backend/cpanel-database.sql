@@ -1,12 +1,12 @@
 -- ========================================================
--- cPanel / phpMyAdmin Import SQL
--- Safe for shared hosting (InfinityFree / cPanel / DirectAdmin)
+-- Prothom Alo Style News Portal Database Schema
+-- Safe for Shared Hosting (cPanel / phpMyAdmin / InfinityFree)
+-- UTF-8mb4 character set for complete Bengali script support
 -- Note: Do NOT add CREATE DATABASE or USE statements here.
--- Simply select your database in phpMyAdmin, then click "Import" or run in "SQL" tab.
+-- In phpMyAdmin, click your database name on the left first,
+-- then click "Import" or paste this into the "SQL" tab.
 -- ========================================================
 
--- 1. Admins Table
-DROP TABLE IF EXISTS admins;
 -- 1. Roles & Permissions Table
 DROP TABLE IF EXISTS roles;
 CREATE TABLE roles (
@@ -349,3 +349,34 @@ INSERT INTO videos (slug, title_bn, title_en, thumb, video_url, duration, views)
 ('bd-vs-india-asia-cup-final-highlights', 'বাংলাদেশ বনাম ভারত এশিয়া কাপ ফাইনাল: জয়ের রোমাঞ্চকর মুহূর্তগুলো', 'Bangladesh vs India Asia Cup Final: Thrilling Winning Moments', 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80', 'https://www.youtube.com/embed/dQw4w9WgXcQ', '৮:৩২', 125000),
 ('transformation-of-bangladesh-documentary', 'পদ্মা সেতু ও মেট্রোরেল: বাংলাদেশের রূপান্তরের ১০ বছর', 'Padma Bridge & Metro Rail: 10 Years of Bangladesh’s Transformation', 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80', 'https://www.youtube.com/embed/dQw4w9WgXcQ', '১৫:৪৫', 84000),
 ('sundarbans-drone-tech-conservation', 'সুন্দরবনে ড্রোন প্রযুক্তির ব্যবহার: বন্যপ্রাণী সংরক্ষণে নতুন দিগন্ত', 'Drones in Sundarbans: A New Horizon for Wildlife Conservation', 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?auto=format&fit=crop&w=800&q=80', 'https://www.youtube.com/embed/dQw4w9WgXcQ', '৬:১২', 42000);
+
+-- 9. Currency Rates Table (Bangladesh Bank & Govt Forex Rates)
+DROP TABLE IF EXISTS currency_rates;
+CREATE TABLE currency_rates (
+  currency VARCHAR(10) NOT NULL PRIMARY KEY,
+  name_bn VARCHAR(100) NOT NULL DEFAULT '',
+  name_en VARCHAR(100) NOT NULL DEFAULT '',
+  symbol VARCHAR(10) NOT NULL DEFAULT '',
+  flag VARCHAR(10) NOT NULL DEFAULT '',
+  buy DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  sell DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  change_val VARCHAR(20) NOT NULL DEFAULT '0.00',
+  change_type VARCHAR(10) NOT NULL DEFAULT 'neutral',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO currency_rates (currency, name_bn, name_en, symbol, flag, buy, sell, change_val, change_type) VALUES
+('USD', 'মার্কিন ডলার', 'US Dollar', '$', '🇺🇸', 121.80, 122.50, '+0.15', 'up'),
+('EUR', 'ইউরো', 'Euro', '€', '🇪🇺', 131.40, 132.20, '+0.20', 'up'),
+('GBP', 'ব্রিটিশ পাউন্ড', 'British Pound', '£', '🇬🇧', 155.10, 156.00, '-0.10', 'down'),
+('SAR', 'সৌদি রিয়াল', 'Saudi Riyal', '﷼', '🇸🇦', 32.45, 32.75, '0.00', 'neutral'),
+('AED', 'ইউএই দিরহাম', 'UAE Dirham', 'د.إ', '🇦🇪', 33.15, 33.45, '+0.05', 'up'),
+('KWD', 'কুয়েতি দিনার', 'Kuwaiti Dinar', 'KD', '🇰🇼', 395.50, 397.80, '+0.50', 'up'),
+('QAR', 'কাতারি রিয়াল', 'Qatari Riyal', 'QR', '🇶🇦', 33.30, 33.60, '+0.05', 'up'),
+('MYR', 'মালয়েশিয়ান রিঙ্গিত', 'Malaysian Ringgit', 'RM', '🇲🇾', 27.70, 28.05, '+0.08', 'up'),
+('SGD', 'সিঙ্গাপুর ডলার', 'Singapore Dollar', 'S$', '🇸🇬', 91.80, 92.60, '+0.15', 'up'),
+('CAD', 'কানাডিয়ান ডলার', 'Canadian Dollar', 'C$', '🇨🇦', 88.10, 88.90, '-0.15', 'down'),
+('AUD', 'অস্ট্রেলিয়ান ডলার', 'Australian Dollar', 'A$', '🇦🇺', 78.40, 79.20, '+0.10', 'up'),
+('INR', 'ভারতীয় রুপি', 'Indian Rupee', '₹', '🇮🇳', 1.42, 1.46, '0.00', 'neutral'),
+('GOLD', 'স্বর্ণ (২২ ক্যারেট ভরি)', 'Gold (22K Bhori)', 'Au', '🪙', 138500, 142000, '+650', 'up')
+ON DUPLICATE KEY UPDATE buy = VALUES(buy), sell = VALUES(sell);
