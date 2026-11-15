@@ -202,6 +202,27 @@ nav .overflow-x-auto::-webkit-scrollbar {
 }
 
 /* =========================================================
+   Currency News Ticker (Infinity Loop)
+   ========================================================= */
+@keyframes currency-ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.currency-ticker-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: currency-ticker-scroll 36s linear infinite;
+  will-change: transform;
+}
+
+.currency-ticker-track:hover,
+.currency-ticker-wrapper:hover .currency-ticker-track {
+  animation-play-state: paused;
+}
+
+/* =========================================================
    News Prose (Article Content)
    ========================================================= */
 .news-prose {

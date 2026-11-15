@@ -1,20 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
-import { TrendingUp, TrendingDown, RefreshCw, ChevronLeft, ChevronRight, Activity } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { TrendingUp, TrendingDown, RefreshCw, Activity } from 'lucide-react'
 import { CURRENCY_RATES, toBengaliNumber } from '../utils.js'
 import { api } from '../api.js'
 
 export default function CurrencyWidget({ lang = 'bn' }) {
   const [rates, setRates] = useState(CURRENCY_RATES)
-  const [activeSlide, setActiveSlide] = useState(0)
   const [rateMode, setRateMode] = useState('buy') // 'buy' | 'sell'
   const [lastFlash, setLastFlash] = useState({}) // { [currency]: 'up' | 'down' }
-  const [isPaused, setIsPaused] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState(() => new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
-
-  // Chunk rates into slides of 4 items each (matching the 4-column layout)
-  const itemsPerSlide = 4
-  const totalSlides = Math.ceil(rates.length / itemsPerSlide)
+  const [lastUpdated, setLastUpdated] = useState(() => new Date())
 
   // 1. Fetch initial live rates from API and poll every 60 seconds
   const fetchLiveRates = async () => {
@@ -39,8 +33,8 @@ export default function CurrencyWidget({ lang = 'bn' }) {
         )
         setLastUpdated(new Date())
       }
-    } catch (err) {
-      // Backend offline, will use current client state
+    } catch {
+      // Backend offline, will continue using current state
     } finally {
       setTimeout(() => setIsRefreshing(false), 500)
     }
@@ -52,25 +46,14 @@ export default function CurrencyWidget({ lang = 'bn' }) {
     return () => clearInterval(apiInterval)
   }, [])
 
-  // 2. Auto-cycle slide rotation every 5 seconds (all-time change)
-  useEffect(() => {
-    if (isPaused) return
-    const slideTimer = setInterval(() => {
-      setActiveSlide((curr) => (curr + 1) % totalSlides)
-    }, 5000)
-    return () => clearInterval(slideTimer)
-  }, [totalSlides, isPaused])
-
-  // 3. Realistic Bangladeshi Market Micro-Fluctuations (all-time live market ticker)
+  // 2. Realistic Bangladeshi Market Micro-Fluctuations (live all-time auto updates)
   useEffect(() => {
     const marketTickTimer = setInterval(() => {
       setRates((prevRates) => {
-        // Pick one or two random currencies to fluctuate slightly
         const targetIdx = Math.floor(Math.random() * prevRates.length)
         const target = prevRates[targetIdx]
         if (!target) return prevRates
 
-        // Special handling for Gold vs foreign currencies
         const isGold = target.currency === 'GOLD'
         const delta = isGold
           ? (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1) * 50
@@ -82,7 +65,7 @@ export default function CurrencyWidget({ lang = 'bn' }) {
         const changeType = delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral'
         const changeVal = (delta >= 0 ? '+' : '') + (isGold ? delta : delta.toFixed(2))
 
-        // Trigger visual flash
+        // Trigger flash highlight on changed item
         setLastFlash((prev) => ({ ...prev, [target.currency]: changeType }))
         setTimeout(() => {
           setLastFlash((prev) => {
@@ -103,14 +86,10 @@ export default function CurrencyWidget({ lang = 'bn' }) {
         return updated
       })
       setLastUpdated(new Date())
-    }, 8000)
+    }, 7000)
 
     return () => clearInterval(marketTickTimer)
   }, [])
-
-  // Current visible items
-  const startIdx = activeSlide * itemsPerSlide
-  const visibleItems = rates.slice(startIdx, startIdx + itemsPerSlide)
 
   // Format currency value based on language
   const formatVal = (val) => {
@@ -119,195 +98,149 @@ export default function CurrencyWidget({ lang = 'bn' }) {
     return lang === 'bn' ? toBengaliNumber(str) : str
   }
 
-  // Format change text
+  // Format change value
   const formatChange = (changeStr) => {
     if (!changeStr) return ''
     return lang === 'bn' ? toBengaliNumber(changeStr) : changeStr
   }
 
-  // Next / Prev slide handlers
-  const handlePrev = () => {
-    setActiveSlide((curr) => (curr - 1 + totalSlides) % totalSlides)
-  }
-
-  const handleNext = () => {
-    setActiveSlide((curr) => (curr + 1) % totalSlides)
-  }
+  // Duplicate list to achieve seamless infinite loop
+  const infiniteRates = [...rates, ...rates]
 
   return (
-    <div
-      className="bg-slate-50 border border-gray-200 rounded-lg p-3 mb-5 transition-all shadow-2xs font-bengali"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
-      {/* Top Meta Bar: Live Badge, Source, Buy/Sell Toggle & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b border-gray-200 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-2xs mb-4 font-bengali overflow-hidden currency-ticker-wrapper select-none">
+      <div className="flex items-center">
+        {/* Left Fixed Ticker Badge */}
+        <div className="flex-shrink-0 flex items-center gap-1.5 bg-[#1a3a5c] text-white px-3 py-2.5 z-20 shadow-md">
+          <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="font-bold text-gray-800 flex items-center gap-1.5">
-            <Activity size={13} className="text-emerald-600" />
-            <span>
-              {lang === 'bn'
-                ? 'লাইভ মুদ্রা বাজার (বাংলাদেশ ব্যাংক ও আন্তঃব্যাংক রেট)'
-                : 'Live Currency Market (Bangladesh Bank & Interbank)'}
+          <Activity size={13} className="text-emerald-400" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs font-bold whitespace-nowrap">
+              {lang === 'bn' ? 'লাইভ মুদ্রা বাজার' : 'Live Forex'}
             </span>
-          </span>
-          <span className="text-[10px] text-gray-400 hidden sm:inline">
-            • {lang === 'bn' ? 'স্বয়ংক্রিয় আপডেট হচ্ছে' : 'Auto updating live'}
-          </span>
+            <span className="text-[9px] text-gray-300 font-normal hidden sm:inline whitespace-nowrap">
+              {lang === 'bn' ? '(বাংলাদেশ ব্যাংক ও আন্তঃব্যাংক রেট)' : '(Bangladesh Bank & Interbank)'}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Center: Infinite Loop Marquee News Ticker Track */}
+        <div className="flex-1 overflow-hidden relative py-2 bg-slate-50">
+          {/* Subtle gradient masks for smooth entry and exit */}
+          <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none" />
+
+          <div className="currency-ticker-track flex items-center">
+            {infiniteRates.map((curr, idx) => {
+              const isFlashed = lastFlash[curr.currency]
+              const isUp = curr.change_type === 'up'
+              const isDown = curr.change_type === 'down'
+              const activeRateNum = rateMode === 'buy' ? curr.buy_num : curr.sell_num
+              const otherRateNum = rateMode === 'buy' ? curr.sell_num : curr.buy_num
+
+              return (
+                <div
+                  key={`${curr.currency}-${idx}`}
+                  className={`inline-flex items-center gap-2 mx-2 px-2.5 py-1 rounded-md border transition-all duration-300 select-none cursor-pointer ${
+                    isFlashed === 'up'
+                      ? 'bg-emerald-50 border-emerald-400 ring-1 ring-emerald-300'
+                      : isFlashed === 'down'
+                      ? 'bg-rose-50 border-rose-400 ring-1 ring-rose-300'
+                      : 'bg-white border-gray-200 hover:border-red-400 hover:shadow-xs'
+                  }`}
+                  title={`${curr.name_bn} (${curr.name_en}) - ক্রয়: ৳ ${formatVal(curr.buy_num)} | বিক্রয়: ৳ ${formatVal(curr.sell_num)}`}
+                >
+                  {/* Flag & Currency Code */}
+                  <span className="text-sm">{curr.flag || '💱'}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-bold text-xs text-gray-900 tracking-wide">
+                      {curr.currency}
+                    </span>
+                    <span className="text-[10px] text-gray-500 hidden md:inline">
+                      ({lang === 'bn' ? curr.name_bn : curr.name_en})
+                    </span>
+                  </div>
+
+                  {/* Rate Value */}
+                  <div className="flex items-baseline gap-0.5 ml-1">
+                    <span className="text-[11px] text-gray-500 font-semibold">৳</span>
+                    <span className="font-extrabold text-xs text-[#e30613] tracking-tight">
+                      {formatVal(activeRateNum)}
+                    </span>
+                  </div>
+
+                  {/* Trend Indicator */}
+                  {curr.change && curr.change !== '0.00' && curr.change !== '০.০০' && (
+                    <span
+                      className={`inline-flex items-center text-[9px] font-bold px-1 py-0.5 rounded leading-none ${
+                        isUp
+                          ? 'text-emerald-700 bg-emerald-50'
+                          : isDown
+                          ? 'text-rose-700 bg-rose-50'
+                          : 'text-gray-600 bg-gray-100'
+                      }`}
+                    >
+                      {isUp && <TrendingUp size={9} className="mr-0.5 text-emerald-600 inline" />}
+                      {isDown && <TrendingDown size={9} className="mr-0.5 text-rose-600 inline" />}
+                      <span>{formatChange(curr.change)}</span>
+                    </span>
+                  )}
+
+                  {/* Tooltip / Sub-rate indicator (shows other rate) */}
+                  <span className="text-[9px] text-gray-400 border-l pl-1.5 ml-0.5 hidden lg:inline">
+                    {rateMode === 'buy' ? (lang === 'bn' ? 'বিক্রয়' : 'Sell') : (lang === 'bn' ? 'ক্রয়' : 'Buy')}: ৳{formatVal(otherRateNum)}
+                  </span>
+
+                  {/* Diamond separator between cards */}
+                  <span className="text-gray-300 text-[10px] ml-1">◆</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Right Controls: Mode Toggle & Refresh */}
+        <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border-l border-gray-200 z-20">
           {/* Rate Mode Toggle: Buy vs Sell */}
-          <div className="inline-flex bg-gray-200 p-0.5 rounded-md text-[11px] font-semibold">
+          <div className="inline-flex bg-gray-200 p-0.5 rounded text-[10px] font-semibold">
             <button
               type="button"
               onClick={() => setRateMode('buy')}
-              className={`px-2 py-0.5 rounded transition-all ${
+              className={`px-1.5 py-0.5 rounded transition-all ${
                 rateMode === 'buy'
                   ? 'bg-white text-gray-900 shadow-2xs font-bold'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
+              title={lang === 'bn' ? 'ক্রয় দর দেখুন' : 'View Buy Rate'}
             >
-              {lang === 'bn' ? 'ক্রয় দর' : 'Buy'}
+              {lang === 'bn' ? 'ক্রয়' : 'Buy'}
             </button>
             <button
               type="button"
               onClick={() => setRateMode('sell')}
-              className={`px-2 py-0.5 rounded transition-all ${
+              className={`px-1.5 py-0.5 rounded transition-all ${
                 rateMode === 'sell'
                   ? 'bg-white text-gray-900 shadow-2xs font-bold'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
+              title={lang === 'bn' ? 'বিক্রয় দর দেখুন' : 'View Sell Rate'}
             >
-              {lang === 'bn' ? 'বিক্রয় দর' : 'Sell'}
+              {lang === 'bn' ? 'বিক্রয়' : 'Sell'}
             </button>
           </div>
 
-          {/* Manual Refresh Button */}
+          {/* Refresh Button */}
           <button
             type="button"
             onClick={fetchLiveRates}
             title={lang === 'bn' ? 'তাজা রেট লোড করুন' : 'Refresh live rates'}
             className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800 transition-colors"
           >
-            <RefreshCw size={12} className={isRefreshing ? 'animate-spin text-red-600' : ''} />
+            <RefreshCw size={11} className={isRefreshing ? 'animate-spin text-red-600' : ''} />
           </button>
-
-          {/* Slide Navigation Buttons */}
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={handlePrev}
-              title={lang === 'bn' ? 'আগের মুদ্রা' : 'Previous'}
-              className="p-1 rounded hover:bg-gray-200 text-gray-600 transition-colors"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={handleNext}
-              title={lang === 'bn' ? 'পরের মুদ্রা' : 'Next'}
-              className="p-1 rounded hover:bg-gray-200 text-gray-600 transition-colors"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 4-Column Auto-Changing Currency Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {visibleItems.map((curr) => {
-          const isFlashed = lastFlash[curr.currency]
-          const isUp = curr.change_type === 'up'
-          const isDown = curr.change_type === 'down'
-          const activeRateNum = rateMode === 'buy' ? curr.buy_num : curr.sell_num
-
-          return (
-            <div
-              key={curr.currency}
-              className={`p-2.5 rounded-lg border transition-all duration-300 relative overflow-hidden ${
-                isFlashed === 'up'
-                  ? 'bg-emerald-50 border-emerald-400 shadow-sm ring-1 ring-emerald-300'
-                  : isFlashed === 'down'
-                  ? 'bg-rose-50 border-rose-400 shadow-sm ring-1 ring-rose-300'
-                  : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xs'
-              }`}
-            >
-              {/* Header: Currency code & flag / symbol */}
-              <div className="flex items-center justify-between text-xs mb-1">
-                <div className="flex items-center gap-1.5 font-bold text-gray-800">
-                  <span className="text-sm">{curr.flag || '💱'}</span>
-                  <span className="tracking-wide">{curr.currency}</span>
-                </div>
-                <span className="text-[10px] text-gray-500 font-normal truncate max-w-[80px]" title={lang === 'bn' ? curr.name_bn : curr.name_en}>
-                  {lang === 'bn' ? curr.name_bn : curr.name_en}
-                </span>
-              </div>
-
-              {/* Main Rate Value & Live Trend */}
-              <div className="flex items-baseline justify-between mt-1.5">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xs text-gray-500 font-semibold">৳</span>
-                  <span className="text-base font-extrabold text-[#e30613] tracking-tight transition-colors">
-                    {formatVal(activeRateNum)}
-                  </span>
-                </div>
-
-                {/* Change Badge */}
-                {curr.change && curr.change !== '0.00' && curr.change !== '০.০০' && (
-                  <span
-                    className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      isUp
-                        ? 'text-emerald-700 bg-emerald-50'
-                        : isDown
-                        ? 'text-rose-700 bg-rose-50'
-                        : 'text-gray-600 bg-gray-100'
-                    }`}
-                  >
-                    {isUp && <TrendingUp size={10} className="text-emerald-600" />}
-                    {isDown && <TrendingDown size={10} className="text-rose-600" />}
-                    <span>{formatChange(curr.change)}</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Dual Rate Mini Sub-bar: shows the other rate (e.g. sell if viewing buy) */}
-              <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1.5 pt-1 border-t border-gray-100">
-                <span>{rateMode === 'buy' ? (lang === 'bn' ? 'বিক্রয়' : 'Sell') : (lang === 'bn' ? 'ক্রয়' : 'Buy')}:</span>
-                <span className="font-semibold text-gray-700">
-                  ৳ {formatVal(rateMode === 'buy' ? curr.sell_num : curr.buy_num)}
-                </span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Bottom Carousel Indicator Dots & Timestamp */}
-      <div className="flex items-center justify-between mt-2 pt-1 text-[10px] text-gray-500">
-        <div className="flex items-center gap-1.5">
-          <span className="text-gray-400">{lang === 'bn' ? 'পৃষ্ঠা:' : 'Slide:'}</span>
-          {Array.from({ length: totalSlides }).map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setActiveSlide(idx)}
-              className={`h-1.5 rounded-full transition-all ${
-                activeSlide === idx ? 'w-4 bg-red-600' : 'w-1.5 bg-gray-300 hover:bg-gray-400'
-              }`}
-              title={`${lang === 'bn' ? 'মুদ্রা সেট' : 'Set'} ${idx + 1}`}
-            />
-          ))}
-        </div>
-
-        <div className="text-[10px] text-gray-400">
-          <span>{lang === 'bn' ? 'বাংলাদেশ সময়' : 'BST'} • </span>
-          <span>{lastUpdated.toLocaleTimeString(lang === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
         </div>
       </div>
     </div>
