@@ -9,9 +9,7 @@
 @font-face {
   font-family: 'SolaimanLipi';
   src: local('SolaimanLipi'),
-       local('Solaiman Lipi'),
-       url('https://cdn.jsdelivr.net/gh/mominul/fonts-bangla@master/SolaimanLipi/SolaimanLipi.woff2') format('woff2'),
-       url('https://cdn.jsdelivr.net/gh/mominul/fonts-bangla@master/SolaimanLipi/SolaimanLipi.woff') format('woff');
+       local('Solaiman Lipi');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -20,9 +18,7 @@
 @font-face {
   font-family: 'SolaimanLipi';
   src: local('SolaimanLipi Bold'),
-       local('Solaiman Lipi Bold'),
-       url('https://cdn.jsdelivr.net/gh/mominul/fonts-bangla@master/SolaimanLipi/SolaimanLipi_Bold.woff2') format('woff2'),
-       url('https://cdn.jsdelivr.net/gh/mominul/fonts-bangla@master/SolaimanLipi/SolaimanLipi_Bold.woff') format('woff');
+       local('Solaiman Lipi Bold');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -30,9 +26,7 @@
 
 @font-face {
   font-family: 'Kalpurush';
-  src: local('Kalpurush'),
-       url('https://cdn.jsdelivr.net/gh/mominul/fonts-bangla@master/Kalpurush/Kalpurush.woff2') format('woff2'),
-       url('https://cdn.jsdelivr.net/gh/mominul/fonts-bangla@master/Kalpurush/Kalpurush.woff') format('woff');
+  src: local('Kalpurush');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -41,7 +35,7 @@
 @font-face {
   font-family: 'Kalpurush';
   src: local('Kalpurush Bold'),
-       url('https://cdn.jsdelivr.net/gh/mominul/fonts-bangla@master/Kalpurush/Kalpurush.woff2') format('woff2');
+       local('Kalpurush');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
