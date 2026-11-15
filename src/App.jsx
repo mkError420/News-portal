@@ -77,6 +77,8 @@ export default function App() {
         api.getOpinions(),
         api.getPhotos(),
         api.getVideos(),
+        api.getRoles(),
+        api.getStaff(),
       ])
       if (!active) return
 
@@ -105,6 +107,12 @@ export default function App() {
       }
       if (results[6].status === 'fulfilled' && Array.isArray(results[6].value) && results[6].value.length > 0) {
         updates.videos = results[6].value
+      }
+      if (results[7].status === 'fulfilled' && Array.isArray(results[7].value) && results[7].value.length > 0) {
+        updates.roles = results[7].value
+      }
+      if (results[8].status === 'fulfilled' && Array.isArray(results[8].value) && results[8].value.length > 0) {
+        updates.staff = results[8].value
       }
 
       setNewsData((prev) => {
@@ -292,6 +300,60 @@ export default function App() {
     persistData(updated)
   }
 
+  // --- Roles CRUD Handlers ---
+  const handleAddRole = (newRole) => {
+    const updated = {
+      ...newsData,
+      roles: [...(newsData.roles || []), newRole],
+    }
+    persistData(updated)
+  }
+
+  const handleUpdateRole = (updatedRole) => {
+    const updated = {
+      ...newsData,
+      roles: (newsData.roles || []).map((item) =>
+        item.id === updatedRole.id || item.role_key === updatedRole.role_key ? { ...item, ...updatedRole } : item
+      ),
+    }
+    persistData(updated)
+  }
+
+  const handleDeleteRole = (idOrKey) => {
+    const updated = {
+      ...newsData,
+      roles: (newsData.roles || []).filter((item) => item.id !== idOrKey && item.role_key !== idOrKey),
+    }
+    persistData(updated)
+  }
+
+  // --- Staff CRUD Handlers ---
+  const handleAddStaff = (newStaff) => {
+    const updated = {
+      ...newsData,
+      staff: [...(newsData.staff || []), newStaff],
+    }
+    persistData(updated)
+  }
+
+  const handleUpdateStaff = (updatedStaff) => {
+    const updated = {
+      ...newsData,
+      staff: (newsData.staff || []).map((item) =>
+        item.id === updatedStaff.id || item.email === updatedStaff.email ? { ...item, ...updatedStaff } : item
+      ),
+    }
+    persistData(updated)
+  }
+
+  const handleDeleteStaff = (id) => {
+    const updated = {
+      ...newsData,
+      staff: (newsData.staff || []).filter((item) => item.id !== id),
+    }
+    persistData(updated)
+  }
+
   // --- Website Settings Handler ---
   const handleUpdateSettings = async (newSettings) => {
     try {
@@ -471,6 +533,8 @@ export default function App() {
                 opinions={newsData.opinions}
                 photos={newsData.photos}
                 videos={newsData.videos}
+                roles={newsData.roles || []}
+                staff={newsData.staff || []}
                 onAddArticle={handleAddArticle}
                 onUpdateArticle={handleUpdateArticle}
                 onDeleteArticle={handleDeleteArticle}
@@ -489,6 +553,12 @@ export default function App() {
                 onAddVideo={handleAddVideo}
                 onUpdateVideo={handleUpdateVideo}
                 onDeleteVideo={handleDeleteVideo}
+                onAddRole={handleAddRole}
+                onUpdateRole={handleUpdateRole}
+                onDeleteRole={handleDeleteRole}
+                onAddStaff={handleAddStaff}
+                onUpdateStaff={handleUpdateStaff}
+                onDeleteStaff={handleDeleteStaff}
                 onResetData={handleResetData}
                 settings={newsData.settings}
                 onUpdateSettings={handleUpdateSettings}

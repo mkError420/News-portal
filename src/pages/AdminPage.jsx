@@ -43,6 +43,14 @@ import {
   Link as LinkIcon,
   Play,
   Pause,
+  ShieldCheck,
+  Shield,
+  Users,
+  UserCheck,
+  Key,
+  Lock,
+  UserPlus,
+  ShieldAlert,
 } from 'lucide-react'
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
@@ -61,6 +69,8 @@ export default function AdminPage({
   opinions = [],
   photos = [],
   videos = [],
+  roles = [],
+  staff = [],
   settings = null,
   onAddArticle,
   onUpdateArticle,
@@ -80,6 +90,12 @@ export default function AdminPage({
   onAddVideo,
   onUpdateVideo,
   onDeleteVideo,
+  onAddRole,
+  onUpdateRole,
+  onDeleteRole,
+  onAddStaff,
+  onUpdateStaff,
+  onDeleteStaff,
   onResetData,
   onUpdateSettings,
   lang = 'bn',
@@ -87,7 +103,7 @@ export default function AdminPage({
   const navigate = useNavigate()
   const [currentUser, setCurrentUser] = useState(null)
   const [authChecking, setAuthChecking] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'articles' | 'categories' | 'add' | 'breaking' | 'opinions' | 'media' | 'settings'
+  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'articles' | 'categories' | 'add' | 'breaking' | 'opinions' | 'media' | 'roles' | 'settings'
 
   // Server health state
   const [serverHealth, setServerHealth] = useState({ status: 'checking', database: 'checking' })
@@ -347,6 +363,62 @@ export default function AdminPage({
   }
   const [newVideo, setNewVideo] = useState(initialVideoForm)
   const [editingVideoId, setEditingVideoId] = useState(null)
+
+  // --- Roles & Staff State ---
+  const [roleSubTab, setRoleSubTab] = useState('roles') // 'roles' | 'staff'
+  const [localRoles, setLocalRoles] = useState(roles)
+  const [localStaff, setLocalStaff] = useState(staff)
+
+  useEffect(() => {
+    if (roles && roles.length > 0) setLocalRoles(roles)
+  }, [roles])
+
+  useEffect(() => {
+    if (staff && staff.length > 0) setLocalStaff(staff)
+  }, [staff])
+
+  useEffect(() => {
+    if (!roles || roles.length === 0) {
+      api.getRoles().then((r) => { if (Array.isArray(r) && r.length > 0) setLocalRoles(r) }).catch(() => {})
+    }
+    if (!staff || staff.length === 0) {
+      api.getStaff().then((s) => { if (Array.isArray(s) && s.length > 0) setLocalStaff(s) }).catch(() => {})
+    }
+  }, [])
+
+  const ALL_PERMISSIONS = useMemo(() => [
+    { key: 'all', bn: 'সর্বময় ক্ষমতা (Full Access)', en: 'Full System Access', desc: 'সকল ফিচার, সেটিংস ও কনটেন্টে অবাধ প্রবেশাধিকার' },
+    { key: 'manage_articles', bn: 'সংবাদ প্রকাশ ও সম্পাদনা', en: 'Manage Articles', desc: 'নতুন সংবাদ তৈরি, সম্পাদনা, ড্রাফট ও প্রকাশ' },
+    { key: 'manage_categories', bn: 'ক্যাটাগরি নিয়ন্ত্রণ', en: 'Manage Categories', desc: 'ক্যাটাগরি তৈরি, পরিবর্তন ও সাজানো' },
+    { key: 'manage_breaking', bn: 'ব্রেকিং নিউজ টিকার', en: 'Manage Breaking News', desc: 'জরুরি হেডলাইন ও স্ক্রোলিং টিকার পরিচালনা' },
+    { key: 'manage_opinions', bn: 'কলাম ও মতামত', en: 'Manage Opinions', desc: 'কলামিস্ট ও সম্পাদকীয় নিবন্ধ ব্যবস্থাপনা' },
+    { key: 'manage_media', bn: 'ছবি ও ভিডিও গ্যালারি', en: 'Manage Media', desc: 'আলোকচিত্র ও ভিডিও প্রতিবেদন আপলোড' },
+    { key: 'manage_roles', bn: 'রোল ও স্টাফ পারমিশন', en: 'Manage Roles & Staff', desc: 'টিমের ভূমিকা ও নিরাপত্তা পারমিশন' },
+    { key: 'manage_settings', bn: 'ওয়েবসাইট সেটিংস ও এসইও', en: 'Manage Settings', desc: 'সাইট মেটাডাটা, গুগল এডসেন্স ও কনফিগারেশন' },
+  ], [])
+
+  const initialRoleForm = {
+    name_bn: '',
+    name_en: '',
+    role_key: '',
+    description_bn: '',
+    description_en: '',
+    permissions: ['manage_articles'],
+    status: 'active',
+  }
+  const [roleForm, setRoleForm] = useState(initialRoleForm)
+  const [editingRoleId, setEditingRoleId] = useState(null)
+
+  const initialStaffForm = {
+    name: '',
+    email: '',
+    password: '',
+    role_key: 'editor',
+    phone: '',
+    status: 'active',
+  }
+  const [staffForm, setStaffForm] = useState(initialStaffForm)
+  const [editingStaffId, setEditingStaffId] = useState(null)
 
   // Handle Logout
   const handleLogout = async () => {
@@ -898,6 +970,191 @@ export default function AdminPage({
     }
   }
 
+  // --- Role Handlers ---
+  const handleEditRoleClick = (r) => {
+    setEditingRoleId(r.id)
+    setRoleForm({
+      id: r.id,
+      name_bn: r.name_bn || '',
+      name_en: r.name_en || '',
+      role_key: r.role_key || '',
+      description_bn: r.description_bn || '',
+      description_en: r.description_en || '',
+      permissions: Array.isArray(r.permissions) ? r.permissions : ['manage_articles'],
+      status: r.status || 'active',
+    })
+    window.scrollTo({ top: 350, behavior: 'smooth' })
+  }
+
+  const handleCancelRoleEdit = () => {
+    setEditingRoleId(null)
+    setRoleForm(initialRoleForm)
+  }
+
+  const handleRoleSubmit = async (e) => {
+    e.preventDefault()
+    if (!roleForm.name_bn.trim()) {
+      alert(lang === 'bn' ? 'দয়া করে রোলের বাংলা নাম লিখুন।' : 'Please enter role name.')
+      return
+    }
+
+    const payload = {
+      ...roleForm,
+      ...(editingRoleId ? { id: editingRoleId } : {}),
+      name_en: roleForm.name_en.trim() || roleForm.name_bn.trim(),
+      role_key: roleForm.role_key.trim() || roleForm.name_en.toLowerCase().replace(/[^a-z0-9_]/g, '_') || `role_${Date.now()}`,
+    }
+
+    try {
+      const res = await api.saveRole(payload)
+      const savedRole = res?.role || {
+        ...payload,
+        id: editingRoleId || Date.now(),
+        user_count: 0,
+        is_system: false,
+      }
+      if (editingRoleId) {
+        onUpdateRole?.(savedRole)
+        setLocalRoles((prev) => prev.map((item) => (item.id === savedRole.id ? { ...item, ...savedRole } : item)))
+        triggerToast(lang === 'bn' ? 'রোল সফলভাবে আপডেট হয়েছে!' : 'Role updated successfully!')
+      } else {
+        onAddRole?.(savedRole)
+        setLocalRoles((prev) => [...prev, savedRole])
+        triggerToast(lang === 'bn' ? 'নতুন রোল ডাটাবেজে তৈরি হয়েছে!' : 'New role saved in database!')
+      }
+      refreshStats()
+    } catch (err) {
+      console.warn('API saveRole error:', err)
+      const fallback = {
+        ...payload,
+        id: editingRoleId || Date.now(),
+        user_count: 0,
+      }
+      if (editingRoleId) {
+        onUpdateRole?.(fallback)
+        setLocalRoles((prev) => prev.map((item) => (item.id === fallback.id ? { ...item, ...fallback } : item)))
+        triggerToast(lang === 'bn' ? 'রোল আপডেট হয়েছে (লোকাল)!' : 'Role updated (local)!')
+      } else {
+        onAddRole?.(fallback)
+        setLocalRoles((prev) => [...prev, fallback])
+        triggerToast(lang === 'bn' ? 'রোল তৈরি হয়েছে (লোকাল)!' : 'Role added (local)!')
+      }
+    }
+    setRoleForm(initialRoleForm)
+    setEditingRoleId(null)
+  }
+
+  const handleDeleteRoleClick = async (r) => {
+    if (r.is_system || r.role_key === 'admin') {
+      alert(lang === 'bn' ? 'প্রধান প্রশাসক (Super Admin) রোল মুছে ফেলা যাবে না।' : 'System administrator role cannot be deleted.')
+      return
+    }
+    if (confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে "${r.name_bn}" রোলটি মুছে ফেলতে চান?` : `Are you sure you want to delete role "${r.name_bn}"?`)) {
+      try {
+        await api.deleteRole(r.id || r.role_key)
+      } catch (err) {
+        console.warn('Backend deleteRole error:', err)
+      }
+      onDeleteRole?.(r.id || r.role_key)
+      setLocalRoles((prev) => prev.filter((item) => item.id !== r.id && item.role_key !== r.role_key))
+      refreshStats()
+      triggerToast(lang === 'bn' ? 'রোল মুছে ফেলা হয়েছে।' : 'Role deleted.', 'info')
+    }
+  }
+
+  // --- Staff Handlers ---
+  const handleEditStaffClick = (m) => {
+    setEditingStaffId(m.id)
+    setStaffForm({
+      id: m.id,
+      name: m.name || '',
+      email: m.email || '',
+      password: '',
+      role_key: m.role_key || 'editor',
+      phone: m.phone || '',
+      status: m.status || 'active',
+    })
+    window.scrollTo({ top: 350, behavior: 'smooth' })
+  }
+
+  const handleCancelStaffEdit = () => {
+    setEditingStaffId(null)
+    setStaffForm(initialStaffForm)
+  }
+
+  const handleStaffSubmit = async (e) => {
+    e.preventDefault()
+    if (!staffForm.email.trim()) {
+      alert(lang === 'bn' ? 'দয়া করে ইমেইল এড্রেস লিখুন।' : 'Please enter an email address.')
+      return
+    }
+    if (!editingStaffId && (!staffForm.password || staffForm.password.length < 6)) {
+      alert(lang === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters.')
+      return
+    }
+
+    const payload = {
+      ...staffForm,
+      ...(editingStaffId ? { id: editingStaffId } : {}),
+      name: staffForm.name.trim() || staffForm.email.split('@')[0],
+    }
+
+    try {
+      const res = await api.saveStaff(payload)
+      const savedStaff = res?.staff || {
+        ...payload,
+        id: editingStaffId || Date.now(),
+        created_at: new Date().toISOString(),
+      }
+      if (editingStaffId) {
+        onUpdateStaff?.(savedStaff)
+        setLocalStaff((prev) => prev.map((item) => (item.id === savedStaff.id ? { ...item, ...savedStaff } : item)))
+        triggerToast(lang === 'bn' ? 'সদস্যের তথ্য সফলভাবে আপডেট হয়েছে!' : 'Staff member updated successfully!')
+      } else {
+        onAddStaff?.(savedStaff)
+        setLocalStaff((prev) => [...prev, savedStaff])
+        triggerToast(lang === 'bn' ? 'নতুন টিম সদস্য ডাটাবেজে যুক্ত হয়েছে!' : 'Staff member added in database!')
+      }
+      refreshStats()
+    } catch (err) {
+      console.warn('API saveStaff error:', err)
+      const fallback = {
+        ...payload,
+        id: editingStaffId || Date.now(),
+        created_at: new Date().toISOString(),
+      }
+      if (editingStaffId) {
+        onUpdateStaff?.(fallback)
+        setLocalStaff((prev) => prev.map((item) => (item.id === fallback.id ? { ...item, ...fallback } : item)))
+        triggerToast(lang === 'bn' ? 'সদস্য আপডেট হয়েছে (লোকাল)!' : 'Staff updated (local)!')
+      } else {
+        onAddStaff?.(fallback)
+        setLocalStaff((prev) => [...prev, fallback])
+        triggerToast(lang === 'bn' ? 'সদস্য যুক্ত হয়েছে (লোকাল)!' : 'Staff added (local)!')
+      }
+    }
+    setStaffForm(initialStaffForm)
+    setEditingStaffId(null)
+  }
+
+  const handleDeleteStaffClick = async (m) => {
+    if (localStaff.length <= 1) {
+      alert(lang === 'bn' ? 'একমাত্র প্রশাসককে মুছে ফেলা সম্ভব নয়।' : 'Cannot delete the only administrator.')
+      return
+    }
+    if (confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে "${m.name}" (${m.email}) কে মুছে ফেলতে চান?` : `Are you sure you want to remove "${m.name}"?`)) {
+      try {
+        await api.deleteStaff(m.id)
+      } catch (err) {
+        console.warn('Backend deleteStaff error:', err)
+      }
+      onDeleteStaff?.(m.id)
+      setLocalStaff((prev) => prev.filter((item) => item.id !== m.id))
+      refreshStats()
+      triggerToast(lang === 'bn' ? 'টিম সদস্য অপসারিত হয়েছে।' : 'Staff member removed.', 'info')
+    }
+  }
+
   // Download Database SQL
   const handleDownloadSQL = () => {
     const element = document.createElement('a')
@@ -1044,6 +1301,7 @@ export default function AdminPage({
               { id: 'breaking', icon: <Flame size={16} />, bn: 'ব্রেকিং নিউজ টিকার', en: 'Breaking Ticker', count: breakingNews.length },
               { id: 'opinions', icon: <PenTool size={16} />, bn: 'কলাম ও মতামত', en: 'Opinions & Editorials', count: opinions.length },
               { id: 'media', icon: <Camera size={16} />, bn: 'ছবি ও ভিডিও গ্যালারি', en: 'Photos & Videos', count: photos.length + videos.length },
+              { id: 'roles', icon: <ShieldCheck size={16} />, bn: 'রোল ও পারমিশন (Role)', en: 'Role & Staff', count: localRoles.length },
               { id: 'settings', icon: <Globe size={16} />, bn: 'ওয়েবসাইট সেটিংস ও বিবরণ', en: 'Website Settings & Details', count: null },
             ].map((tab) => (
               <button
@@ -1160,8 +1418,8 @@ export default function AdminPage({
                 </div>
               </div>
 
-              {/* Secondary Media & Opinion Quick Metrics */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Secondary Media, Opinion & Role Quick Metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div
                   onClick={() => setActiveTab('opinions')}
                   className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-purple-300 transition-all"
@@ -1208,6 +1466,22 @@ export default function AdminPage({
                     </div>
                   </div>
                   <span className="text-xs text-cyan-600 font-bold">ম্যানেজ →</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab('roles')}
+                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <ShieldCheck size={18} />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'রোল ও পারমিশন' : 'Roles & Permissions'}</span>
+                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(localRoles.length)} টি রোল</span>
+                    </div>
+                  </div>
+                  <span className="text-xs text-emerald-600 font-bold">ম্যানেজ →</span>
                 </div>
               </div>
 
@@ -2973,6 +3247,544 @@ export default function AdminPage({
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ================= TAB 7.5: ROLE & STAFF MANAGEMENT ================= */}
+          {activeTab === 'roles' && (
+            <div className="space-y-6">
+              {/* Top Banner and Sub-tab Switcher */}
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-red-50 text-[#e30613] flex items-center justify-center border border-red-100 shadow-xs">
+                    <ShieldCheck size={26} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-gray-900 flex items-center gap-2">
+                      <span>রোল ও পারমিশন ব্যবস্থাপনা (Role & Staff Management)</span>
+                      <span className="text-[10px] bg-red-100 text-[#e30613] font-bold px-2.5 py-0.5 rounded-full border border-red-200">
+                        MySQL লাইভ ডাটাবেজ
+                      </span>
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      ব্যবহারকারীদের রোল তৈরি, অ্যাক্সেস পারমিশন কন্ট্রোল এবং টিম মেম্বারদের দায়িত্ব বণ্টন করুন।
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sub Tab Switcher Pills */}
+                <div className="flex items-center gap-1.5 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setRoleSubTab('roles')}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      roleSubTab === 'roles'
+                        ? 'bg-white text-[#e30613] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Shield size={14} />
+                    <span>ভূমিকা ও পারমিশন তালিকা</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-50 text-[#e30613] font-bold">
+                      {toBengaliNumber(localRoles.length)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleSubTab('staff')}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      roleSubTab === 'staff'
+                        ? 'bg-white text-[#e30613] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Users size={14} />
+                    <span>টিম ও স্টাফ সদস্য</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-600 font-bold">
+                      {toBengaliNumber(localStaff.length)}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* VIEW 1: ROLES & PERMISSIONS */}
+              {roleSubTab === 'roles' && (
+                <div className="space-y-6">
+                  {/* Create / Edit Role Form */}
+                  <form onSubmit={handleRoleSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3 text-[#e30613] font-bold">
+                      <div className="flex items-center gap-2">
+                        <Key size={18} />
+                        <span>{editingRoleId ? 'রোল সম্পাদনা করুন (Edit Role)' : 'নতুন ভূমিকা / রোল তৈরি করুন (Create New Role)'}</span>
+                      </div>
+                      {editingRoleId && (
+                        <button
+                          type="button"
+                          onClick={handleCancelRoleEdit}
+                          className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors font-normal"
+                        >
+                          বাতিল করুন (Cancel)
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">রোলের বাংলা নাম *</label>
+                        <input
+                          type="text"
+                          required
+                          value={roleForm.name_bn}
+                          onChange={(e) => setRoleForm({ ...roleForm, name_bn: e.target.value })}
+                          placeholder="বার্তা সম্পাদক / বিশেষ প্রতিবেদক"
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Role Name (English)</label>
+                        <input
+                          type="text"
+                          value={roleForm.name_en}
+                          onChange={(e) => setRoleForm({ ...roleForm, name_en: e.target.value })}
+                          placeholder="News Editor / Reporter"
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">রোল কি (Role Key - Unique identifier)</label>
+                        <input
+                          type="text"
+                          value={roleForm.role_key}
+                          onChange={(e) => setRoleForm({ ...roleForm, role_key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') })}
+                          placeholder="editor / reporter"
+                          disabled={editingRoleId && roleForm.role_key === 'admin'}
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none font-mono focus:border-red-500 disabled:bg-gray-100"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">দায়িত্ব ও বিবরণের সারসংক্ষেপ (বাংলা)</label>
+                        <textarea
+                          rows="2"
+                          value={roleForm.description_bn}
+                          onChange={(e) => setRoleForm({ ...roleForm, description_bn: e.target.value })}
+                          placeholder="এই রোলের অন্তর্ভুক্ত কর্মীদের দায়িত্ব ও অনুমোদিত কার্যক্রম..."
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">স্ট্যাটাস (Status)</label>
+                        <select
+                          value={roleForm.status}
+                          onChange={(e) => setRoleForm({ ...roleForm, status: e.target.value })}
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white"
+                        >
+                          <option value="active">সক্রিয় (Active - কার্যকর)</option>
+                          <option value="inactive">স্থগিত (Inactive - সাময়িক বন্ধ)</option>
+                        </select>
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          সক্রিয় থাকলে সংশ্লিষ্ট ব্যবহারকারীরা এই রোলে লগইন ও কাজ করতে পারবেন।
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Permissions Checklist Grid */}
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                          <Lock size={14} className="text-[#e30613]" />
+                          <span>অনুমোদিত অ্যাক্সেস পারমিশনসমূহ (Select Permissions)</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allKeys = ALL_PERMISSIONS.map((p) => p.key)
+                              setRoleForm({ ...roleForm, permissions: allKeys })
+                            }}
+                            className="text-[11px] text-[#e30613] font-bold hover:underline"
+                          >
+                            সব নির্বাচন করুন
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setRoleForm({ ...roleForm, permissions: ['manage_articles'] })}
+                            className="text-[11px] text-gray-500 font-bold hover:underline"
+                          >
+                            রিসেট
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {ALL_PERMISSIONS.map((p) => {
+                          const isChecked = Array.isArray(roleForm.permissions) && roleForm.permissions.includes(p.key)
+                          return (
+                            <label
+                              key={p.key}
+                              className={`flex items-start gap-2.5 p-3 rounded-lg border text-xs cursor-pointer transition-all ${
+                                isChecked
+                                  ? 'bg-red-50/60 border-red-300 text-gray-900 shadow-2xs'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const current = Array.isArray(roleForm.permissions) ? [...roleForm.permissions] : []
+                                  if (e.target.checked) {
+                                    if (!current.includes(p.key)) current.push(p.key)
+                                  } else {
+                                    const idx = current.indexOf(p.key)
+                                    if (idx !== -1) current.splice(idx, 1)
+                                  }
+                                  setRoleForm({ ...roleForm, permissions: current })
+                                }}
+                                className="mt-0.5 rounded text-red-600 focus:ring-red-500"
+                              />
+                              <div>
+                                <span className="font-bold block text-gray-900">{p.bn}</span>
+                                <span className="text-[10px] text-gray-500 block mt-0.5">{p.desc}</span>
+                              </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        type="submit"
+                        className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow flex items-center gap-2"
+                      >
+                        <Save size={14} />
+                        <span>{editingRoleId ? 'পরিবর্তন সংরক্ষণ করুন (Save Role)' : 'রোল তৈরি করুন (Create Role)'}</span>
+                      </button>
+                      {editingRoleId && (
+                        <button
+                          type="button"
+                          onClick={handleCancelRoleEdit}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors"
+                        >
+                          বাতিল (Cancel)
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  {/* Roles List Cards */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <div>
+                        <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                          <ShieldCheck size={16} className="text-[#e30613]" />
+                          <span>সক্রিয় ভূমিকার তালিকা ({toBengaliNumber(localRoles.length)} টি রোল)</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">ডাটাবেজে সংরক্ষিত প্রতিটি রোলের পারমিশন ও স্টাফ সংখ্যা</p>
+                      </div>
+                      <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                        সিস্টেম কানেক্টেড
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {localRoles.map((r) => {
+                        const isSuperAdmin = r.role_key === 'admin' || r.is_system
+                        const permsList = Array.isArray(r.permissions) ? r.permissions : []
+                        return (
+                          <div
+                            key={r.id || r.role_key}
+                            className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
+                              isSuperAdmin
+                                ? 'bg-gradient-to-br from-red-50/40 to-white border-red-200 shadow-xs'
+                                : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xs'
+                            }`}
+                          >
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                    isSuperAdmin ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    <Shield size={16} />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-bold text-xs text-gray-900">{r.name_bn}</h4>
+                                    <span className="text-[10px] text-gray-400 font-mono block">{r.role_key}</span>
+                                  </div>
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  r.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                  {r.status === 'active' ? 'সক্রিয়' : 'স্থগিত'}
+                                </span>
+                              </div>
+
+                              {r.description_bn && (
+                                <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
+                                  {r.description_bn}
+                                </p>
+                              )}
+
+                              <div>
+                                <span className="text-[10px] font-bold text-gray-400 block mb-1">অনুমোদিত পারমিশন:</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {permsList.slice(0, 4).map((pKey) => (
+                                    <span key={pKey} className="text-[9px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono">
+                                      {pKey}
+                                    </span>
+                                  ))}
+                                  {permsList.length > 4 && (
+                                    <span className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold">
+                                      +{permsList.length - 4} টি
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="border-t pt-3 mt-3 flex items-center justify-between text-xs text-gray-500">
+                              <span className="text-[11px] flex items-center gap-1 font-semibold text-gray-600">
+                                <Users size={12} className="text-gray-400" />
+                                <span>{toBengaliNumber(r.user_count || 0)} জন কর্মী</span>
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditRoleClick(r)}
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="সম্পাদনা করুন (Edit)"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                {!isSuperAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteRoleClick(r)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="মুছে ফেলুন (Delete)"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW 2: TEAM MEMBERS & STAFF USERS */}
+              {roleSubTab === 'staff' && (
+                <div className="space-y-6">
+                  {/* Add / Edit Staff Member Form */}
+                  <form onSubmit={handleStaffSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3 text-[#e30613] font-bold">
+                      <div className="flex items-center gap-2">
+                        <UserPlus size={18} />
+                        <span>{editingStaffId ? 'টিম সদস্য সম্পাদনা করুন (Edit Staff Member)' : 'নতুন টিম সদস্য / অ্যাডমিন যুক্ত করুন'}</span>
+                      </div>
+                      {editingStaffId && (
+                        <button
+                          type="button"
+                          onClick={handleCancelStaffEdit}
+                          className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors font-normal"
+                        >
+                          বাতিল করুন (Cancel)
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">পূর্ণ নাম *</label>
+                        <input
+                          type="text"
+                          required
+                          value={staffForm.name}
+                          onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
+                          placeholder="মুস্তাফিজুর রহমান"
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">ইমেইল এড্রেস (Login Email) *</label>
+                        <input
+                          type="email"
+                          required
+                          value={staffForm.email}
+                          onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                          placeholder="reporter@prothomalo.com"
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          {editingStaffId ? 'নতুন পাসওয়ার্ড (পরিবর্তন না করলে খালি রাখুন)' : 'লগইন পাসওয়ার্ড (Password) *'}
+                        </label>
+                        <input
+                          type="password"
+                          required={!editingStaffId}
+                          value={staffForm.password}
+                          onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                          placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড"
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">নির্ধারিত ভূমিকা / পদবি (Role) *</label>
+                        <select
+                          value={staffForm.role_key}
+                          onChange={(e) => setStaffForm({ ...staffForm, role_key: e.target.value })}
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white"
+                        >
+                          {localRoles.map((r) => (
+                            <option key={r.role_key} value={r.role_key}>
+                              {r.name_bn} ({r.role_key})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">মোবাইল নম্বর (Phone)</label>
+                        <input
+                          type="text"
+                          value={staffForm.phone}
+                          onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
+                          placeholder="০১৭xxxxxxxx"
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 font-sans"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">স্ট্যাটাস (Status)</label>
+                        <select
+                          value={staffForm.status}
+                          onChange={(e) => setStaffForm({ ...staffForm, status: e.target.value })}
+                          className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white"
+                        >
+                          <option value="active">সক্রিয় (Active - লগইন অনুমোদিত)</option>
+                          <option value="inactive">স্থগিত (Inactive - সাময়িক স্থগিত)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        type="submit"
+                        className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow flex items-center gap-2"
+                      >
+                        <Save size={14} />
+                        <span>{editingStaffId ? 'সদস্যের তথ্য সংরক্ষণ করুন' : 'টিম সদস্য যুক্ত করুন'}</span>
+                      </button>
+                      {editingStaffId && (
+                        <button
+                          type="button"
+                          onClick={handleCancelStaffEdit}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors"
+                        >
+                          বাতিল (Cancel)
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  {/* Staff Members Table */}
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                      <div>
+                        <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                          <Users size={16} className="text-[#e30613]" />
+                          <span>টিম ও স্টাফ সদস্য তালিকা ({toBengaliNumber(localStaff.length)} জন)</span>
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">যাঁরা ড্যাশবোর্ডে লগইন করে নির্দিষ্ট পারমিশনে কাজ করতে পারবেন</p>
+                      </div>
+                      <span className="text-xs text-gray-500 font-medium">নিরাপদ বি-ক্রিপ্ট এনক্রিপশন</span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-gray-600">
+                        <thead className="bg-gray-100 text-gray-700 uppercase font-bold border-b">
+                          <tr>
+                            <th className="p-3">সদস্যের নাম</th>
+                            <th className="p-3">ইমেইল</th>
+                            <th className="p-3">পদবি / রোল</th>
+                            <th className="p-3">ফোন</th>
+                            <th className="p-3 text-center">স্ট্যাটাস</th>
+                            <th className="p-3 text-center">অ্যাকশন</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {localStaff.map((m) => {
+                            const isCurrent = currentUser?.email === m.email
+                            return (
+                              <tr key={m.id || m.email} className="hover:bg-gray-50 transition-colors">
+                                <td className="p-3 font-bold text-gray-900 flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-full bg-red-100 text-[#e30613] font-bold flex items-center justify-center flex-shrink-0 text-xs">
+                                    {(m.name || 'A').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <span>{m.name || 'Administrator'}</span>
+                                    {isCurrent && (
+                                      <span className="block text-[10px] text-red-600 font-semibold">(বর্তমান একাউন্ট)</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-3 font-mono text-gray-700">{m.email}</td>
+                                <td className="p-3">
+                                  <span className="inline-flex items-center gap-1 font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                                    <Shield size={11} className="text-[#e30613]" />
+                                    <span>{m.role_name_bn || m.role_key}</span>
+                                  </span>
+                                </td>
+                                <td className="p-3 font-mono text-gray-500">{m.phone || '—'}</td>
+                                <td className="p-3 text-center">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    m.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'
+                                  }`}>
+                                    {m.status === 'active' ? 'সক্রিয়' : 'স্থগিত'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditStaffClick(m)}
+                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                      title="সম্পাদনা করুন (Edit)"
+                                    >
+                                      <Edit size={14} />
+                                    </button>
+                                    {!isCurrent && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteStaffClick(m)}
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                        title="মুছে ফেলুন (Delete)"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

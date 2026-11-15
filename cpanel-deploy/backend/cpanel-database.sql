@@ -7,15 +7,45 @@
 
 -- 1. Admins Table
 DROP TABLE IF EXISTS admins;
+-- 1. Roles & Permissions Table
+DROP TABLE IF EXISTS roles;
+CREATE TABLE roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  role_key VARCHAR(100) NOT NULL UNIQUE,
+  name_bn VARCHAR(150) NOT NULL,
+  name_en VARCHAR(150) NOT NULL DEFAULT '',
+  description_bn TEXT DEFAULT NULL,
+  description_en TEXT DEFAULT NULL,
+  permissions JSON DEFAULT NULL,
+  is_system TINYINT(1) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO roles (role_key, name_bn, name_en, description_bn, description_en, permissions, is_system, status) VALUES
+('admin', 'প্রধান প্রশাসক (Super Admin)', 'Super Administrator', 'ওয়েবসাইটের সকল কনটেন্ট, সেটিংস, ব্যবহারকারী এবং ডাটাবেজ নিয়ন্ত্রণে সর্বময় ক্ষমতা।', 'Full access to all articles, categories, breaking news, media, system settings, roles, and database.', '["all", "manage_articles", "manage_categories", "manage_breaking", "manage_opinions", "manage_media", "manage_roles", "manage_settings"]', 1, 'active'),
+('editor', 'বার্তা সম্পাদক (News Editor)', 'News Editor', 'সংবাদ পর্যালোচনা, অনুমোদন, প্রকাশ, ব্রেকিং নিউজ এবং ক্যাটাগরি ব্যবস্থাপনা।', 'Review, approve, publish articles, breaking news, and manage categories.', '["manage_articles", "manage_categories", "manage_breaking", "manage_opinions", "manage_media"]', 0, 'active'),
+('senior_reporter', 'জ্যেষ্ঠ প্রতিবেদক (Senior Reporter)', 'Senior Reporter', 'বিশেষ প্রতিবেদন, অনুসন্ধানী সংবাদ এবং কলাম তৈরি ও প্রকাশ।', 'Write, edit, and publish special reports and investigative stories.', '["manage_articles", "manage_opinions"]', 0, 'active'),
+('reporter', 'স্টাফ রিপোর্টার (Staff Reporter)', 'Staff Reporter', 'দৈনন্দিন সংবাদ ও আঞ্চলিক খবর তৈরি ও খসড়া প্রদান।', 'Draft and submit daily reporting and regional news.', '["manage_articles"]', 0, 'active'),
+('photojournalist', 'আলোকচিত্রী (Photojournalist)', 'Photojournalist', 'আলোকচিত্র গ্যালারি ও ফটো স্টোরি আপলোড এবং ক্যাপশন প্রদান।', 'Upload and manage photo stories and media galleries.', '["manage_media"]', 0, 'active'),
+('contributor', 'কলামিস্ট ও লেখক (Columnist)', 'Columnist & Contributor', 'উপ-সম্পাদকীয়, কলাম ও চিন্তাশীল মতামত প্রদান।', 'Contribute editorials, columns, and opinions.', '["manage_opinions"]', 0, 'active');
+
+-- 2. Admins & Staff Users Table
+DROP TABLE IF EXISTS admins;
 CREATE TABLE admins (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL DEFAULT 'Administrator',
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  role_key VARCHAR(100) NOT NULL DEFAULT 'admin',
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  phone VARCHAR(50) DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO admins (email, password_hash) VALUES
-('admin@prothomalo.com', '$2y$12$Affak3Sszb7sr/z.E7qTjerisPxOQ.RmPyjvwrwydRHcDWnvtwvAG');
+INSERT INTO admins (name, email, password_hash, role_key, status) VALUES
+('প্রধান প্রশাসক', 'admin@prothomalo.com', '$2y$12$Affak3Sszb7sr/z.E7qTjerisPxOQ.RmPyjvwrwydRHcDWnvtwvAG', 'admin', 'active');
 
 -- 2. Categories Table
 DROP TABLE IF EXISTS categories;

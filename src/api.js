@@ -282,6 +282,55 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  // --- Roles & Permissions CRUD ---
+  async getRoles() {
+    try {
+      const res = await client.get('/roles')
+      if (Array.isArray(res.data)) {
+        return res.data
+      }
+    } catch (err) {
+      console.warn('Unable to load roles from server, fallback to local:', err)
+    }
+    return null
+  },
+
+  async saveRole(role) {
+    const isEdit = Boolean(role.id)
+    const res = await client[isEdit ? 'put' : 'post']('/roles', role)
+    return requireSuccess(res.data)
+  },
+
+  async deleteRole(idOrRoleKey) {
+    const param = typeof idOrRoleKey === 'number' ? `id=${idOrRoleKey}` : `role_key=${encodeURIComponent(idOrRoleKey)}`
+    const res = await client.delete(`/roles?${param}`)
+    return requireSuccess(res.data)
+  },
+
+  // --- Staff & Team Members CRUD ---
+  async getStaff() {
+    try {
+      const res = await client.get('/staff')
+      if (Array.isArray(res.data)) {
+        return res.data
+      }
+    } catch (err) {
+      console.warn('Unable to load staff from server, fallback to local:', err)
+    }
+    return null
+  },
+
+  async saveStaff(staffMember) {
+    const isEdit = Boolean(staffMember.id)
+    const res = await client[isEdit ? 'put' : 'post']('/staff', staffMember)
+    return requireSuccess(res.data)
+  },
+
+  async deleteStaff(id) {
+    const res = await client.delete(`/staff?id=${encodeURIComponent(id)}`)
+    return requireSuccess(res.data)
+  },
+
   async getStats() {
     const res = await client.get('/stats')
     return res.data

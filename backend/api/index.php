@@ -314,6 +314,118 @@ function auto_migrate_media_and_opinions(PDO $pdo): void
     } catch (Throwable $e) {}
 }
 
+function auto_migrate_roles_and_staff(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    // 1. Roles table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `roles` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `role_key` VARCHAR(100) NOT NULL UNIQUE,
+            `name_bn` VARCHAR(150) NOT NULL,
+            `name_en` VARCHAR(150) NOT NULL DEFAULT '',
+            `description_bn` TEXT NULL,
+            `description_en` TEXT NULL,
+            `permissions` JSON NULL,
+            `is_system` TINYINT(1) DEFAULT 0,
+            `status` VARCHAR(20) DEFAULT 'active',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $roleCount = (int) $pdo->query('SELECT COUNT(*) FROM roles')->fetchColumn();
+        if ($roleCount === 0) {
+            $insRole = $pdo->prepare("INSERT INTO `roles` (`role_key`, `name_bn`, `name_en`, `description_bn`, `description_en`, `permissions`, `is_system`, `status`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+
+            $insRole->execute([
+                'admin',
+                'প্রধান প্রশাসক (Super Admin)',
+                'Super Administrator',
+                'ওয়েবসাইটের সকল কনটেন্ট, সেটিংস, ব্যবহারকারী এবং ডাটাবেজ নিয়ন্ত্রণে সর্বময় ক্ষমতা।',
+                'Full access to all articles, categories, breaking news, media, system settings, roles, and database.',
+                json_encode(['all', 'manage_articles', 'manage_categories', 'manage_breaking', 'manage_opinions', 'manage_media', 'manage_roles', 'manage_settings']),
+                1,
+                'active'
+            ]);
+
+            $insRole->execute([
+                'editor',
+                'বার্তা সম্পাদক (News Editor)',
+                'News Editor',
+                'সংবাদ পর্যালোচনা, অনুমোদন, প্রকাশ, ব্রেকিং নিউজ এবং ক্যাটাগরি ব্যবস্থাপনা।',
+                'Review, approve, publish articles, breaking news, and manage categories.',
+                json_encode(['manage_articles', 'manage_categories', 'manage_breaking', 'manage_opinions', 'manage_media']),
+                0,
+                'active'
+            ]);
+
+            $insRole->execute([
+                'senior_reporter',
+                'জ্যেষ্ঠ প্রতিবেদক (Senior Reporter)',
+                'Senior Reporter',
+                'বিশেষ প্রতিবেদন, অনুসন্ধানী সংবাদ এবং কলাম তৈরি ও প্রকাশ।',
+                'Write, edit, and publish special reports and investigative stories.',
+                json_encode(['manage_articles', 'manage_opinions']),
+                0,
+                'active'
+            ]);
+
+            $insRole->execute([
+                'reporter',
+                'স্টাফ রিপোর্টার (Staff Reporter)',
+                'Staff Reporter',
+                'দৈনন্দিন সংবাদ ও আঞ্চলিক খবর তৈরি ও খসড়া প্রদান।',
+                'Draft and submit daily reporting and regional news.',
+                json_encode(['manage_articles']),
+                0,
+                'active'
+            ]);
+
+            $insRole->execute([
+                'photojournalist',
+                'আলোকচিত্রী (Photojournalist)',
+                'Photojournalist',
+                'আলোকচিত্র গ্যালারি ও ফটো স্টোরি আপলোড এবং ক্যাপশন প্রদান।',
+                'Upload and manage photo stories and media galleries.',
+                json_encode(['manage_media']),
+                0,
+                'active'
+            ]);
+
+            $insRole->execute([
+                'contributor',
+                'কলামিস্ট ও লেখক (Columnist)',
+                'Columnist & Contributor',
+                'উপ-সম্পাদকীয়, কলাম ও চিন্তাশীল মতামত প্রদান।',
+                'Contribute editorials, columns, and opinions.',
+                json_encode(['manage_opinions']),
+                0,
+                'active'
+            ]);
+        }
+    } catch (Throwable $e) {}
+
+    // 2. Add columns to `admins` table if missing (name, role_key, status, phone)
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM `admins`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('name', $cols, true)) {
+            $pdo->exec("ALTER TABLE `admins` ADD COLUMN `name` VARCHAR(150) NOT NULL DEFAULT 'Administrator'");
+        }
+        if (!in_array('role_key', $cols, true)) {
+            $pdo->exec("ALTER TABLE `admins` ADD COLUMN `role_key` VARCHAR(100) NOT NULL DEFAULT 'admin'");
+        }
+        if (!in_array('status', $cols, true)) {
+            $pdo->exec("ALTER TABLE `admins` ADD COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'active'");
+        }
+        if (!in_array('phone', $cols, true)) {
+            $pdo->exec("ALTER TABLE `admins` ADD COLUMN `phone` VARCHAR(50) NULL");
+        }
+    } catch (Throwable $e) {}
+}
+
 function get_auth_token(): string
 {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
@@ -644,16 +756,33 @@ if ($resource === 'login' && $method === 'POST') {
     // Allow 'admin' as an alias for 'admin@prothomalo.com'
     $lookupEmail = ($email === 'admin') ? 'admin@prothomalo.com' : $email;
 
-    $stmt = $dbConn->prepare('SELECT id, email, password_hash FROM admins WHERE email = ? LIMIT 1');
+    auto_migrate_roles_and_staff($dbConn);
+
+    $stmt = $dbConn->prepare('
+        SELECT a.id, a.email, a.password_hash, a.name, a.role_key, a.status,
+               r.name_bn as role_name_bn, r.name_en as role_name_en, r.permissions
+        FROM admins a
+        LEFT JOIN roles r ON a.role_key = r.role_key
+        WHERE a.email = ? LIMIT 1
+    ');
     $stmt->execute([$lookupEmail]);
     $adminUser = $stmt->fetch();
 
     // If still not found and default credentials provided, auto-create
     if (!$adminUser && in_array($email, ['admin@prothomalo.com', 'admin', 'admin@example.com'], true) && $password === 'admin123') {
         $defaultHash = password_hash('admin123', PASSWORD_BCRYPT);
-        $ins = $dbConn->prepare('INSERT INTO admins (email, password_hash) VALUES (?, ?)');
-        $ins->execute([$lookupEmail, $defaultHash]);
-        $adminUser = ['id' => (int)$dbConn->lastInsertId(), 'email' => $lookupEmail, 'password_hash' => $defaultHash];
+        $ins = $dbConn->prepare('INSERT INTO admins (email, password_hash, name, role_key, status) VALUES (?, ?, ?, ?, ?)');
+        $ins->execute([$lookupEmail, $defaultHash, 'প্রধান প্রশাসক', 'admin', 'active']);
+        $adminUser = [
+            'id' => (int)$dbConn->lastInsertId(),
+            'email' => $lookupEmail,
+            'password_hash' => $defaultHash,
+            'name' => 'প্রধান প্রশাসক',
+            'role_key' => 'admin',
+            'role_name_bn' => 'প্রধান প্রশাসক (Super Admin)',
+            'role_name_en' => 'Super Administrator',
+            'permissions' => json_encode(['all']),
+        ];
     }
 
     if ($adminUser && password_verify($password, $adminUser['password_hash'])) {
@@ -664,14 +793,23 @@ if ($resource === 'login' && $method === 'POST') {
 
         $token = create_admin_token((int) $adminUser['id'], $adminUser['email']);
 
+        $perms = [];
+        if (!empty($adminUser['permissions'])) {
+            $decoded = json_decode($adminUser['permissions'], true);
+            if (is_array($decoded)) $perms = $decoded;
+        }
+
         json_response([
             'success' => true,
             'message' => 'Login successful',
             'user' => [
-                'id' => $_SESSION['admin_id'],
-                'email' => $_SESSION['admin_email'],
-                'name' => 'Administrator',
-                'role' => 'superadmin',
+                'id' => (int) $adminUser['id'],
+                'email' => $adminUser['email'],
+                'name' => $adminUser['name'] ?: 'Administrator',
+                'role' => $adminUser['role_key'] ?: 'admin',
+                'role_name_bn' => $adminUser['role_name_bn'] ?? 'প্রধান প্রশাসক',
+                'role_name_en' => $adminUser['role_name_en'] ?? 'Super Admin',
+                'permissions' => $perms,
             ],
             'token' => $token,
         ]);
@@ -685,14 +823,55 @@ if ($resource === 'login' && $method === 'POST') {
 // ----------------------------------------------------
 if ($resource === 'me' && $method === 'GET') {
     $auth = is_admin();
+    $userData = null;
+    if ($auth) {
+        $adminId = $_SESSION['admin_id'] ?? 1;
+        try {
+            $dbConn = require_db();
+            auto_migrate_roles_and_staff($dbConn);
+            $uStmt = $dbConn->prepare('
+                SELECT a.id, a.email, a.name, a.role_key, a.status,
+                       r.name_bn as role_name_bn, r.name_en as role_name_en, r.permissions
+                FROM admins a
+                LEFT JOIN roles r ON a.role_key = r.role_key
+                WHERE a.id = ? LIMIT 1
+            ');
+            $uStmt->execute([$adminId]);
+            $row = $uStmt->fetch();
+            if ($row) {
+                $perms = [];
+                if (!empty($row['permissions'])) {
+                    $decoded = json_decode($row['permissions'], true);
+                    if (is_array($decoded)) $perms = $decoded;
+                }
+                $userData = [
+                    'id' => (int) $row['id'],
+                    'email' => $row['email'],
+                    'name' => $row['name'] ?: 'Administrator',
+                    'role' => $row['role_key'] ?: 'admin',
+                    'role_name_bn' => $row['role_name_bn'] ?: 'প্রধান প্রশাসক',
+                    'role_name_en' => $row['role_name_en'] ?: 'Super Admin',
+                    'permissions' => $perms,
+                ];
+            }
+        } catch (Throwable $e) {}
+
+        if (!$userData) {
+            $userData = [
+                'id' => $adminId,
+                'email' => $_SESSION['admin_email'] ?? '',
+                'name' => 'Administrator',
+                'role' => 'admin',
+                'role_name_bn' => 'প্রধান প্রশাসক',
+                'role_name_en' => 'Super Admin',
+                'permissions' => ['all'],
+            ];
+        }
+    }
+
     json_response([
         'authenticated' => $auth,
-        'user' => $auth ? [
-            'id' => $_SESSION['admin_id'] ?? 1,
-            'email' => $_SESSION['admin_email'] ?? '',
-            'name' => 'Administrator',
-            'role' => 'superadmin',
-        ] : null,
+        'user' => $userData,
     ]);
 }
 
@@ -1704,12 +1883,352 @@ if ($resource === 'videos') {
 }
 
 // ----------------------------------------------------
+// ROUTE: /api/roles (Full Roles & Permissions CRUD)
+// ----------------------------------------------------
+if ($resource === 'roles') {
+    $dbConn = require_db();
+    auto_migrate_roles_and_staff($dbConn);
+
+    if ($method === 'GET') {
+        $stmt = $dbConn->query('
+            SELECT r.*, 
+            (SELECT COUNT(*) FROM admins a WHERE a.role_key = r.role_key) as user_count 
+            FROM roles r 
+            ORDER BY r.id ASC
+        ');
+        $rows = $stmt->fetchAll();
+        $roles = array_map(function($row) {
+            $perms = [];
+            if (!empty($row['permissions'])) {
+                $decoded = json_decode($row['permissions'], true);
+                if (is_array($decoded)) $perms = $decoded;
+            }
+            return [
+                'id' => (int) $row['id'],
+                'role_key' => $row['role_key'],
+                'name_bn' => $row['name_bn'],
+                'name_en' => $row['name_en'] ?? '',
+                'description_bn' => $row['description_bn'] ?? '',
+                'description_en' => $row['description_en'] ?? '',
+                'permissions' => $perms,
+                'is_system' => (bool) ($row['is_system'] ?? 0),
+                'status' => $row['status'] ?? 'active',
+                'user_count' => (int) ($row['user_count'] ?? 0),
+                'created_at' => $row['created_at'],
+                'updated_at' => $row['updated_at'] ?? $row['created_at'],
+            ];
+        }, $rows);
+        json_response($roles);
+    }
+
+    if ($method === 'POST') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+        $nameBn = trim((string) ($input['name_bn'] ?? ($input['name'] ?? '')));
+        $nameEn = trim((string) ($input['name_en'] ?? ''));
+        $roleKey = strtolower(trim((string) ($input['role_key'] ?? '')));
+        if ($roleKey === '') {
+            $roleKey = preg_replace('/[^a-z0-9_]/', '_', strtolower($nameEn ?: $nameBn));
+            $roleKey = trim($roleKey, '_') ?: ('role_' . time());
+        }
+        $descBn = trim((string) ($input['description_bn'] ?? ''));
+        $descEn = trim((string) ($input['description_en'] ?? ''));
+        $perms = $input['permissions'] ?? ['manage_articles'];
+        if (!is_array($perms)) {
+            $perms = json_decode((string)$perms, true) ?: ['manage_articles'];
+        }
+        $status = in_array($input['status'] ?? 'active', ['active', 'inactive'], true) ? $input['status'] : 'active';
+
+        if ($nameBn === '') {
+            json_response(['success' => false, 'message' => 'রোলের বাংলা নাম আবশ্যক। (Role name is required)'], 400);
+        }
+
+        // Check if role_key already exists
+        $chk = $dbConn->prepare('SELECT id FROM roles WHERE role_key = ? LIMIT 1');
+        $chk->execute([$roleKey]);
+        if ($chk->fetch()) {
+            json_response(['success' => false, 'message' => 'এই রোল কি (Role Key) ইতিমধ্যে বিদ্যমান। অনুগ্রহ করে নতুন কি ব্যবহার করুন।'], 400);
+        }
+
+        $ins = $dbConn->prepare('INSERT INTO roles (role_key, name_bn, name_en, description_bn, description_en, permissions, is_system, status) VALUES (?, ?, ?, ?, ?, ?, 0, ?)');
+        $ins->execute([$roleKey, $nameBn, $nameEn, $descBn, $descEn, json_encode($perms, JSON_UNESCAPED_UNICODE), $status]);
+        $newId = (int) $dbConn->lastInsertId();
+
+        json_response([
+            'success' => true,
+            'message' => 'নতুন রোল সফলভাবে তৈরি হয়েছে।',
+            'role' => [
+                'id' => $newId,
+                'role_key' => $roleKey,
+                'name_bn' => $nameBn,
+                'name_en' => $nameEn,
+                'description_bn' => $descBn,
+                'description_en' => $descEn,
+                'permissions' => $perms,
+                'is_system' => false,
+                'status' => $status,
+                'user_count' => 0,
+            ]
+        ], 201);
+    }
+
+    if ($method === 'PUT') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $id = (int) ($input['id'] ?? 0);
+        $roleKey = trim((string) ($input['role_key'] ?? ''));
+
+        $stmt = null;
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('SELECT * FROM roles WHERE id = ? LIMIT 1');
+            $stmt->execute([$id]);
+        } elseif ($roleKey !== '') {
+            $stmt = $dbConn->prepare('SELECT * FROM roles WHERE role_key = ? LIMIT 1');
+            $stmt->execute([$roleKey]);
+        }
+
+        $existing = $stmt ? $stmt->fetch() : null;
+        if (!$existing) {
+            json_response(['success' => false, 'message' => 'রোলটি খুঁজে পাওয়া যায়নি।'], 404);
+        }
+
+        $nameBn = trim((string) ($input['name_bn'] ?? $existing['name_bn']));
+        $nameEn = trim((string) ($input['name_en'] ?? $existing['name_en']));
+        $descBn = trim((string) ($input['description_bn'] ?? $existing['description_bn']));
+        $descEn = trim((string) ($input['description_en'] ?? $existing['description_en']));
+        $perms = $input['permissions'] ?? json_decode($existing['permissions'] ?: '[]', true);
+        if (!is_array($perms)) {
+            $perms = json_decode((string)$perms, true) ?: [];
+        }
+        $status = in_array($input['status'] ?? $existing['status'], ['active', 'inactive'], true) ? $input['status'] : $existing['status'];
+
+        $upd = $dbConn->prepare('UPDATE roles SET name_bn = ?, name_en = ?, description_bn = ?, description_en = ?, permissions = ?, status = ? WHERE id = ?');
+        $upd->execute([$nameBn, $nameEn, $descBn, $descEn, json_encode($perms, JSON_UNESCAPED_UNICODE), $status, (int)$existing['id']]);
+
+        json_response([
+            'success' => true,
+            'message' => 'রোল সফলভাবে আপডেট করা হয়েছে।',
+            'role' => [
+                'id' => (int) $existing['id'],
+                'role_key' => $existing['role_key'],
+                'name_bn' => $nameBn,
+                'name_en' => $nameEn,
+                'description_bn' => $descBn,
+                'description_en' => $descEn,
+                'permissions' => $perms,
+                'is_system' => (bool) $existing['is_system'],
+                'status' => $status,
+            ]
+        ]);
+    }
+
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? 0);
+        $roleKey = trim((string) ($_GET['role_key'] ?? ''));
+
+        $stmt = null;
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('SELECT * FROM roles WHERE id = ? LIMIT 1');
+            $stmt->execute([$id]);
+        } elseif ($roleKey !== '') {
+            $stmt = $dbConn->prepare('SELECT * FROM roles WHERE role_key = ? LIMIT 1');
+            $stmt->execute([$roleKey]);
+        }
+
+        $existing = $stmt ? $stmt->fetch() : null;
+        if (!$existing) {
+            json_response(['success' => false, 'message' => 'রোলটি খুঁজে পাওয়া যায়নি।'], 404);
+        }
+
+        if (!empty($existing['is_system']) || $existing['role_key'] === 'admin') {
+            json_response(['success' => false, 'message' => 'সিস্টেম অ্যাডমিন বা ডিফল্ট রোল মুছে ফেলা সম্ভব নয়।'], 400);
+        }
+
+        $del = $dbConn->prepare('DELETE FROM roles WHERE id = ?');
+        $del->execute([(int)$existing['id']]);
+
+        json_response(['success' => true, 'message' => 'রোল সফলভাবে মুছে ফেলা হয়েছে।']);
+    }
+}
+
+// ----------------------------------------------------
+// ROUTE: /api/staff (Staff & Team Members CRUD)
+// ----------------------------------------------------
+if ($resource === 'staff') {
+    $dbConn = require_db();
+    auto_migrate_roles_and_staff($dbConn);
+
+    if ($method === 'GET') {
+        $stmt = $dbConn->query('
+            SELECT a.id, a.name, a.email, a.role_key, a.status, a.phone, a.created_at,
+                   r.name_bn as role_name_bn, r.name_en as role_name_en, r.permissions
+            FROM admins a
+            LEFT JOIN roles r ON a.role_key = r.role_key
+            ORDER BY a.id ASC
+        ');
+        $rows = $stmt->fetchAll();
+        $staff = array_map(function($row) {
+            $perms = [];
+            if (!empty($row['permissions'])) {
+                $decoded = json_decode($row['permissions'], true);
+                if (is_array($decoded)) $perms = $decoded;
+            }
+            return [
+                'id' => (int) $row['id'],
+                'name' => $row['name'] ?: 'Administrator',
+                'email' => $row['email'],
+                'role_key' => $row['role_key'] ?: 'admin',
+                'role_name_bn' => $row['role_name_bn'] ?: ($row['role_key'] === 'admin' ? 'প্রধান প্রশাসক' : $row['role_key']),
+                'role_name_en' => $row['role_name_en'] ?: ($row['role_key'] === 'admin' ? 'Super Admin' : $row['role_key']),
+                'status' => $row['status'] ?: 'active',
+                'phone' => $row['phone'] ?? '',
+                'permissions' => $perms,
+                'created_at' => $row['created_at'],
+            ];
+        }, $rows);
+        json_response($staff);
+    }
+
+    if ($method === 'POST') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
+        $name = trim((string) ($input['name'] ?? ''));
+        $password = (string) ($input['password'] ?? '');
+        $roleKey = trim((string) ($input['role_key'] ?? 'editor'));
+        $phone = trim((string) ($input['phone'] ?? ''));
+        $status = in_array($input['status'] ?? 'active', ['active', 'inactive'], true) ? $input['status'] : 'active';
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            json_response(['success' => false, 'message' => 'সঠিক ইমেইল এড্রেস প্রদান করুন।'], 400);
+        }
+        if (strlen($password) < 6) {
+            json_response(['success' => false, 'message' => 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'], 400);
+        }
+        if ($name === '') {
+            $name = explode('@', $email)[0];
+        }
+
+        // Check if email exists
+        $chk = $dbConn->prepare('SELECT id FROM admins WHERE email = ? LIMIT 1');
+        $chk->execute([$email]);
+        if ($chk->fetch()) {
+            json_response(['success' => false, 'message' => 'এই ইমেইলটি ইতিমধ্যে ব্যবহৃত হয়েছে।'], 400);
+        }
+
+        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $ins = $dbConn->prepare('INSERT INTO admins (email, password_hash, name, role_key, status, phone) VALUES (?, ?, ?, ?, ?, ?)');
+        $ins->execute([$email, $hash, $name, $roleKey, $status, $phone]);
+        $newId = (int) $dbConn->lastInsertId();
+
+        // Get role details
+        $rStmt = $dbConn->prepare('SELECT name_bn, name_en FROM roles WHERE role_key = ? LIMIT 1');
+        $rStmt->execute([$roleKey]);
+        $rData = $rStmt->fetch();
+
+        json_response([
+            'success' => true,
+            'message' => 'নতুন টিম সদস্য সফলভাবে যুক্ত করা হয়েছে।',
+            'staff' => [
+                'id' => $newId,
+                'name' => $name,
+                'email' => $email,
+                'role_key' => $roleKey,
+                'role_name_bn' => $rData['name_bn'] ?? $roleKey,
+                'role_name_en' => $rData['name_en'] ?? $roleKey,
+                'status' => $status,
+                'phone' => $phone,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]
+        ], 201);
+    }
+
+    if ($method === 'PUT') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $id = (int) ($input['id'] ?? 0);
+
+        $stmt = $dbConn->prepare('SELECT * FROM admins WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $existing = $stmt->fetch();
+        if (!$existing) {
+            json_response(['success' => false, 'message' => 'সদস্য খুঁজে পাওয়া যায়নি।'], 404);
+        }
+
+        $name = trim((string) ($input['name'] ?? $existing['name']));
+        $roleKey = trim((string) ($input['role_key'] ?? $existing['role_key']));
+        $phone = trim((string) ($input['phone'] ?? $existing['phone']));
+        $status = in_array($input['status'] ?? $existing['status'], ['active', 'inactive'], true) ? $input['status'] : $existing['status'];
+        $newPassword = (string) ($input['password'] ?? '');
+
+        if (!empty($newPassword)) {
+            if (strlen($newPassword) < 6) {
+                json_response(['success' => false, 'message' => 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'], 400);
+            }
+            $hash = password_hash($newPassword, PASSWORD_BCRYPT);
+            $upd = $dbConn->prepare('UPDATE admins SET name = ?, role_key = ?, status = ?, phone = ?, password_hash = ? WHERE id = ?');
+            $upd->execute([$name, $roleKey, $status, $phone, $hash, $id]);
+        } else {
+            $upd = $dbConn->prepare('UPDATE admins SET name = ?, role_key = ?, status = ?, phone = ? WHERE id = ?');
+            $upd->execute([$name, $roleKey, $status, $phone, $id]);
+        }
+
+        $rStmt = $dbConn->prepare('SELECT name_bn, name_en FROM roles WHERE role_key = ? LIMIT 1');
+        $rStmt->execute([$roleKey]);
+        $rData = $rStmt->fetch();
+
+        json_response([
+            'success' => true,
+            'message' => 'সদস্যের তথ্য সফলভাবে আপডেট করা হয়েছে।',
+            'staff' => [
+                'id' => $id,
+                'name' => $name,
+                'email' => $existing['email'],
+                'role_key' => $roleKey,
+                'role_name_bn' => $rData['name_bn'] ?? $roleKey,
+                'role_name_en' => $rData['name_en'] ?? $roleKey,
+                'status' => $status,
+                'phone' => $phone,
+            ]
+        ]);
+    }
+
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            json_response(['success' => false, 'message' => 'সঠিক সদস্য আইডি প্রয়োজন।'], 400);
+        }
+
+        // Check total admin count to prevent locking out
+        $totalAdmins = (int) $dbConn->query('SELECT COUNT(*) FROM admins')->fetchColumn();
+        if ($totalAdmins <= 1) {
+            json_response(['success' => false, 'message' => 'একমাত্র প্রশাসককে মুছে ফেলা সম্ভব নয়।'], 400);
+        }
+
+        // Prevent self deletion if same id in session
+        if (!empty($_SESSION['admin_id']) && (int)$_SESSION['admin_id'] === $id) {
+            json_response(['success' => false, 'message' => 'আপনি নিজের অ্যাকাউন্টটি এখান থেকে মুছে ফেলতে পারবেন না।'], 400);
+        }
+
+        $del = $dbConn->prepare('DELETE FROM admins WHERE id = ?');
+        $del->execute([$id]);
+
+        json_response(['success' => true, 'message' => 'সদস্য সফলভাবে অপসারিত হয়েছে।']);
+    }
+}
+
+// ----------------------------------------------------
 // ROUTE: GET /api/stats
 // ----------------------------------------------------
 if ($resource === 'stats' && $method === 'GET') {
     if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
     $dbConn = require_db();
     auto_migrate_media_and_opinions($dbConn);
+    auto_migrate_roles_and_staff($dbConn);
 
     $totalArticles = (int) $dbConn->query('SELECT COUNT(*) FROM articles')->fetchColumn();
     $totalViews = (int) $dbConn->query('SELECT COALESCE(SUM(views), 0) FROM articles')->fetchColumn();
@@ -1720,6 +2239,8 @@ if ($resource === 'stats' && $method === 'GET') {
     $totalOpinions = (int) $dbConn->query('SELECT COUNT(*) FROM opinions')->fetchColumn();
     $totalPhotos = (int) $dbConn->query('SELECT COUNT(*) FROM photos')->fetchColumn();
     $totalVideos = (int) $dbConn->query('SELECT COUNT(*) FROM videos')->fetchColumn();
+    $totalRoles = (int) $dbConn->query('SELECT COUNT(*) FROM roles')->fetchColumn();
+    $totalStaff = (int) $dbConn->query('SELECT COUNT(*) FROM admins')->fetchColumn();
 
     json_response([
         'totalArticles' => $totalArticles,
@@ -1729,6 +2250,8 @@ if ($resource === 'stats' && $method === 'GET') {
         'totalOpinions' => $totalOpinions,
         'totalPhotos' => $totalPhotos,
         'totalVideos' => $totalVideos,
+        'totalRoles' => $totalRoles,
+        'totalStaff' => $totalStaff,
     ]);
 }
 
