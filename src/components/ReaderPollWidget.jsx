@@ -3,7 +3,7 @@ import { Vote, CheckCircle2, BarChart2, Loader2, RotateCcw } from 'lucide-react'
 import { api } from '../api.js'
 import { toBengaliNumber } from '../utils.js'
 
-export default function ReaderPollWidget({ lang = 'bn', initialPoll = null }) {
+export default function ReaderPollWidget({ lang = 'bn', initialPoll = null, onVote = null }) {
   const [poll, setPoll] = useState(initialPoll)
   const [selectedOption, setSelectedOption] = useState(null)
   const [hasVoted, setHasVoted] = useState(false)
@@ -11,6 +11,14 @@ export default function ReaderPollWidget({ lang = 'bn', initialPoll = null }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [loading, setLoading] = useState(!initialPoll)
+
+  // Sync when initialPoll updates from parent
+  useEffect(() => {
+    if (initialPoll && initialPoll.id) {
+      setPoll(initialPoll)
+      setLoading(false)
+    }
+  }, [initialPoll])
 
   // Fetch latest active poll from backend
   const fetchPoll = async () => {
@@ -59,6 +67,7 @@ export default function ReaderPollWidget({ lang = 'bn', initialPoll = null }) {
       const updated = await api.votePoll(poll.id, selectedOption)
       if (updated) {
         setPoll(updated)
+        onVote?.(updated)
       }
       setHasVoted(true)
       setUserVotedOption(selectedOption)

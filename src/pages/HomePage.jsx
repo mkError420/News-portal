@@ -29,6 +29,8 @@ export default function HomePage({
   videos = [],
   categories = [],
   settings = null,
+  poll = null,
+  onVote = null,
   lang = 'bn',
 }) {
   // Sidebar tab state: 'latest' | 'mostRead'
@@ -563,7 +565,7 @@ export default function HomePage({
           <PrayerTimesWidget lang={lang} />
 
           {/* Widget 5: পাঠক জরিপ / Online Poll (Dynamic from Admin & Database) */}
-          <ReaderPollWidget lang={lang} />
+          <ReaderPollWidget lang={lang} initialPoll={poll} onVote={onVote} />
 
           {/* Widget 6: Half Page Ad (300x600) */}
           <AdBanner size="halfpage" lang={lang} settings={settings} />

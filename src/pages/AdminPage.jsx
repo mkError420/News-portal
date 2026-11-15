@@ -211,6 +211,8 @@ export default function AdminPage({
   roles = [],
   staff = [],
   settings = null,
+  poll = null,
+  polls: pollsProp = [],
   onAddArticle,
   onUpdateArticle,
   onDeleteArticle,
@@ -235,6 +237,7 @@ export default function AdminPage({
   onAddStaff,
   onUpdateStaff,
   onDeleteStaff,
+  onUpdatePoll,
   onResetData,
   onRefreshAll,
   onUpdateSettings,
@@ -426,11 +429,12 @@ export default function AdminPage({
     if (e) e.preventDefault()
     setIsSavingSettings(true)
     try {
-      await Promise.all([
+      const [settingsRes] = await Promise.all([
         api.saveSettings(siteForm),
         api.saveCurrencyRates(currencyList).catch(() => {})
       ])
-      onUpdateSettings?.(siteForm)
+      const finalSettings = settingsRes?.settings || siteForm
+      onUpdateSettings?.(finalSettings)
       triggerToast(lang === 'bn' ? 'ওয়েবসাইট সেটিংস ও বিবরণ সফলভাবে সংরক্ষিত হয়েছে!' : 'Website settings updated successfully!')
     } catch (err) {
       onUpdateSettings?.(siteForm)
@@ -788,17 +792,23 @@ export default function AdminPage({
       slug,
     }
 
+    let savedCat = categoryItem
     try {
-      await api.saveCategory(categoryItem)
+      const res = await api.saveCategory(categoryItem)
+      if (res?.category) {
+        savedCat = { ...categoryItem, ...res.category }
+      } else if (res?.item) {
+        savedCat = { ...categoryItem, ...res.item }
+      }
     } catch (err) {
       console.warn('API saveCategory error, saving locally:', err)
     }
 
     if (editingCatId) {
-      onUpdateCategory?.(categoryItem)
+      onUpdateCategory?.(savedCat)
       triggerToast(lang === 'bn' ? 'ক্যাটাগরি আপডেট হয়েছে!' : 'Category updated!')
     } else {
-      onAddCategory?.(categoryItem)
+      onAddCategory?.(savedCat)
       triggerToast(lang === 'bn' ? 'নতুন ক্যাটাগরি যুক্ত হয়েছে!' : 'New category created!')
     }
 
@@ -1104,7 +1114,7 @@ export default function AdminPage({
     }
     try {
       const res = await api.saveOpinion(itemPayload)
-      const savedItem = res?.opinion || {
+      const savedItem = res?.opinion || res?.item || {
         ...itemPayload,
         id: editingOpinionId || `op-${Date.now()}`,
         slug: itemPayload.slug || `opinion-${Date.now()}`,
@@ -1182,7 +1192,7 @@ export default function AdminPage({
     }
     try {
       const res = await api.savePhoto(itemPayload)
-      const savedItem = res?.photo || {
+      const savedItem = res?.photo || res?.item || {
         ...itemPayload,
         id: editingPhotoId || `ph-${Date.now()}`,
         slug: itemPayload.slug || `photo-${Date.now()}`,
@@ -1257,7 +1267,7 @@ export default function AdminPage({
     }
     try {
       const res = await api.saveVideo(itemPayload)
-      const savedItem = res?.video || {
+      const savedItem = res?.video || res?.item || {
         ...itemPayload,
         id: editingVideoId || `v-${Date.now()}`,
         slug: itemPayload.slug || `video-${Date.now()}`,
@@ -1341,7 +1351,7 @@ export default function AdminPage({
 
     try {
       const res = await api.saveRole(payload)
-      const savedRole = res?.role || {
+      const savedRole = res?.role || res?.item || {
         ...payload,
         id: editingRoleId || Date.now(),
         user_count: 0,
@@ -1435,7 +1445,7 @@ export default function AdminPage({
 
     try {
       const res = await api.saveStaff(payload)
-      const savedStaff = res?.staff || {
+      const savedStaff = res?.staff || res?.item || {
         ...payload,
         id: editingStaffId || Date.now(),
         created_at: new Date().toISOString(),
@@ -1502,11 +1512,17 @@ export default function AdminPage({
     status: 'active',
     reset_votes: false,
   }
-  const [polls, setPolls] = useState([])
+  const [polls, setPolls] = useState(() => (Array.isArray(pollsProp) && pollsProp.length > 0 ? pollsProp : []))
   const [pollForm, setPollForm] = useState(emptyPollForm)
   const [editingPollId, setEditingPollId] = useState(null)
   const [pollLoading, setPollLoading] = useState(false)
   const [pollSubmitting, setPollSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (Array.isArray(pollsProp) && pollsProp.length > 0) {
+      setPolls(pollsProp)
+    }
+  }, [pollsProp])
 
   const refreshPolls = async () => {
     setPollLoading(true)
@@ -1585,6 +1601,10 @@ export default function AdminPage({
       } else {
         await refreshPolls()
       }
+      const updatedActive = res?.poll || (res?.polls ? (res.polls.find((p) => p.status === 'active') || res.polls[0]) : null)
+      if (updatedActive) {
+        onUpdatePoll?.(updatedActive)
+      }
       triggerToast(editingPollId ? (lang === 'bn' ? 'পাঠক জরিপ আপডেট হয়েছে!' : 'Poll updated!') : (lang === 'bn' ? 'নতুন পাঠক জরিপ তৈরি হয়েছে!' : 'New poll created!'))
       setPollForm(emptyPollForm)
       setEditingPollId(null)
@@ -1615,6 +1635,8 @@ export default function AdminPage({
       const res = await api.savePoll({ ...p, status: newStatus })
       if (res?.polls) setPolls(res.polls)
       else await refreshPolls()
+      const updatedActive = res?.poll || (res?.polls ? (res.polls.find((item) => item.status === 'active') || res.polls[0]) : null)
+      if (updatedActive) onUpdatePoll?.(updatedActive)
       triggerToast(newStatus === 'active' ? (lang === 'bn' ? 'জরিপটি সক্রিয় করা হয়েছে!' : 'Poll activated!') : (lang === 'bn' ? 'জরিপটি বন্ধ করা হয়েছে!' : 'Poll closed!'))
     } catch (err) {
       alert(lang === 'bn' ? 'স্ট্যাটাস পরিবর্তনে সমস্যা: ' + err.message : 'Error changing status: ' + err.message)
@@ -1627,6 +1649,8 @@ export default function AdminPage({
         const res = await api.savePoll({ ...p, reset_votes: true })
         if (res?.polls) setPolls(res.polls)
         else await refreshPolls()
+        const updatedActive = res?.poll || (res?.polls ? (res.polls.find((item) => item.status === 'active') || res.polls[0]) : null)
+        if (updatedActive) onUpdatePoll?.(updatedActive)
         triggerToast(lang === 'bn' ? 'ভোট সংখ্যা সফলভাবে রিসেট হয়েছে!' : 'Votes reset successfully!')
       } catch (err) {
         alert(lang === 'bn' ? 'ভোট রিসেটে সমস্যা: ' + err.message : 'Error resetting votes: ' + err.message)
@@ -1642,8 +1666,10 @@ export default function AdminPage({
     if (confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে এই জরিপটি মুছে ফেলতে চান?\n"${p.question_bn}"` : `Delete poll "${p.question_bn}"?`)) {
       try {
         const res = await api.deletePoll(p.id)
-        if (res?.polls) setPolls(res.polls)
-        else setPolls((prev) => prev.filter((item) => item.id !== p.id))
+        const remaining = res?.polls || polls.filter((item) => item.id !== p.id)
+        setPolls(remaining)
+        const nextActive = remaining.find((item) => item.status === 'active') || remaining[0] || null
+        if (nextActive) onUpdatePoll?.(nextActive)
         triggerToast(lang === 'bn' ? 'জরিপ মুছে ফেলা হয়েছে।' : 'Poll deleted.', 'info')
       } catch (err) {
         alert(lang === 'bn' ? 'জরিপ মুছতে সমস্যা: ' + err.message : 'Error deleting poll: ' + err.message)

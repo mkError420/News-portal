@@ -226,9 +226,13 @@ export default function App() {
 
   // --- Categories CRUD Handlers ---
   const handleAddCategory = (newCat) => {
+    const currentCats = Array.isArray(newsData.categories) ? newsData.categories : []
+    const filtered = currentCats.filter(
+      (c) => c.id !== newCat.id && (c.slug || '').toLowerCase() !== (newCat.slug || '').toLowerCase()
+    )
     const updated = {
       ...newsData,
-      categories: [...(newsData.categories || []), newCat],
+      categories: [...filtered, newCat],
     }
     persistData(updated)
   }
@@ -386,6 +390,23 @@ export default function App() {
     persistData(updated)
   }
 
+  // --- Poll CRUD Handler ---
+  const handleUpdatePoll = (updatedPoll) => {
+    if (!updatedPoll) return
+    const currentPolls = Array.isArray(newsData.polls) ? newsData.polls : []
+    const exists = currentPolls.some((p) => p.id === updatedPoll.id)
+    const newPollsList = exists
+      ? currentPolls.map((p) => (p.id === updatedPoll.id ? { ...p, ...updatedPoll } : p))
+      : [updatedPoll, ...currentPolls]
+
+    const updated = {
+      ...newsData,
+      poll: updatedPoll.status === 'active' || !newsData.poll ? updatedPoll : newsData.poll,
+      polls: newPollsList,
+    }
+    persistData(updated)
+  }
+
   // --- Website Settings Handler ---
   const handleUpdateSettings = async (newSettings) => {
     try {
@@ -457,6 +478,8 @@ export default function App() {
                 videos={newsData.videos}
                 categories={newsData.categories}
                 settings={newsData.settings}
+                poll={newsData.poll}
+                onVote={handleUpdatePoll}
                 lang={lang}
               />
             }
@@ -567,6 +590,8 @@ export default function App() {
                 videos={newsData.videos}
                 roles={newsData.roles || []}
                 staff={newsData.staff || []}
+                poll={newsData.poll}
+                polls={newsData.polls || []}
                 onAddArticle={handleAddArticle}
                 onUpdateArticle={handleUpdateArticle}
                 onDeleteArticle={handleDeleteArticle}
@@ -591,6 +616,7 @@ export default function App() {
                 onAddStaff={handleAddStaff}
                 onUpdateStaff={handleUpdateStaff}
                 onDeleteStaff={handleDeleteStaff}
+                onUpdatePoll={handleUpdatePoll}
                 onResetData={handleResetData}
                 onRefreshAll={syncData}
                 settings={newsData.settings}
