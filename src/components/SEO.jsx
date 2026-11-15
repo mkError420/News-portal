@@ -67,6 +67,10 @@ export default function SEO({
       <meta name="description" content={metaDesc} />
       <meta name="keywords" content={metaKeywords} />
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      <link rel="icon" type="image/svg+xml" href={settings?.favicon_url?.trim() || '/favicon.svg?v=globe1'} />
+      <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=globe1" />
+      <link rel="shortcut icon" href="/favicon.ico?v=globe1" />
+      <link rel="apple-touch-icon" href="/favicon.svg?v=globe1" />
 
       {/* Crawlers & Indexing Directives */}
       {noindex ? (

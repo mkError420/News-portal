@@ -144,6 +144,10 @@ if (!$html) {
 $seoBlock = <<<HTML
   <title>{$pageTitle}</title>
   <meta name="description" content="{$pageDesc}">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=globe1">
+  <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=globe1">
+  <link rel="shortcut icon" href="/favicon.ico?v=globe1">
+  <link rel="apple-touch-icon" href="/favicon.svg?v=globe1">
   <link rel="canonical" href="{$canonicalUrl}">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">

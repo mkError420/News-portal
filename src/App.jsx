@@ -138,6 +138,15 @@ export default function App() {
     return () => { active = false }
   }, [])
 
+  // Sync favicon if custom setting is present, else default /favicon.svg?v=globe1
+  useEffect(() => {
+    const faviconHref = newsData.settings?.favicon_url?.trim() || '/favicon.svg?v=globe1'
+    const link = document.querySelector("link[rel~='icon']")
+    if (link) {
+      link.href = faviconHref
+    }
+  }, [newsData.settings?.favicon_url])
+
   // Persist data updates to LocalStorage
   const persistData = (updated) => {
     setNewsData(updated)
