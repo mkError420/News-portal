@@ -192,6 +192,78 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  // --- Opinions CRUD ---
+  async getOpinions() {
+    try {
+      const res = await client.get('/opinions')
+      if (Array.isArray(res.data?.opinions)) {
+        return res.data.opinions
+      }
+    } catch (err) {
+      console.warn('Unable to load opinions from server, using local:', err)
+    }
+    return null
+  },
+
+  async saveOpinion(opinion) {
+    const res = await client.post('/opinions', opinion)
+    return requireSuccess(res.data)
+  },
+
+  async deleteOpinion(idOrSlug) {
+    const param = typeof idOrSlug === 'number' ? `id=${idOrSlug}` : `slug=${encodeURIComponent(idOrSlug)}`
+    const res = await client.delete(`/opinions?${param}`)
+    return requireSuccess(res.data)
+  },
+
+  // --- Photos Gallery CRUD ---
+  async getPhotos() {
+    try {
+      const res = await client.get('/photos')
+      if (Array.isArray(res.data?.photos)) {
+        return res.data.photos
+      }
+    } catch (err) {
+      console.warn('Unable to load photos from server, using local:', err)
+    }
+    return null
+  },
+
+  async savePhoto(photo) {
+    const res = await client.post('/photos', photo)
+    return requireSuccess(res.data)
+  },
+
+  async deletePhoto(idOrSlug) {
+    const param = typeof idOrSlug === 'number' ? `id=${idOrSlug}` : `slug=${encodeURIComponent(idOrSlug)}`
+    const res = await client.delete(`/photos?${param}`)
+    return requireSuccess(res.data)
+  },
+
+  // --- Videos CRUD ---
+  async getVideos() {
+    try {
+      const res = await client.get('/videos')
+      if (Array.isArray(res.data?.videos)) {
+        return res.data.videos
+      }
+    } catch (err) {
+      console.warn('Unable to load videos from server, using local:', err)
+    }
+    return null
+  },
+
+  async saveVideo(video) {
+    const res = await client.post('/videos', video)
+    return requireSuccess(res.data)
+  },
+
+  async deleteVideo(idOrSlug) {
+    const param = typeof idOrSlug === 'number' ? `id=${idOrSlug}` : `slug=${encodeURIComponent(idOrSlug)}`
+    const res = await client.delete(`/videos?${param}`)
+    return requireSuccess(res.data)
+  },
+
   // --- Website Settings CRUD ---
   async getSettings() {
     try {

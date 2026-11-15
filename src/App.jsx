@@ -74,16 +74,19 @@ export default function App() {
         api.getBreakingNews(),
         api.getCategories(),
         api.getSettings(),
+        api.getOpinions(),
+        api.getPhotos(),
+        api.getVideos(),
       ])
       if (!active) return
 
       const updates = {}
-      if (results[0].status === 'fulfilled') {
+      if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
         updates.articles = results[0].value
       } else {
         console.error('Unable to load articles from the database:', results[0].reason)
       }
-      if (results[1].status === 'fulfilled') {
+      if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
         updates.breakingNews = results[1].value
       } else {
         console.error('Unable to load breaking news from the database:', results[1].reason)
@@ -93,6 +96,15 @@ export default function App() {
       }
       if (results[3].status === 'fulfilled' && results[3].value && typeof results[3].value === 'object') {
         updates.settings = results[3].value
+      }
+      if (results[4].status === 'fulfilled' && Array.isArray(results[4].value) && results[4].value.length > 0) {
+        updates.opinions = results[4].value
+      }
+      if (results[5].status === 'fulfilled' && Array.isArray(results[5].value) && results[5].value.length > 0) {
+        updates.photos = results[5].value
+      }
+      if (results[6].status === 'fulfilled' && Array.isArray(results[6].value) && results[6].value.length > 0) {
+        updates.videos = results[6].value
       }
 
       setNewsData((prev) => {
@@ -208,10 +220,20 @@ export default function App() {
     persistData(updated)
   }
 
+  const handleUpdateOpinion = (updatedOpinion) => {
+    const updated = {
+      ...newsData,
+      opinions: (newsData.opinions || []).map((item) =>
+        item.id === updatedOpinion.id || item.slug === updatedOpinion.slug ? { ...item, ...updatedOpinion } : item
+      ),
+    }
+    persistData(updated)
+  }
+
   const handleDeleteOpinion = (id) => {
     const updated = {
       ...newsData,
-      opinions: (newsData.opinions || []).filter((item) => item.id !== id),
+      opinions: (newsData.opinions || []).filter((item) => item.id !== id && item.slug !== id),
     }
     persistData(updated)
   }
@@ -225,10 +247,20 @@ export default function App() {
     persistData(updated)
   }
 
+  const handleUpdatePhoto = (updatedPhoto) => {
+    const updated = {
+      ...newsData,
+      photos: (newsData.photos || []).map((item) =>
+        item.id === updatedPhoto.id || item.slug === updatedPhoto.slug ? { ...item, ...updatedPhoto } : item
+      ),
+    }
+    persistData(updated)
+  }
+
   const handleDeletePhoto = (id) => {
     const updated = {
       ...newsData,
-      photos: (newsData.photos || []).filter((item) => item.id !== id),
+      photos: (newsData.photos || []).filter((item) => item.id !== id && item.slug !== id),
     }
     persistData(updated)
   }
@@ -242,10 +274,20 @@ export default function App() {
     persistData(updated)
   }
 
+  const handleUpdateVideo = (updatedVideo) => {
+    const updated = {
+      ...newsData,
+      videos: (newsData.videos || []).map((item) =>
+        item.id === updatedVideo.id || item.slug === updatedVideo.slug ? { ...item, ...updatedVideo } : item
+      ),
+    }
+    persistData(updated)
+  }
+
   const handleDeleteVideo = (id) => {
     const updated = {
       ...newsData,
-      videos: (newsData.videos || []).filter((item) => item.id !== id),
+      videos: (newsData.videos || []).filter((item) => item.id !== id && item.slug !== id),
     }
     persistData(updated)
   }
@@ -439,10 +481,13 @@ export default function App() {
                 onUpdateCategory={handleUpdateCategory}
                 onDeleteCategory={handleDeleteCategory}
                 onAddOpinion={handleAddOpinion}
+                onUpdateOpinion={handleUpdateOpinion}
                 onDeleteOpinion={handleDeleteOpinion}
                 onAddPhoto={handleAddPhoto}
+                onUpdatePhoto={handleUpdatePhoto}
                 onDeletePhoto={handleDeletePhoto}
                 onAddVideo={handleAddVideo}
+                onUpdateVideo={handleUpdateVideo}
                 onDeleteVideo={handleDeleteVideo}
                 onResetData={handleResetData}
                 settings={newsData.settings}

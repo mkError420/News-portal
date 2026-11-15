@@ -250,3 +250,72 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('meta_keywords_default', 'সংবাদ, বাংলাদেশ, প্রথম কালো, খবর, ব্রেকিং নিউজ, News, Bangladesh, Prothom kalo'),
 ('og_image_default', '')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
+
+-- 6. Opinions Table
+DROP TABLE IF EXISTS opinions;
+CREATE TABLE opinions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  title_bn VARCHAR(500) NOT NULL,
+  title_en VARCHAR(500) NOT NULL DEFAULT '',
+  author_bn VARCHAR(150) NOT NULL,
+  author_en VARCHAR(150) NOT NULL DEFAULT '',
+  author_role_bn VARCHAR(255) NULL,
+  author_role_en VARCHAR(255) NULL,
+  author_image VARCHAR(500) NULL,
+  summary_bn TEXT NULL,
+  summary_en TEXT NULL,
+  image VARCHAR(500) NULL,
+  category VARCHAR(50) NOT NULL DEFAULT 'opinion',
+  content_bn LONGTEXT NULL,
+  content_en LONGTEXT NULL,
+  published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO opinions (slug, title_bn, title_en, author_bn, author_en, author_role_bn, author_role_en, author_image, summary_bn, summary_en, image, content_bn, content_en) VALUES
+('democracy-future-bangladesh', 'গণতন্ত্রের ভবিষ্যৎ ও আমাদের নাগরিক দায়িত্ব', 'The Future of Democracy and Our Civic Responsibility', 'ড. মুহাম্মদ ইউনূস', 'Dr. Muhammad Yunus', 'অর্থনীতিবিদ ও শান্তিতে নোবেল বিজয়ী', 'Economist & Nobel Peace Laureate', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', 'একটি শক্তিশালী গণতান্ত্রিক ব্যবস্থার মূল ভিত্তি হলো প্রতিটি নাগরিকের সমান অংশগ্রহণ ও জবাবদিহিতা।', 'The foundation of a robust democratic system lies in the equal participation and accountability of every citizen.', 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=800&q=80', '<p>গণতন্ত্র কেবল একটি শাসনব্যবস্থা নয়, এটি একটি সামাজিক সংস্কৃতি ও মূল্যবোধ।</p>', '<p>Democracy is not merely a system of governance; it is a social culture and a set of shared values.</p>'),
+('economic-resilience-south-asia', 'বৈশ্বিক অস্থিরতার মুখে বাংলাদেশের অর্থনৈতিক স্থিতিস্থাপকতা', 'Economic Resilience of Bangladesh Amid Global Volatility', 'ড. দেবপ্রিয় ভট্টাচার্য', 'Dr. Debapriya Bhattacharya', 'বিশিষ্ট অর্থনীতিবিদ ও পলিসি বিশ্লেষক', 'Eminent Economist & Policy Analyst', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80', 'মূল্যস্ফীতি নিয়ন্ত্রণ ও কৃষি-রপ্তানির ভারসাম্য বজায় রাখাই হবে আগামী দিনের মূল অর্থনৈতিক চালিকাশক্তি।', 'Taming inflation while balancing agriculture and exports will be the core economic driver ahead.', 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80', '<p>বিশ্বব্যাপী মূল্যস্ফীতি ও মুদ্রা সংকট থাকলেও বাংলাদেশের গ্রামীণ অর্থনীতি ও তৈরি পোশাক খাতের প্রাণশক্তি অত্যন্ত শক্তিশালী।</p>', '<p>Despite worldwide inflation and currency pressures, the vitality of Bangladesh’s rural economy remains strong.</p>'),
+('climate-justice-and-bangladesh', 'জলবায়ু ন্যায়বিচার: বাংলাদেশের দাবি ও করণীয়', 'Climate Justice: Bangladesh’s Demand and Global Imperatives', 'সৈয়দা রিজওয়ানা হাসান', 'Syeda Rizwana Hasan', 'পরিবেশ আইনজীবী ও র‍্যামন ম্যাগসেসে পুরস্কারপ্রাপ্ত', 'Environmental Lawyer & Ramon Magsaysay Awardee', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80', 'উপকূলীয় জনগোষ্ঠীর সুরক্ষায় বিশ্বকে দ্রুত ক্ষতিপূরণ তহবিল কার্যকর করতে হবে।', 'The world must rapidly operationalize loss-and-damage funds to protect coastal communities.', 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80', '<p>বাংলাদেশ বৈশ্বিক কার্বন নিঃসরণে দায়ী না হয়েও জলবায়ু পরিবর্তনের মারাত্মক ক্ষতির শিকার।</p>', '<p>Bangladesh suffers disproportionately from climate change despite contributing negligible emissions.</p>');
+
+-- 7. Photos Table
+DROP TABLE IF EXISTS photos;
+CREATE TABLE photos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  title_bn VARCHAR(500) NOT NULL,
+  title_en VARCHAR(500) NOT NULL DEFAULT '',
+  image VARCHAR(500) NOT NULL,
+  credit_bn VARCHAR(255) NULL,
+  credit_en VARCHAR(255) NULL,
+  caption_bn TEXT NULL,
+  caption_en TEXT NULL,
+  published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO photos (slug, title_bn, title_en, image, credit_bn, credit_en, caption_bn, caption_en) VALUES
+('autumn-kashful-beauty', 'শরতের বিকেলে কাশবনের অপার সৌন্দর্য', 'Breathtaking beauty of Kashful in Autumn afternoon', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80', 'ছবি: আসিফ মাহমুদ', 'Photo: Asif Mahmud', 'দিয়াবাড়ির বিস্তৃত কাশবনে পরিবার-পরিজন নিয়ে সূর্যাস্ত উপভোগ করছেন দর্শনার্থীরা।', 'Visitors enjoy sunset with families amidst vast autumn grass at Diabari.'),
+('misty-morning-river-bengal', 'কুয়াশাচ্ছন্ন ভোরে রূপসী বাংলার নদীমাতৃক রূপ', 'Misty morning across the rivers of Bengal', 'https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1200&q=80', 'ছবি: শফিকুল ইসলাম', 'Photo: Shafiqul Islam', 'মেঘনা নদীতে কুয়াশার চাদর ভেদ করে মাছ শিকারে যাচ্ছেন জেলেরা।', 'Fishermen set out across the Meghna river through early morning mist.'),
+('padma-bridge-night-lights', 'পদ্মা সেতুর আলোকসজ্জায় উদ্ভাসিত রাত', 'Padma Bridge illuminated under the night sky', 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80', 'ছবি: বিশেষ সংবাদদাতা', 'Photo: Special Correspondent', 'রাতের আঁধারে পদ্মা সেতুর উজ্জ্বল আলোকচ্ছটা নদীর পানিতে মোহময় প্রতিফলন তৈরি করে।', 'Vibrant illumination of Padma Bridge casts striking reflections upon the river waters.'),
+('coxsbazar-sea-beach-crowd', 'কক্সবাজার সমুদ্রসৈকতে পর্যটকদের উপচে পড়া ভিড়', 'Huge rush of tourists at Cox’s Bazar sea beach', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80', 'ছবি: নিজস্ব প্রতিবেদক', 'Photo: Staff Reporter', 'ছুটির দিনে বিশ্বের দীর্ঘতম সমুদ্রসৈকতে উচ্ছ্বাসে মেতেছেন হাজারো ভ্রমণপিপাসু।', 'Thousands of holidaymakers rejoice along the world’s longest natural sandy beach.');
+
+-- 8. Videos Table
+DROP TABLE IF EXISTS videos;
+CREATE TABLE videos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  title_bn VARCHAR(500) NOT NULL,
+  title_en VARCHAR(500) NOT NULL DEFAULT '',
+  thumb VARCHAR(500) NOT NULL,
+  video_url VARCHAR(500) NOT NULL,
+  duration VARCHAR(50) NOT NULL DEFAULT '৩:৩০',
+  views INT NOT NULL DEFAULT 0,
+  published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO videos (slug, title_bn, title_en, thumb, video_url, duration, views) VALUES
+('bd-vs-india-asia-cup-final-highlights', 'বাংলাদেশ বনাম ভারত এশিয়া কাপ ফাইনাল: জয়ের রোমাঞ্চকর মুহূর্তগুলো', 'Bangladesh vs India Asia Cup Final: Thrilling Winning Moments', 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80', 'https://www.youtube.com/embed/dQw4w9WgXcQ', '৮:৩২', 125000),
+('transformation-of-bangladesh-documentary', 'পদ্মা সেতু ও মেট্রোরেল: বাংলাদেশের রূপান্তরের ১০ বছর', 'Padma Bridge & Metro Rail: 10 Years of Bangladesh’s Transformation', 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80', 'https://www.youtube.com/embed/dQw4w9WgXcQ', '১৫:৪৫', 84000),
+('sundarbans-drone-tech-conservation', 'সুন্দরবনে ড্রোন প্রযুক্তির ব্যবহার: বন্যপ্রাণী সংরক্ষণে নতুন দিগন্ত', 'Drones in Sundarbans: A New Horizon for Wildlife Conservation', 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?auto=format&fit=crop&w=800&q=80', 'https://www.youtube.com/embed/dQw4w9WgXcQ', '৬:১২', 42000);

@@ -72,10 +72,13 @@ export default function AdminPage({
   onUpdateCategory,
   onDeleteCategory,
   onAddOpinion,
+  onUpdateOpinion,
   onDeleteOpinion,
   onAddPhoto,
+  onUpdatePhoto,
   onDeletePhoto,
   onAddVideo,
+  onUpdateVideo,
   onDeleteVideo,
   onResetData,
   onUpdateSettings,
@@ -308,7 +311,7 @@ export default function AdminPage({
   const [breakingSearch, setBreakingSearch] = useState('')
 
   // --- Opinion Form ---
-  const [newOpinion, setNewOpinion] = useState({
+  const initialOpinionForm = {
     title_bn: '',
     title_en: '',
     author_bn: '',
@@ -319,25 +322,31 @@ export default function AdminPage({
     summary_bn: '',
     summary_en: '',
     content_bn: '',
-  })
+  }
+  const [newOpinion, setNewOpinion] = useState(initialOpinionForm)
+  const [editingOpinionId, setEditingOpinionId] = useState(null)
 
   // --- Media Forms ---
-  const [newPhoto, setNewPhoto] = useState({
+  const initialPhotoForm = {
     title_bn: '',
     title_en: '',
     image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
     credit_bn: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
     credit_en: siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Source',
     caption_bn: '',
-  })
+  }
+  const [newPhoto, setNewPhoto] = useState(initialPhotoForm)
+  const [editingPhotoId, setEditingPhotoId] = useState(null)
 
-  const [newVideo, setNewVideo] = useState({
+  const initialVideoForm = {
     title_bn: '',
     title_en: '',
     thumb: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80',
     videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     duration: '৪:১৫',
-  })
+  }
+  const [newVideo, setNewVideo] = useState(initialVideoForm)
+  const [editingVideoId, setEditingVideoId] = useState(null)
 
   // Handle Logout
   const handleLogout = async () => {
@@ -649,76 +658,244 @@ export default function AdminPage({
     }
   }
 
-  // Handle Add Opinion Submit
-  const handleAddOpinionSubmit = (e) => {
+  // --- Opinion Handlers ---
+  const handleEditOpinionClick = (op) => {
+    setEditingOpinionId(op.id)
+    setNewOpinion({
+      title_bn: op.title_bn || '',
+      title_en: op.title_en || '',
+      author_bn: op.author_bn || '',
+      author_en: op.author_en || '',
+      author_role_bn: op.author_role_bn || '',
+      author_role_en: op.author_role_en || '',
+      author_image: op.author_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      summary_bn: op.summary_bn || '',
+      summary_en: op.summary_en || '',
+      content_bn: op.content_bn || '',
+    })
+    window.scrollTo({ top: 300, behavior: 'smooth' })
+  }
+
+  const handleCancelOpinionEdit = () => {
+    setEditingOpinionId(null)
+    setNewOpinion(initialOpinionForm)
+  }
+
+  const handleAddOpinionSubmit = async (e) => {
     e.preventDefault()
     if (!newOpinion.title_bn.trim() || !newOpinion.author_bn.trim()) {
-      alert('দয়া করে লেখকের নাম ও শিরোনাম লিখুন।')
+      alert(lang === 'bn' ? 'দয়া করে লেখকের নাম ও শিরোনাম লিখুন।' : 'Please enter author name and title.')
       return
     }
-    const item = {
+    const itemPayload = {
       ...newOpinion,
-      id: `op-${Date.now()}`,
-      slug: `opinion-${Date.now()}`,
-      date: new Date().toISOString(),
+      ...(editingOpinionId ? { id: editingOpinionId } : {}),
+      title_en: newOpinion.title_en?.trim() || newOpinion.title_bn,
+      author_en: newOpinion.author_en?.trim() || newOpinion.author_bn,
+      author_role_en: newOpinion.author_role_en?.trim() || newOpinion.author_role_bn,
+      summary_en: newOpinion.summary_en?.trim() || newOpinion.summary_bn,
+      content_en: newOpinion.content_en?.trim() || newOpinion.content_bn,
     }
-    onAddOpinion?.(item)
-    triggerToast(lang === 'bn' ? 'নতুন কলাম যুক্ত হয়েছে!' : 'Opinion column added!')
-    setNewOpinion({
-      title_bn: '',
-      title_en: '',
-      author_bn: '',
-      author_en: '',
-      author_role_bn: '',
-      author_role_en: '',
-      author_image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      summary_bn: '',
-      summary_en: '',
-      content_bn: '',
-    })
+    try {
+      const res = await api.saveOpinion(itemPayload)
+      const savedItem = res?.opinion || {
+        ...itemPayload,
+        id: editingOpinionId || `op-${Date.now()}`,
+        slug: itemPayload.slug || `opinion-${Date.now()}`,
+        date: itemPayload.date || new Date().toISOString(),
+      }
+      if (editingOpinionId) {
+        onUpdateOpinion?.(savedItem)
+        triggerToast(lang === 'bn' ? 'মতামত সফলভাবে ডাটাবেজে আপডেট হয়েছে!' : 'Opinion updated in database!')
+      } else {
+        onAddOpinion?.(savedItem)
+        triggerToast(lang === 'bn' ? 'নতুন কলাম ডাটাবেজে সংরক্ষিত হয়েছে!' : 'Opinion column saved to database!')
+      }
+      refreshStats()
+    } catch (err) {
+      console.warn('API saveOpinion fallback:', err)
+      const fallbackItem = {
+        ...itemPayload,
+        id: editingOpinionId || `op-${Date.now()}`,
+        slug: itemPayload.slug || `opinion-${Date.now()}`,
+        date: itemPayload.date || new Date().toISOString(),
+      }
+      if (editingOpinionId) {
+        onUpdateOpinion?.(fallbackItem)
+        triggerToast(lang === 'bn' ? 'মতামত আপডেট হয়েছে!' : 'Opinion updated!')
+      } else {
+        onAddOpinion?.(fallbackItem)
+        triggerToast(lang === 'bn' ? 'নতুন কলাম যুক্ত হয়েছে!' : 'Opinion added!')
+      }
+    }
+    setNewOpinion(initialOpinionForm)
+    setEditingOpinionId(null)
   }
 
-  // Handle Add Photo Submit
-  const handleAddPhotoSubmit = (e) => {
+  const handleDeleteOpinionClick = async (id) => {
+    if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই মতামতটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this opinion?')) {
+      try {
+        await api.deleteOpinion(id)
+      } catch (err) {
+        console.warn('Backend deleteOpinion notice:', err)
+      }
+      onDeleteOpinion?.(id)
+      refreshStats()
+      triggerToast(lang === 'bn' ? 'মতামতটি মুছে ফেলা হয়েছে।' : 'Opinion deleted.', 'info')
+    }
+  }
+
+  // --- Photo Handlers ---
+  const handleEditPhotoClick = (ph) => {
+    setEditingPhotoId(ph.id)
+    setNewPhoto({
+      title_bn: ph.title_bn || '',
+      title_en: ph.title_en || '',
+      image: ph.image || '',
+      credit_bn: ph.credit_bn || (siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত'),
+      credit_en: ph.credit_en || (siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Source'),
+      caption_bn: ph.caption_bn || '',
+    })
+    window.scrollTo({ top: 300, behavior: 'smooth' })
+  }
+
+  const handleCancelPhotoEdit = () => {
+    setEditingPhotoId(null)
+    setNewPhoto(initialPhotoForm)
+  }
+
+  const handleAddPhotoSubmit = async (e) => {
     e.preventDefault()
     if (!newPhoto.title_bn.trim() || !newPhoto.image.trim()) return
-    const item = {
+    const itemPayload = {
       ...newPhoto,
-      id: `ph-${Date.now()}`,
-      slug: `photo-${Date.now()}`,
-      date: new Date().toISOString(),
+      ...(editingPhotoId ? { id: editingPhotoId } : {}),
+      title_en: newPhoto.title_en?.trim() || newPhoto.title_bn,
+      credit_en: newPhoto.credit_en?.trim() || newPhoto.credit_bn,
+      caption_en: newPhoto.caption_en?.trim() || newPhoto.caption_bn,
     }
-    onAddPhoto?.(item)
-    triggerToast(lang === 'bn' ? 'ছবি যুক্ত হয়েছে!' : 'Photo added!')
-    setNewPhoto({
-      title_bn: '',
-      title_en: '',
-      image: '',
-      credit_bn: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
-      credit_en: siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Source',
-      caption_bn: '',
-    })
+    try {
+      const res = await api.savePhoto(itemPayload)
+      const savedItem = res?.photo || {
+        ...itemPayload,
+        id: editingPhotoId || `ph-${Date.now()}`,
+        slug: itemPayload.slug || `photo-${Date.now()}`,
+        date: itemPayload.date || new Date().toISOString(),
+      }
+      if (editingPhotoId) {
+        onUpdatePhoto?.(savedItem)
+        triggerToast(lang === 'bn' ? 'ছবি সফলভাবে ডাটাবেজে আপডেট হয়েছে!' : 'Photo updated in database!')
+      } else {
+        onAddPhoto?.(savedItem)
+        triggerToast(lang === 'bn' ? 'নতুন ছবি ডাটাবেজে সংরক্ষিত হয়েছে!' : 'Photo saved to database!')
+      }
+      refreshStats()
+    } catch (err) {
+      console.warn('API savePhoto fallback:', err)
+      const fallbackItem = {
+        ...itemPayload,
+        id: editingPhotoId || `ph-${Date.now()}`,
+        slug: itemPayload.slug || `photo-${Date.now()}`,
+        date: itemPayload.date || new Date().toISOString(),
+      }
+      if (editingPhotoId) {
+        onUpdatePhoto?.(fallbackItem)
+        triggerToast(lang === 'bn' ? 'ছবি আপডেট হয়েছে!' : 'Photo updated!')
+      } else {
+        onAddPhoto?.(fallbackItem)
+        triggerToast(lang === 'bn' ? 'ছবি যুক্ত হয়েছে!' : 'Photo added!')
+      }
+    }
+    setNewPhoto(initialPhotoForm)
+    setEditingPhotoId(null)
   }
 
-  // Handle Add Video Submit
-  const handleAddVideoSubmit = (e) => {
+  const handleDeletePhotoClick = async (id) => {
+    if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই ছবিটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this photo?')) {
+      try {
+        await api.deletePhoto(id)
+      } catch (err) {
+        console.warn('Backend deletePhoto notice:', err)
+      }
+      onDeletePhoto?.(id)
+      refreshStats()
+      triggerToast(lang === 'bn' ? 'ছবিটি মুছে ফেলা হয়েছে।' : 'Photo deleted.', 'info')
+    }
+  }
+
+  // --- Video Handlers ---
+  const handleEditVideoClick = (v) => {
+    setEditingVideoId(v.id)
+    setNewVideo({
+      title_bn: v.title_bn || '',
+      title_en: v.title_en || '',
+      thumb: v.thumb || '',
+      videoUrl: v.videoUrl || '',
+      duration: v.duration || '৪:১৫',
+    })
+    window.scrollTo({ top: 300, behavior: 'smooth' })
+  }
+
+  const handleCancelVideoEdit = () => {
+    setEditingVideoId(null)
+    setNewVideo(initialVideoForm)
+  }
+
+  const handleAddVideoSubmit = async (e) => {
     e.preventDefault()
     if (!newVideo.title_bn.trim()) return
-    const item = {
+    const itemPayload = {
       ...newVideo,
-      id: `v-${Date.now()}`,
-      slug: `video-${Date.now()}`,
-      date: new Date().toISOString(),
+      ...(editingVideoId ? { id: editingVideoId } : {}),
+      title_en: newVideo.title_en?.trim() || newVideo.title_bn,
     }
-    onAddVideo?.(item)
-    triggerToast(lang === 'bn' ? 'ভিডিও প্রতিবেদন যুক্ত হয়েছে!' : 'Video added!')
-    setNewVideo({
-      title_bn: '',
-      title_en: '',
-      thumb: '',
-      videoUrl: '',
-      duration: '৩:৩০',
-    })
+    try {
+      const res = await api.saveVideo(itemPayload)
+      const savedItem = res?.video || {
+        ...itemPayload,
+        id: editingVideoId || `v-${Date.now()}`,
+        slug: itemPayload.slug || `video-${Date.now()}`,
+        date: itemPayload.date || new Date().toISOString(),
+      }
+      if (editingVideoId) {
+        onUpdateVideo?.(savedItem)
+        triggerToast(lang === 'bn' ? 'ভিডিও সফলভাবে ডাটাবেজে আপডেট হয়েছে!' : 'Video updated in database!')
+      } else {
+        onAddVideo?.(savedItem)
+        triggerToast(lang === 'bn' ? 'নতুন ভিডিও ডাটাবেজে সংরক্ষিত হয়েছে!' : 'Video saved to database!')
+      }
+      refreshStats()
+    } catch (err) {
+      console.warn('API saveVideo fallback:', err)
+      const fallbackItem = {
+        ...itemPayload,
+        id: editingVideoId || `v-${Date.now()}`,
+        slug: itemPayload.slug || `video-${Date.now()}`,
+        date: itemPayload.date || new Date().toISOString(),
+      }
+      if (editingVideoId) {
+        onUpdateVideo?.(fallbackItem)
+        triggerToast(lang === 'bn' ? 'ভিডিও আপডেট হয়েছে!' : 'Video updated!')
+      } else {
+        onAddVideo?.(fallbackItem)
+        triggerToast(lang === 'bn' ? 'ভিডিও যুক্ত হয়েছে!' : 'Video added!')
+      }
+    }
+    setNewVideo(initialVideoForm)
+    setEditingVideoId(null)
+  }
+
+  const handleDeleteVideoClick = async (id) => {
+    if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই ভিডিওটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this video?')) {
+      try {
+        await api.deleteVideo(id)
+      } catch (err) {
+        console.warn('Backend deleteVideo notice:', err)
+      }
+      onDeleteVideo?.(id)
+      refreshStats()
+      triggerToast(lang === 'bn' ? 'ভিডিওটি মুছে ফেলা হয়েছে।' : 'Video deleted.', 'info')
+    }
   }
 
   // Download Database SQL
@@ -731,30 +908,6 @@ export default function AdminPage({
     element.click()
     document.body.removeChild(element)
     triggerToast(lang === 'bn' ? 'SQL ডাউনলোড শুরু হয়েছে।' : 'SQL download started.')
-  }
-
-  // Handle Delete Opinion Click
-  const handleDeleteOpinionClick = (id) => {
-    if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই মতামতটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this opinion?')) {
-      onDeleteOpinion?.(id)
-      triggerToast(lang === 'bn' ? 'মতামতটি মুছে ফেলা হয়েছে।' : 'Opinion deleted.', 'info')
-    }
-  }
-
-  // Handle Delete Photo Click
-  const handleDeletePhotoClick = (id) => {
-    if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই ছবিটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this photo?')) {
-      onDeletePhoto?.(id)
-      triggerToast(lang === 'bn' ? 'ছবিটি মুছে ফেলা হয়েছে।' : 'Photo deleted.', 'info')
-    }
-  }
-
-  // Handle Delete Video Click
-  const handleDeleteVideoClick = (id) => {
-    if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে এই ভিডিওটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this video?')) {
-      onDeleteVideo?.(id)
-      triggerToast(lang === 'bn' ? 'ভিডিওটি মুছে ফেলা হয়েছে।' : 'Video deleted.', 'info')
-    }
   }
 
   // Filtered Articles for Management Table
@@ -1004,6 +1157,57 @@ export default function AdminPage({
                   <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                     <Flame size={22} />
                   </div>
+                </div>
+              </div>
+
+              {/* Secondary Media & Opinion Quick Metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div
+                  onClick={() => setActiveTab('opinions')}
+                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-purple-300 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                      <PenTool size={18} />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'কলাম ও সম্পাদকীয়' : 'Opinions & Editorials'}</span>
+                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(opinions.length)} টি</span>
+                    </div>
+                  </div>
+                  <span className="text-xs text-purple-600 font-bold">ম্যানেজ →</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab('media')}
+                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-pink-300 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+                      <Camera size={18} />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'আলোকচিত্র গ্যালারি' : 'Photo Gallery'}</span>
+                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(photos.length)} টি</span>
+                    </div>
+                  </div>
+                  <span className="text-xs text-pink-600 font-bold">ম্যানেজ →</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab('media')}
+                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-cyan-300 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                      <Video size={18} />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'ভিডিও প্রতিবেদন' : 'Video Reports'}</span>
+                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(videos.length)} টি</span>
+                    </div>
+                  </div>
+                  <span className="text-xs text-cyan-600 font-bold">ম্যানেজ →</span>
                 </div>
               </div>
 
@@ -2356,12 +2560,24 @@ export default function AdminPage({
           {/* ================= TAB 6: OPINIONS MANAGEMENT ================= */}
           {activeTab === 'opinions' && (
             <div className="space-y-6">
-              {/* Add Opinion Form */}
+              {/* Add/Edit Opinion Form */}
               <form onSubmit={handleAddOpinionSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b pb-3 text-[#e30613] font-bold">
-                  <PenTool size={18} />
-                  <span>নতুন কলাম ও সম্পাদকীয় প্রকাশ করুন</span>
+                <div className="flex items-center justify-between border-b pb-3 text-[#e30613] font-bold">
+                  <div className="flex items-center gap-2">
+                    <PenTool size={18} />
+                    <span>{editingOpinionId ? 'কলাম ও সম্পাদকীয় সম্পাদনা করুন (Edit Opinion)' : 'নতুন কলাম ও সম্পাদকীয় প্রকাশ করুন (Add Opinion)'}</span>
+                  </div>
+                  {editingOpinionId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelOpinionEdit}
+                      className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors font-normal"
+                    >
+                      বাতিল করুন (Cancel)
+                    </button>
+                  )}
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">কলামিস্টের নাম (বাংলা) *</label>
@@ -2371,18 +2587,41 @@ export default function AdminPage({
                       value={newOpinion.author_bn}
                       onChange={(e) => setNewOpinion({ ...newOpinion, author_bn: e.target.value })}
                       placeholder="ড. মুহাম্মদ ইউনূস"
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">পদবি ও পরিচিতি *</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">কলামিস্টের নাম (English)</label>
+                    <input
+                      type="text"
+                      value={newOpinion.author_en}
+                      onChange={(e) => setNewOpinion({ ...newOpinion, author_en: e.target.value })}
+                      placeholder="Dr. Muhammad Yunus"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 font-sans"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">পদবি ও পরিচিতি (বাংলা) *</label>
                     <input
                       type="text"
                       required
                       value={newOpinion.author_role_bn}
                       onChange={(e) => setNewOpinion({ ...newOpinion, author_role_bn: e.target.value })}
                       placeholder="অর্থনীতিবিদ ও শান্তিতে নোবেল বিজয়ী"
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">পদবি ও পরিচিতি (English)</label>
+                    <input
+                      type="text"
+                      value={newOpinion.author_role_en}
+                      onChange={(e) => setNewOpinion({ ...newOpinion, author_role_en: e.target.value })}
+                      placeholder="Economist and Nobel Peace Prize Laureate"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 font-sans"
                     />
                   </div>
                 </div>
@@ -2396,48 +2635,72 @@ export default function AdminPage({
                       value={newOpinion.title_bn}
                       onChange={(e) => setNewOpinion({ ...newOpinion, title_bn: e.target.value })}
                       placeholder="গণতন্ত্রের ভবিষ্যৎ ও আমাদের নাগরিক দায়িত্ব..."
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">কলামের শিরোনাম (English)</label>
+                    <input
+                      type="text"
+                      value={newOpinion.title_en}
+                      onChange={(e) => setNewOpinion({ ...newOpinion, title_en: e.target.value })}
+                      placeholder="Future of Democracy and Our Civic Duty..."
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 font-sans"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">কলামিস্টের ছবি URL</label>
                     <input
                       type="url"
                       value={newOpinion.author_image}
                       onChange={(e) => setNewOpinion({ ...newOpinion, author_image: e.target.value })}
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">সারসংক্ষেপ (বাংলা)</label>
+                    <textarea
+                      rows="2"
+                      value={newOpinion.summary_bn}
+                      onChange={(e) => setNewOpinion({ ...newOpinion, summary_bn: e.target.value })}
+                      placeholder="মতামতের মূল কথা..."
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">সারসংক্ষেপ</label>
-                  <textarea
-                    rows="2"
-                    value={newOpinion.summary_bn}
-                    onChange={(e) => setNewOpinion({ ...newOpinion, summary_bn: e.target.value })}
-                    placeholder="মতামতের মূল কথা..."
-                    className="w-full text-xs p-2.5 border rounded-lg outline-none"
-                  />
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow flex items-center gap-2"
+                  >
+                    <Save size={14} />
+                    <span>{editingOpinionId ? 'পরিবর্তন সংরক্ষণ করুন (Save Changes)' : 'কলাম প্রকাশ করুন (Publish Opinion)'}</span>
+                  </button>
+                  {editingOpinionId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelOpinionEdit}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors"
+                    >
+                      বাতিল (Cancel)
+                    </button>
+                  )}
                 </div>
-
-                <button
-                  type="submit"
-                  className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow"
-                >
-                  কলাম প্রকাশ করুন
-                </button>
               </form>
 
               {/* Opinions List */}
               <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b pb-3">
                   <h3 className="font-bold text-sm text-gray-800">কলাম ও মতামত তালিকা</h3>
-                  <span className="text-xs text-gray-500">মোট {toBengaliNumber(opinions.length)} টি মতামত</span>
+                  <span className="text-xs text-gray-500">মোট {toBengaliNumber(opinions.length)} টি মতামত (ডাটাবেজ সংযুক্ত)</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {opinions.map((op) => (
-                    <div key={op.id} className="p-4 rounded-lg border border-gray-200 flex gap-3 items-start justify-between">
+                    <div key={op.id} className="p-4 rounded-lg border border-gray-200 flex gap-3 items-start justify-between hover:border-gray-300 transition-colors">
                       <div className="flex gap-3 items-start">
                         <img src={op.author_image} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-red-500 flex-shrink-0" />
                         <div>
@@ -2447,13 +2710,22 @@ export default function AdminPage({
                           <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">{op.summary_bn}</p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteOpinionClick(op.id)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                        title="Delete"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleEditOpinionClick(op)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="সম্পাদনা করুন (Edit)"
+                        >
+                          <Edit size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOpinionClick(op.id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="মুছে ফেলুন (Delete)"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2464,12 +2736,24 @@ export default function AdminPage({
           {/* ================= TAB 7: MULTIMEDIA ================= */}
           {activeTab === 'media' && (
             <div className="space-y-6">
-              {/* Add Photo Form */}
+              {/* Add/Edit Photo Form */}
               <form onSubmit={handleAddPhotoSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b pb-2 text-[#e30613] font-bold">
-                  <Camera size={18} />
-                  <span>নতুন আলোকচিত্র (Photo Story) যোগ করুন</span>
+                <div className="flex items-center justify-between border-b pb-2 text-[#e30613] font-bold">
+                  <div className="flex items-center gap-2">
+                    <Camera size={18} />
+                    <span>{editingPhotoId ? 'আলোকচিত্র সম্পাদনা করুন (Edit Photo)' : 'নতুন আলোকচিত্র (Photo Story) যোগ করুন'}</span>
+                  </div>
+                  {editingPhotoId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelPhotoEdit}
+                      className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors font-normal"
+                    >
+                      বাতিল করুন (Cancel)
+                    </button>
+                  )}
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">ছবির শিরোনাম (বাংলা) *</label>
@@ -2479,7 +2763,7 @@ export default function AdminPage({
                       value={newPhoto.title_bn}
                       onChange={(e) => setNewPhoto({ ...newPhoto, title_bn: e.target.value })}
                       placeholder="শরতের বিকেলে কাশবনের অপার সৌন্দর্য..."
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
                     />
                   </div>
                   <div>
@@ -2490,49 +2774,106 @@ export default function AdminPage({
                       value={newPhoto.image}
                       onChange={(e) => setNewPhoto({ ...newPhoto, image: e.target.value })}
                       placeholder="https://images.unsplash.com/..."
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
                     />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow"
-                >
-                  ছবি যোগ করুন
-                </button>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">ছবির ক্রেডিট (বাংলা)</label>
+                    <input
+                      type="text"
+                      value={newPhoto.credit_bn}
+                      onChange={(e) => setNewPhoto({ ...newPhoto, credit_bn: e.target.value })}
+                      placeholder="ছবি: প্রথম আলো"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">ছবির বিবরণ / ক্যাপশন (বাংলা)</label>
+                    <input
+                      type="text"
+                      value={newPhoto.caption_bn}
+                      onChange={(e) => setNewPhoto({ ...newPhoto, caption_bn: e.target.value })}
+                      placeholder="স্থান ও ঘটনার সংক্ষিপ্ত বর্ণনা..."
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow flex items-center gap-2"
+                  >
+                    <Save size={14} />
+                    <span>{editingPhotoId ? 'পরিবর্তন সংরক্ষণ করুন (Save Photo)' : 'ছবি যোগ করুন (Add Photo)'}</span>
+                  </button>
+                  {editingPhotoId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelPhotoEdit}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors"
+                    >
+                      বাতিল (Cancel)
+                    </button>
+                  )}
+                </div>
               </form>
 
               {/* Photos List */}
               <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-sm text-gray-800 border-b pb-2 mb-4">আলোকচিত্র গ্যালারি ({toBengaliNumber(photos.length)} টি)</h3>
+                <h3 className="font-bold text-sm text-gray-800 border-b pb-2 mb-4">আলোকচিত্র গ্যালারি ({toBengaliNumber(photos.length)} টি - ডাটাবেজ সংযুক্ত)</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {photos.map((ph) => (
-                    <div key={ph.id} className="rounded-lg overflow-hidden border border-gray-200 group relative">
+                    <div key={ph.id} className="rounded-lg overflow-hidden border border-gray-200 group relative hover:border-gray-300 transition-colors">
                       <img src={ph.image} alt="" className="w-full h-28 object-cover" />
-                      <div className="p-2 text-[11px] flex justify-between items-center">
-                        <div className="truncate flex-1">
+                      <div className="p-2 text-[11px] flex justify-between items-center bg-white">
+                        <div className="truncate flex-1 pr-2">
                           <p className="font-bold text-gray-900 truncate">{ph.title_bn}</p>
                           <p className="text-gray-400 text-[10px] truncate">{ph.credit_bn}</p>
                         </div>
-                        <button
-                          onClick={() => handleDeletePhotoClick(ph.id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => handleEditPhotoClick(ph)}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="সম্পাদনা করুন (Edit)"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePhotoClick(ph.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="মুছে ফেলুন (Delete)"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Add Video Form */}
+              {/* Add/Edit Video Form */}
               <form onSubmit={handleAddVideoSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 border-b pb-2 text-[#e30613] font-bold">
-                  <Video size={18} />
-                  <span>নতুন ভিডিও প্রতিবেদন যোগ করুন</span>
+                <div className="flex items-center justify-between border-b pb-2 text-[#e30613] font-bold">
+                  <div className="flex items-center gap-2">
+                    <Video size={18} />
+                    <span>{editingVideoId ? 'ভিডিও প্রতিবেদন সম্পাদনা করুন (Edit Video)' : 'নতুন ভিডিও প্রতিবেদন যোগ করুন'}</span>
+                  </div>
+                  {editingVideoId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelVideoEdit}
+                      className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors font-normal"
+                    >
+                      বাতিল করুন (Cancel)
+                    </button>
+                  )}
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-gray-700 mb-1">ভিডিও শিরোনাম (বাংলা) *</label>
@@ -2542,7 +2883,7 @@ export default function AdminPage({
                       value={newVideo.title_bn}
                       onChange={(e) => setNewVideo({ ...newVideo, title_bn: e.target.value })}
                       placeholder="এশিয়া কাপ ফাইনাল: জয়ের রোমাঞ্চকর মুহূর্তগুলো..."
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
                     />
                   </div>
                   <div>
@@ -2552,10 +2893,11 @@ export default function AdminPage({
                       value={newVideo.duration}
                       onChange={(e) => setNewVideo({ ...newVideo, duration: e.target.value })}
                       placeholder="৪:১৫"
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500"
                     />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">YouTube Embed লিঙ্ক</label>
@@ -2564,7 +2906,7 @@ export default function AdminPage({
                       value={newVideo.videoUrl}
                       onChange={(e) => setNewVideo({ ...newVideo, videoUrl: e.target.value })}
                       placeholder="https://www.youtube.com/embed/..."
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
                     />
                   </div>
                   <div>
@@ -2573,38 +2915,60 @@ export default function AdminPage({
                       type="url"
                       value={newVideo.thumb}
                       onChange={(e) => setNewVideo({ ...newVideo, thumb: e.target.value })}
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans"
+                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
                     />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow"
-                >
-                  ভিডিও যোগ করুন
-                </button>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow flex items-center gap-2"
+                  >
+                    <Save size={14} />
+                    <span>{editingVideoId ? 'পরিবর্তন সংরক্ষণ করুন (Save Video)' : 'ভিডিও যোগ করুন (Add Video)'}</span>
+                  </button>
+                  {editingVideoId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelVideoEdit}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors"
+                    >
+                      বাতিল (Cancel)
+                    </button>
+                  )}
+                </div>
               </form>
 
               {/* Videos List */}
               <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-sm text-gray-800 border-b pb-2 mb-4">ভিডিও প্রতিবেদন ({toBengaliNumber(videos.length)} টি)</h3>
+                <h3 className="font-bold text-sm text-gray-800 border-b pb-2 mb-4">ভিডিও প্রতিবেদন ({toBengaliNumber(videos.length)} টি - ডাটাবেজ সংযুক্ত)</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {videos.map((v) => (
-                    <div key={v.id} className="rounded-lg overflow-hidden border border-gray-200 p-3 flex gap-3 items-center justify-between">
-                      <div className="flex gap-3 items-center">
-                        <img src={v.thumb} alt="" className="w-20 h-14 object-cover rounded" />
-                        <div className="text-xs">
+                    <div key={v.id} className="rounded-lg overflow-hidden border border-gray-200 p-3 flex gap-3 items-center justify-between hover:border-gray-300 transition-colors">
+                      <div className="flex gap-3 items-center min-w-0">
+                        <img src={v.thumb} alt="" className="w-20 h-14 object-cover rounded flex-shrink-0" />
+                        <div className="text-xs min-w-0">
                           <p className="font-bold text-gray-900 line-clamp-2">{v.title_bn}</p>
                           <span className="text-[10px] text-red-600 font-bold block mt-1">সময়কাল: {v.duration}</span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteVideoClick(v.id)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleEditVideoClick(v)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="সম্পাদনা করুন (Edit)"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVideoClick(v.id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="মুছে ফেলুন (Delete)"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

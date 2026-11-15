@@ -124,6 +124,196 @@ function auto_migrate_seo(PDO $pdo): void
     }
 }
 
+function auto_migrate_media_and_opinions(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    // 1. Opinions table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `opinions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `slug` VARCHAR(255) NOT NULL UNIQUE,
+            `title_bn` VARCHAR(500) NOT NULL,
+            `title_en` VARCHAR(500) NOT NULL DEFAULT '',
+            `author_bn` VARCHAR(150) NOT NULL,
+            `author_en` VARCHAR(150) NOT NULL DEFAULT '',
+            `author_role_bn` VARCHAR(255) NULL,
+            `author_role_en` VARCHAR(255) NULL,
+            `author_image` VARCHAR(500) NULL,
+            `summary_bn` TEXT NULL,
+            `summary_en` TEXT NULL,
+            `image` VARCHAR(500) NULL,
+            `category` VARCHAR(50) NOT NULL DEFAULT 'opinion',
+            `content_bn` LONGTEXT NULL,
+            `content_en` LONGTEXT NULL,
+            `published_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $opCount = (int) $pdo->query('SELECT COUNT(*) FROM opinions')->fetchColumn();
+        if ($opCount === 0) {
+            $ins = $pdo->prepare("INSERT INTO `opinions` (slug, title_bn, title_en, author_bn, author_en, author_role_bn, author_role_en, author_image, summary_bn, summary_en, image, content_bn, content_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([
+                'democracy-future-bangladesh',
+                'গণতন্ত্রের ভবিষ্যৎ ও আমাদের নাগরিক দায়িত্ব',
+                'The Future of Democracy and Our Civic Responsibility',
+                'ড. মুহাম্মদ ইউনূস',
+                'Dr. Muhammad Yunus',
+                'অর্থনীতিবিদ ও শান্তিতে নোবেল বিজয়ী',
+                'Economist & Nobel Peace Laureate',
+                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+                'একটি শক্তিশালী গণতান্ত্রিক ব্যবস্থার মূল ভিত্তি হলো প্রতিটি নাগরিকের সমান অংশগ্রহণ ও জবাবদিহিতা।',
+                'The foundation of a robust democratic system lies in the equal participation and accountability of every citizen.',
+                'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=800&q=80',
+                '<p>গণতন্ত্র কেবল একটি শাসনব্যবস্থা নয়, এটি একটি সামাজিক সংস্কৃতি ও মূল্যবোধ। যখন নাগরিকরা সচেতন হন এবং প্রাতিষ্ঠানিক জবাবদিহিতা নিশ্চিত করেন, তখনই একটি রাষ্ট্র উন্নয়নের সঠিক শিখরে পৌঁছায়।</p>',
+                '<p>Democracy is not merely a system of governance; it is a social culture and a set of shared values.</p>'
+            ]);
+            $ins->execute([
+                'economic-resilience-south-asia',
+                'বৈশ্বিক অস্থিরতার মুখে বাংলাদেশের অর্থনৈতিক স্থিতিস্থাপকতা',
+                'Economic Resilience of Bangladesh Amid Global Volatility',
+                'ড. দেবপ্রিয় ভট্টাচার্য',
+                'Dr. Debapriya Bhattacharya',
+                'বিশিষ্ট অর্থনীতিবিদ ও পলিসি বিশ্লেষক',
+                'Eminent Economist & Policy Analyst',
+                'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+                'মূল্যস্ফীতি নিয়ন্ত্রণ ও কৃষি-রপ্তানির ভারসাম্য বজায় রাখাই হবে আগামী দিনের মূল অর্থনৈতিক চালিকাশক্তি।',
+                'Taming inflation while balancing agriculture and exports will be the core economic driver ahead.',
+                'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80',
+                '<p>বিশ্বব্যাপী মূল্যস্ফীতি ও মুদ্রা সংকট থাকলেও বাংলাদেশের গ্রামীণ অর্থনীতি ও তৈরি পোশাক খাতের প্রাণশক্তি অত্যন্ত শক্তিশালী।</p>',
+                '<p>Despite worldwide inflation and currency pressures, the vitality of Bangladesh’s rural economy remains strong.</p>'
+            ]);
+            $ins->execute([
+                'climate-justice-and-bangladesh',
+                'জলবায়ু ন্যায়বিচার: বাংলাদেশের দাবি ও করণীয়',
+                'Climate Justice: Bangladesh’s Demand and Global Imperatives',
+                'সৈয়দা রিজওয়ানা হাসান',
+                'Syeda Rizwana Hasan',
+                'পরিবেশ আইনজীবী ও র‍্যামন ম্যাগসেসে পুরস্কারপ্রাপ্ত',
+                'Environmental Lawyer & Ramon Magsaysay Awardee',
+                'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+                'উপকূলীয় জনগোষ্ঠীর সুরক্ষায় বিশ্বকে দ্রুত ক্ষতিপূরণ তহবিল কার্যকর করতে হবে।',
+                'The world must rapidly operationalize loss-and-damage funds to protect coastal communities.',
+                'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80',
+                '<p>বাংলাদেশ বৈশ্বিক কার্বন নিঃসরণে দায়ী না হয়েও জলবায়ু পরিবর্তনের মারাত্মক ক্ষতির শিকার।</p>',
+                '<p>Bangladesh suffers disproportionately from climate change despite contributing negligible emissions.</p>'
+            ]);
+        }
+    } catch (Throwable $e) {}
+
+    // 2. Photos table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `photos` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `slug` VARCHAR(255) NOT NULL UNIQUE,
+            `title_bn` VARCHAR(500) NOT NULL,
+            `title_en` VARCHAR(500) NOT NULL DEFAULT '',
+            `image` VARCHAR(500) NOT NULL,
+            `credit_bn` VARCHAR(255) NULL,
+            `credit_en` VARCHAR(255) NULL,
+            `caption_bn` TEXT NULL,
+            `caption_en` TEXT NULL,
+            `published_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $phCount = (int) $pdo->query('SELECT COUNT(*) FROM photos')->fetchColumn();
+        if ($phCount === 0) {
+            $ins = $pdo->prepare("INSERT INTO `photos` (slug, title_bn, title_en, image, credit_bn, credit_en, caption_bn, caption_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([
+                'autumn-kashful-beauty',
+                'শরতের বিকেলে কাশবনের অপার সৌন্দর্য',
+                'Breathtaking beauty of Kashful in Autumn afternoon',
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+                'ছবি: আসিফ মাহমুদ',
+                'Photo: Asif Mahmud',
+                'দিয়াবাড়ির বিস্তৃত কাশবনে পরিবার-পরিজন নিয়ে সূর্যাস্ত উপভোগ করছেন দর্শনার্থীরা।',
+                'Visitors enjoy sunset with families amidst vast autumn grass at Diabari.'
+            ]);
+            $ins->execute([
+                'misty-morning-river-bengal',
+                'কুয়াশাচ্ছন্ন ভোরে রূপসী বাংলার নদীমাতৃক রূপ',
+                'Misty morning across the rivers of Bengal',
+                'https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1200&q=80',
+                'ছবি: শফিকুল ইসলাম',
+                'Photo: Shafiqul Islam',
+                'মেঘনা নদীতে কুয়াশার চাদর ভেদ করে মাছ শিকারে যাচ্ছেন জেলেরা।',
+                'Fishermen set out across the Meghna river through early morning mist.'
+            ]);
+            $ins->execute([
+                'padma-bridge-night-lights',
+                'পদ্মা সেতুর আলোকসজ্জায় উদ্ভাসিত রাত',
+                'Padma Bridge illuminated under the night sky',
+                'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80',
+                'ছবি: বিশেষ সংবাদদাতা',
+                'Photo: Special Correspondent',
+                'রাতের আঁধারে পদ্মা সেতুর উজ্জ্বল আলোকচ্ছটা নদীর পানিতে মোহময় প্রতিফলন তৈরি করে।',
+                'Vibrant illumination of Padma Bridge casts striking reflections upon the river waters.'
+            ]);
+            $ins->execute([
+                'coxsbazar-sea-beach-crowd',
+                'কক্সবাজার সমুদ্রসৈকতে পর্যটকদের উপচে পড়া ভিড়',
+                'Huge rush of tourists at Cox’s Bazar sea beach',
+                'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+                'ছবি: নিজস্ব প্রতিবেদক',
+                'Photo: Staff Reporter',
+                'ছুটির দিনে বিশ্বের দীর্ঘতম সমুদ্রসৈকতে উচ্ছ্বাসে মেতেছেন হাজারো ভ্রমণপিপাসু।',
+                'Thousands of holidaymakers rejoice along the world’s longest natural sandy beach.'
+            ]);
+        }
+    } catch (Throwable $e) {}
+
+    // 3. Videos table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `videos` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `slug` VARCHAR(255) NOT NULL UNIQUE,
+            `title_bn` VARCHAR(500) NOT NULL,
+            `title_en` VARCHAR(500) NOT NULL DEFAULT '',
+            `thumb` VARCHAR(500) NOT NULL,
+            `video_url` VARCHAR(500) NOT NULL,
+            `duration` VARCHAR(50) NOT NULL DEFAULT '৩:৩০',
+            `views` INT NOT NULL DEFAULT 0,
+            `published_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $vCount = (int) $pdo->query('SELECT COUNT(*) FROM videos')->fetchColumn();
+        if ($vCount === 0) {
+            $ins = $pdo->prepare("INSERT INTO `videos` (slug, title_bn, title_en, thumb, video_url, duration, views) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([
+                'bd-vs-india-asia-cup-final-highlights',
+                'বাংলাদেশ বনাম ভারত এশিয়া কাপ ফাইনাল: জয়ের রোমাঞ্চকর মুহূর্তগুলো',
+                'Bangladesh vs India Asia Cup Final: Thrilling Winning Moments',
+                'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80',
+                'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                '৮:৩২',
+                125000
+            ]);
+            $ins->execute([
+                'transformation-of-bangladesh-documentary',
+                'পদ্মা সেতু ও মেট্রোরেল: বাংলাদেশের রূপান্তরের ১০ বছর',
+                'Padma Bridge & Metro Rail: 10 Years of Bangladesh’s Transformation',
+                'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=80',
+                'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                '১৫:৪৫',
+                84000
+            ]);
+            $ins->execute([
+                'sundarbans-drone-tech-conservation',
+                'সুন্দরবনে ড্রোন প্রযুক্তির ব্যবহার: বন্যপ্রাণী সংরক্ষণে নতুন দিগন্ত',
+                'Drones in Sundarbans: A New Horizon for Wildlife Conservation',
+                'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?auto=format&fit=crop&w=800&q=80',
+                'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                '৬:১২',
+                42000
+            ]);
+        }
+    } catch (Throwable $e) {}
+}
+
 function get_auth_token(): string
 {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
@@ -1159,23 +1349,386 @@ if ($resource === 'articles') {
 }
 
 // ----------------------------------------------------
+// ROUTE: /api/opinions (Full Dynamic Opinions CRUD)
+// ----------------------------------------------------
+if ($resource === 'opinions') {
+    $dbConn = require_db();
+    auto_migrate_media_and_opinions($dbConn);
+
+    if ($method === 'GET') {
+        $stmt = $dbConn->query('SELECT * FROM opinions ORDER BY id DESC');
+        $items = array_map(function ($r) {
+            return [
+                'id' => (int) $r['id'],
+                'slug' => $r['slug'] ?? ('opinion-' . $r['id']),
+                'title_bn' => $r['title_bn'] ?? '',
+                'title_en' => $r['title_en'] ?? '',
+                'author_bn' => $r['author_bn'] ?? '',
+                'author_en' => $r['author_en'] ?? '',
+                'author_role_bn' => $r['author_role_bn'] ?? '',
+                'author_role_en' => $r['author_role_en'] ?? '',
+                'author_image' => $r['author_image'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+                'summary_bn' => $r['summary_bn'] ?? '',
+                'summary_en' => $r['summary_en'] ?? '',
+                'image' => $r['image'] ?? '',
+                'category' => $r['category'] ?? 'opinion',
+                'content_bn' => $r['content_bn'] ?? '',
+                'content_en' => $r['content_en'] ?? '',
+                'date' => $r['published_at'] ?? ($r['created_at'] ?? date('c')),
+            ];
+        }, $stmt->fetchAll());
+        json_response(['opinions' => $items]);
+    }
+
+    if ($method === 'POST' || $method === 'PUT') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+        $titleBn = trim((string) ($input['title_bn'] ?? ''));
+        $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
+        $authorBn = trim((string) ($input['author_bn'] ?? ''));
+        $authorEn = trim((string) ($input['author_en'] ?? $authorBn));
+
+        if ($titleBn === '' || $authorBn === '') {
+            json_response(['success' => false, 'message' => 'Title and author are required.'], 400);
+        }
+
+        $id = (int) ($input['id'] ?? ($_GET['id'] ?? 0));
+        $slug = trim((string) ($input['slug'] ?? ''));
+        if ($slug === '' || str_starts_with($slug, 'op-')) {
+            $slug = 'opinion-' . time() . '-' . rand(10, 99);
+        }
+
+        $authorRoleBn = trim((string) ($input['author_role_bn'] ?? ''));
+        $authorRoleEn = trim((string) ($input['author_role_en'] ?? ''));
+        $authorImage = trim((string) ($input['author_image'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'));
+        $summaryBn = trim((string) ($input['summary_bn'] ?? ''));
+        $summaryEn = trim((string) ($input['summary_en'] ?? ''));
+        $image = trim((string) ($input['image'] ?? ''));
+        $contentBn = trim((string) ($input['content_bn'] ?? ''));
+        $contentEn = trim((string) ($input['content_en'] ?? ''));
+
+        if ($id > 0) {
+            $chk = $dbConn->prepare('SELECT id FROM opinions WHERE id = ?');
+            $chk->execute([$id]);
+            if ($chk->fetch()) {
+                $stmt = $dbConn->prepare('UPDATE opinions SET title_bn = ?, title_en = ?, author_bn = ?, author_en = ?, author_role_bn = ?, author_role_en = ?, author_image = ?, summary_bn = ?, summary_en = ?, image = ?, content_bn = ?, content_en = ?, slug = ? WHERE id = ?');
+                $stmt->execute([$titleBn, $titleEn, $authorBn, $authorEn, $authorRoleBn, $authorRoleEn, $authorImage, $summaryBn, $summaryEn, $image, $contentBn, $contentEn, $slug, $id]);
+                json_response([
+                    'success' => true,
+                    'item' => [
+                        'id' => $id,
+                        'slug' => $slug,
+                        'title_bn' => $titleBn,
+                        'title_en' => $titleEn,
+                        'author_bn' => $authorBn,
+                        'author_en' => $authorEn,
+                        'author_role_bn' => $authorRoleBn,
+                        'author_role_en' => $authorRoleEn,
+                        'author_image' => $authorImage,
+                        'summary_bn' => $summaryBn,
+                        'summary_en' => $summaryEn,
+                        'image' => $image,
+                        'category' => 'opinion',
+                        'content_bn' => $contentBn,
+                        'content_en' => $contentEn,
+                        'date' => date('c'),
+                    ]
+                ]);
+            }
+        }
+
+        $stmt = $dbConn->prepare('INSERT INTO opinions (slug, title_bn, title_en, author_bn, author_en, author_role_bn, author_role_en, author_image, summary_bn, summary_en, image, content_bn, content_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$slug, $titleBn, $titleEn, $authorBn, $authorEn, $authorRoleBn, $authorRoleEn, $authorImage, $summaryBn, $summaryEn, $image, $contentBn, $contentEn]);
+        $newId = (int) $dbConn->lastInsertId();
+
+        json_response([
+            'success' => true,
+            'item' => [
+                'id' => $newId > 0 ? $newId : time(),
+                'slug' => $slug,
+                'title_bn' => $titleBn,
+                'title_en' => $titleEn,
+                'author_bn' => $authorBn,
+                'author_en' => $authorEn,
+                'author_role_bn' => $authorRoleBn,
+                'author_role_en' => $authorRoleEn,
+                'author_image' => $authorImage,
+                'summary_bn' => $summaryBn,
+                'summary_en' => $summaryEn,
+                'image' => $image,
+                'category' => 'opinion',
+                'content_bn' => $contentBn,
+                'content_en' => $contentEn,
+                'date' => date('c'),
+            ]
+        ]);
+    }
+
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? 0);
+        $slug = trim((string) ($_GET['slug'] ?? ''));
+
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('DELETE FROM opinions WHERE id = ?');
+            $stmt->execute([$id]);
+        } elseif ($slug !== '') {
+            $stmt = $dbConn->prepare('DELETE FROM opinions WHERE slug = ?');
+            $stmt->execute([$slug]);
+        } else {
+            json_response(['success' => false, 'message' => 'Valid opinion ID or slug required.'], 400);
+        }
+        json_response(['success' => true, 'message' => 'Opinion deleted successfully.']);
+    }
+}
+
+// ----------------------------------------------------
+// ROUTE: /api/photos (Full Dynamic Photo Gallery CRUD)
+// ----------------------------------------------------
+if ($resource === 'photos') {
+    $dbConn = require_db();
+    auto_migrate_media_and_opinions($dbConn);
+
+    if ($method === 'GET') {
+        $stmt = $dbConn->query('SELECT * FROM photos ORDER BY id DESC');
+        $items = array_map(function ($r) {
+            return [
+                'id' => (int) $r['id'],
+                'slug' => $r['slug'] ?? ('photo-' . $r['id']),
+                'title_bn' => $r['title_bn'] ?? '',
+                'title_en' => $r['title_en'] ?? '',
+                'image' => $r['image'] ?? '',
+                'credit_bn' => $r['credit_bn'] ?? 'ছবি: সংগৃহীত',
+                'credit_en' => $r['credit_en'] ?? 'Photo: Source',
+                'caption_bn' => $r['caption_bn'] ?? '',
+                'caption_en' => $r['caption_en'] ?? '',
+                'date' => $r['published_at'] ?? ($r['created_at'] ?? date('c')),
+            ];
+        }, $stmt->fetchAll());
+        json_response(['photos' => $items]);
+    }
+
+    if ($method === 'POST' || $method === 'PUT') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+        $titleBn = trim((string) ($input['title_bn'] ?? ''));
+        $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
+        $image = trim((string) ($input['image'] ?? ''));
+
+        if ($titleBn === '' || $image === '') {
+            json_response(['success' => false, 'message' => 'Title and image URL are required.'], 400);
+        }
+
+        $id = (int) ($input['id'] ?? ($_GET['id'] ?? 0));
+        $slug = trim((string) ($input['slug'] ?? ''));
+        if ($slug === '' || str_starts_with($slug, 'ph-')) {
+            $slug = 'photo-' . time() . '-' . rand(10, 99);
+        }
+
+        $creditBn = trim((string) ($input['credit_bn'] ?? 'ছবি: সংগৃহীত'));
+        $creditEn = trim((string) ($input['credit_en'] ?? 'Photo: Source'));
+        $captionBn = trim((string) ($input['caption_bn'] ?? ''));
+        $captionEn = trim((string) ($input['caption_en'] ?? ''));
+
+        if ($id > 0) {
+            $chk = $dbConn->prepare('SELECT id FROM photos WHERE id = ?');
+            $chk->execute([$id]);
+            if ($chk->fetch()) {
+                $stmt = $dbConn->prepare('UPDATE photos SET title_bn = ?, title_en = ?, image = ?, credit_bn = ?, credit_en = ?, caption_bn = ?, caption_en = ?, slug = ? WHERE id = ?');
+                $stmt->execute([$titleBn, $titleEn, $image, $creditBn, $creditEn, $captionBn, $captionEn, $slug, $id]);
+                json_response([
+                    'success' => true,
+                    'item' => [
+                        'id' => $id,
+                        'slug' => $slug,
+                        'title_bn' => $titleBn,
+                        'title_en' => $titleEn,
+                        'image' => $image,
+                        'credit_bn' => $creditBn,
+                        'credit_en' => $creditEn,
+                        'caption_bn' => $captionBn,
+                        'caption_en' => $captionEn,
+                        'date' => date('c'),
+                    ]
+                ]);
+            }
+        }
+
+        $stmt = $dbConn->prepare('INSERT INTO photos (slug, title_bn, title_en, image, credit_bn, credit_en, caption_bn, caption_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$slug, $titleBn, $titleEn, $image, $creditBn, $creditEn, $captionBn, $captionEn]);
+        $newId = (int) $dbConn->lastInsertId();
+
+        json_response([
+            'success' => true,
+            'item' => [
+                'id' => $newId > 0 ? $newId : time(),
+                'slug' => $slug,
+                'title_bn' => $titleBn,
+                'title_en' => $titleEn,
+                'image' => $image,
+                'credit_bn' => $creditBn,
+                'credit_en' => $creditEn,
+                'caption_bn' => $captionBn,
+                'caption_en' => $captionEn,
+                'date' => date('c'),
+            ]
+        ]);
+    }
+
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? 0);
+        $slug = trim((string) ($_GET['slug'] ?? ''));
+
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('DELETE FROM photos WHERE id = ?');
+            $stmt->execute([$id]);
+        } elseif ($slug !== '') {
+            $stmt = $dbConn->prepare('DELETE FROM photos WHERE slug = ?');
+            $stmt->execute([$slug]);
+        } else {
+            json_response(['success' => false, 'message' => 'Valid photo ID or slug required.'], 400);
+        }
+        json_response(['success' => true, 'message' => 'Photo deleted successfully.']);
+    }
+}
+
+// ----------------------------------------------------
+// ROUTE: /api/videos (Full Dynamic Video Reports CRUD)
+// ----------------------------------------------------
+if ($resource === 'videos') {
+    $dbConn = require_db();
+    auto_migrate_media_and_opinions($dbConn);
+
+    if ($method === 'GET') {
+        $stmt = $dbConn->query('SELECT * FROM videos ORDER BY id DESC');
+        $items = array_map(function ($r) {
+            return [
+                'id' => (int) $r['id'],
+                'slug' => $r['slug'] ?? ('video-' . $r['id']),
+                'title_bn' => $r['title_bn'] ?? '',
+                'title_en' => $r['title_en'] ?? '',
+                'thumb' => $r['thumb'] ?? 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80',
+                'videoUrl' => $r['video_url'] ?? '',
+                'duration' => $r['duration'] ?? '৩:৩০',
+                'views' => (int) ($r['views'] ?? 0),
+                'date' => $r['published_at'] ?? ($r['created_at'] ?? date('c')),
+            ];
+        }, $stmt->fetchAll());
+        json_response(['videos' => $items]);
+    }
+
+    if ($method === 'POST' || $method === 'PUT') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+        $titleBn = trim((string) ($input['title_bn'] ?? ''));
+        $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
+        $videoUrl = trim((string) ($input['videoUrl'] ?? ($input['video_url'] ?? '')));
+
+        if ($titleBn === '') {
+            json_response(['success' => false, 'message' => 'Video title is required.'], 400);
+        }
+
+        $id = (int) ($input['id'] ?? ($_GET['id'] ?? 0));
+        $slug = trim((string) ($input['slug'] ?? ''));
+        if ($slug === '' || str_starts_with($slug, 'v-')) {
+            $slug = 'video-' . time() . '-' . rand(10, 99);
+        }
+
+        $thumb = trim((string) ($input['thumb'] ?? 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80'));
+        $duration = trim((string) ($input['duration'] ?? '৩:৩০'));
+        $views = (int) ($input['views'] ?? 0);
+
+        if ($id > 0) {
+            $chk = $dbConn->prepare('SELECT id FROM videos WHERE id = ?');
+            $chk->execute([$id]);
+            if ($chk->fetch()) {
+                $stmt = $dbConn->prepare('UPDATE videos SET title_bn = ?, title_en = ?, thumb = ?, video_url = ?, duration = ?, slug = ? WHERE id = ?');
+                $stmt->execute([$titleBn, $titleEn, $thumb, $videoUrl, $duration, $slug, $id]);
+                json_response([
+                    'success' => true,
+                    'item' => [
+                        'id' => $id,
+                        'slug' => $slug,
+                        'title_bn' => $titleBn,
+                        'title_en' => $titleEn,
+                        'thumb' => $thumb,
+                        'videoUrl' => $videoUrl,
+                        'duration' => $duration,
+                        'views' => $views,
+                        'date' => date('c'),
+                    ]
+                ]);
+            }
+        }
+
+        $stmt = $dbConn->prepare('INSERT INTO videos (slug, title_bn, title_en, thumb, video_url, duration, views) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$slug, $titleBn, $titleEn, $thumb, $videoUrl, $duration, $views]);
+        $newId = (int) $dbConn->lastInsertId();
+
+        json_response([
+            'success' => true,
+            'item' => [
+                'id' => $newId > 0 ? $newId : time(),
+                'slug' => $slug,
+                'title_bn' => $titleBn,
+                'title_en' => $titleEn,
+                'thumb' => $thumb,
+                'videoUrl' => $videoUrl,
+                'duration' => $duration,
+                'views' => $views,
+                'date' => date('c'),
+            ]
+        ]);
+    }
+
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? 0);
+        $slug = trim((string) ($_GET['slug'] ?? ''));
+
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('DELETE FROM videos WHERE id = ?');
+            $stmt->execute([$id]);
+        } elseif ($slug !== '') {
+            $stmt = $dbConn->prepare('DELETE FROM videos WHERE slug = ?');
+            $stmt->execute([$slug]);
+        } else {
+            json_response(['success' => false, 'message' => 'Valid video ID or slug required.'], 400);
+        }
+        json_response(['success' => true, 'message' => 'Video deleted successfully.']);
+    }
+}
+
+// ----------------------------------------------------
 // ROUTE: GET /api/stats
 // ----------------------------------------------------
 if ($resource === 'stats' && $method === 'GET') {
     if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
     $dbConn = require_db();
+    auto_migrate_media_and_opinions($dbConn);
+
     $totalArticles = (int) $dbConn->query('SELECT COUNT(*) FROM articles')->fetchColumn();
     $totalViews = (int) $dbConn->query('SELECT COALESCE(SUM(views), 0) FROM articles')->fetchColumn();
     $hasActive = has_column($dbConn, 'breaking_news', 'active');
     $where = $hasActive ? 'WHERE active = 1' : '';
     $totalBreaking = (int) $dbConn->query("SELECT COUNT(*) FROM breaking_news $where")->fetchColumn();
     $categoriesCount = (int) $dbConn->query('SELECT COUNT(*) FROM categories')->fetchColumn();
+    $totalOpinions = (int) $dbConn->query('SELECT COUNT(*) FROM opinions')->fetchColumn();
+    $totalPhotos = (int) $dbConn->query('SELECT COUNT(*) FROM photos')->fetchColumn();
+    $totalVideos = (int) $dbConn->query('SELECT COUNT(*) FROM videos')->fetchColumn();
 
     json_response([
         'totalArticles' => $totalArticles,
         'totalViews' => $totalViews,
         'totalBreaking' => $totalBreaking,
         'categoriesCount' => $categoriesCount,
+        'totalOpinions' => $totalOpinions,
+        'totalPhotos' => $totalPhotos,
+        'totalVideos' => $totalVideos,
     ]);
 }
 
