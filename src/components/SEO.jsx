@@ -67,10 +67,11 @@ export default function SEO({
       <meta name="description" content={metaDesc} />
       <meta name="keywords" content={metaKeywords} />
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
-      <link rel="icon" type="image/svg+xml" href={settings?.favicon_url?.trim() || '/favicon.svg?v=globe1'} />
-      <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=globe1" />
-      <link rel="shortcut icon" href="/favicon.ico?v=globe1" />
-      <link rel="apple-touch-icon" href="/favicon.svg?v=globe1" />
+      <link rel="icon" type="image/svg+xml" href={settings?.favicon_url?.trim() || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9Imdsb2JlLWJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZTMwNjEzIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjYjgwMDEwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNnbG9iZS1iZykiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzMiIHN0cm9rZS13aWR0aD0iNi41Ii8+PGxpbmUgeDE9IjE3IiB5MT0iNTAiIHgyPSI4MyIgeTI9IjUwIiBzdHJva2Utd2lkdGg9IjYuNSIvPjxsaW5lIHgxPSI1MCIgeTE9IjE3IiB4Mj0iNTAiIHkyPSI4MyIgc3Ryb2tlLXdpZHRoPSI1Ii8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNTAiIHJ4PSIxNiIgcnk9IjMzIiBzdHJva2Utd2lkdGg9IjYuNSIvPjwvZz48L3N2Zz4='} />
+      <link rel="alternate icon" type="image/svg+xml" href="/favicon.svg?v=globe2" />
+      <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=globe2" />
+      <link rel="shortcut icon" href="/favicon.ico?v=globe2" />
+      <link rel="apple-touch-icon" href="/favicon.svg?v=globe2" />
 
       {/* Crawlers & Indexing Directives */}
       {noindex ? (

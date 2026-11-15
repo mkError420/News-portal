@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="globe-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e30613" />
+      <stop offset="100%" stop-color="#b80010" />
+    </linearGradient>
+  </defs>
+  <!-- Background Badge -->
+  <rect width="100" height="100" rx="22" fill="url(#globe-bg)" />
+  <!-- Globe Icon -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Outer Globe Circle -->
+    <circle cx="50" cy="50" r="33" stroke-width="6.5" />
+    <!-- Equator -->
+    <line x1="17" y1="50" x2="83" y2="50" stroke-width="6.5" />
+    <!-- Prime Meridian (Central Axis) -->
+    <line x1="50" y1="17" x2="50" y2="83" stroke-width="5" />
+    <!-- Longitudinal Meridian Ellipse -->
+    <ellipse cx="50" cy="50" rx="16" ry="33" stroke-width="6.5" />
+  </g>
+</svg>

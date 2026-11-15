@@ -27,6 +27,7 @@ import { api } from './api.js'
 
 const STORAGE_KEY = 'prothom_portal_data_v3'
 const LANG_STORAGE_KEY = 'prothom_alo_portal_lang'
+const GLOBE_FAVICON_DATA_URI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9Imdsb2JlLWJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZTMwNjEzIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjYjgwMDEwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNnbG9iZS1iZykiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzMiIHN0cm9rZS13aWR0aD0iNi41Ii8+PGxpbmUgeDE9IjE3IiB5MT0iNTAiIHgyPSI4MyIgeTI9IjUwIiBzdHJva2Utd2lkdGg9IjYuNSIvPjxsaW5lIHgxPSI1MCIgeTE9IjE3IiB4Mj0iNTAiIHkyPSI4MyIgc3Ryb2tlLXdpZHRoPSI1Ii8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNTAiIHJ4PSIxNiIgcnk9IjMzIiBzdHJva2Utd2lkdGg9IjYuNSIvPjwvZz48L3N2Zz4='
 
 export default function App() {
   const location = useLocation()
@@ -68,88 +69,96 @@ export default function App() {
   })
 
   // 3. Load authoritative news from the backend database dynamically
+  const syncData = async () => {
+    try {
+      const results = await Promise.allSettled([
+        api.getArticles(),
+        api.getBreakingNews(),
+        api.getCategories(),
+        api.getSettings(),
+        api.getOpinions(),
+        api.getPhotos(),
+        api.getVideos(),
+        api.getRoles(),
+        api.getStaff(),
+        api.getPoll(),
+        api.getPolls(),
+      ])
+
+      const updates = {}
+      if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
+        updates.articles = results[0].value
+      } else {
+        console.error('Unable to load articles from the database:', results[0].reason)
+      }
+      if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
+        updates.breakingNews = results[1].value
+      } else {
+        console.error('Unable to load breaking news from the database:', results[1].reason)
+      }
+      if (results[2].status === 'fulfilled' && Array.isArray(results[2].value) && results[2].value.length > 0) {
+        updates.categories = results[2].value
+      }
+      if (results[3].status === 'fulfilled' && results[3].value && typeof results[3].value === 'object') {
+        updates.settings = results[3].value
+      }
+      if (results[4].status === 'fulfilled' && Array.isArray(results[4].value)) {
+        updates.opinions = results[4].value
+      }
+      if (results[5].status === 'fulfilled' && Array.isArray(results[5].value)) {
+        updates.photos = results[5].value
+      }
+      if (results[6].status === 'fulfilled' && Array.isArray(results[6].value)) {
+        updates.videos = results[6].value
+      }
+      if (results[7].status === 'fulfilled' && Array.isArray(results[7].value)) {
+        updates.roles = results[7].value
+      }
+      if (results[8].status === 'fulfilled' && Array.isArray(results[8].value)) {
+        updates.staff = results[8].value
+      }
+      if (results[9].status === 'fulfilled') {
+        updates.poll = results[9].value || null
+      }
+      if (results[10].status === 'fulfilled' && Array.isArray(results[10].value)) {
+        updates.polls = results[10].value
+      }
+
+      setNewsData((prev) => {
+        const updated = { ...prev, ...updates }
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+        } catch (err) {
+          console.error('LocalStorage save error:', err)
+        }
+        return updated
+      })
+      return updates
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     let active = true
-    const syncData = async () => {
-      try {
-        const results = await Promise.allSettled([
-          api.getArticles(),
-          api.getBreakingNews(),
-          api.getCategories(),
-          api.getSettings(),
-          api.getOpinions(),
-          api.getPhotos(),
-          api.getVideos(),
-          api.getRoles(),
-          api.getStaff(),
-          api.getPoll(),
-          api.getPolls(),
-        ])
-        if (!active) return
-
-        const updates = {}
-        if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
-          updates.articles = results[0].value
-        } else {
-          console.error('Unable to load articles from the database:', results[0].reason)
-        }
-        if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
-          updates.breakingNews = results[1].value
-        } else {
-          console.error('Unable to load breaking news from the database:', results[1].reason)
-        }
-        if (results[2].status === 'fulfilled' && Array.isArray(results[2].value) && results[2].value.length > 0) {
-          updates.categories = results[2].value
-        }
-        if (results[3].status === 'fulfilled' && results[3].value && typeof results[3].value === 'object') {
-          updates.settings = results[3].value
-        }
-        if (results[4].status === 'fulfilled' && Array.isArray(results[4].value)) {
-          updates.opinions = results[4].value
-        }
-        if (results[5].status === 'fulfilled' && Array.isArray(results[5].value)) {
-          updates.photos = results[5].value
-        }
-        if (results[6].status === 'fulfilled' && Array.isArray(results[6].value)) {
-          updates.videos = results[6].value
-        }
-        if (results[7].status === 'fulfilled' && Array.isArray(results[7].value)) {
-          updates.roles = results[7].value
-        }
-        if (results[8].status === 'fulfilled' && Array.isArray(results[8].value)) {
-          updates.staff = results[8].value
-        }
-        if (results[9].status === 'fulfilled') {
-          updates.poll = results[9].value || null
-        }
-        if (results[10].status === 'fulfilled' && Array.isArray(results[10].value)) {
-          updates.polls = results[10].value
-        }
-
-        setNewsData((prev) => {
-          const updated = { ...prev, ...updates }
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-          } catch (err) {
-            console.error('LocalStorage save error:', err)
-          }
-          return updated
-        })
-      } finally {
-        if (active) setIsLoading(false)
-      }
-    }
-
     syncData()
     return () => { active = false }
   }, [])
 
-  // Sync favicon if custom setting is present, else default /favicon.svg?v=globe1
+  // Sync favicon if custom setting is present, else default globe data URI
   useEffect(() => {
-    const faviconHref = newsData.settings?.favicon_url?.trim() || '/favicon.svg?v=globe1'
-    const link = document.querySelector("link[rel~='icon']")
-    if (link) {
+    const faviconHref = newsData.settings?.favicon_url?.trim() || GLOBE_FAVICON_DATA_URI
+    const links = document.querySelectorAll("link[rel*='icon']")
+    if (links.length > 0) {
+      links.forEach((l) => {
+        l.href = faviconHref
+      })
+    } else {
+      const link = document.createElement('link')
+      link.rel = 'icon'
+      link.type = 'image/svg+xml'
       link.href = faviconHref
+      document.head.appendChild(link)
     }
   }, [newsData.settings?.favicon_url])
 
@@ -583,6 +592,7 @@ export default function App() {
                 onUpdateStaff={handleUpdateStaff}
                 onDeleteStaff={handleDeleteStaff}
                 onResetData={handleResetData}
+                onRefreshAll={syncData}
                 settings={newsData.settings}
                 onUpdateSettings={handleUpdateSettings}
                 lang={lang}

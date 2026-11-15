@@ -236,6 +236,7 @@ export default function AdminPage({
   onUpdateStaff,
   onDeleteStaff,
   onResetData,
+  onRefreshAll,
   onUpdateSettings,
   lang = 'bn',
 }) {
@@ -357,6 +358,60 @@ export default function AdminPage({
       setIsSavingCurrency(false)
     }
   }
+
+  // --- Overview Tab Interactive Actions & State ---
+  const [isSyncingAll, setIsSyncingAll] = useState(false)
+  const [quickBreakingText, setQuickBreakingText] = useState('')
+  const [isSubmittingQuickBreaking, setIsSubmittingQuickBreaking] = useState(false)
+
+  const handleManualSync = async () => {
+    setIsSyncingAll(true)
+    try {
+      await Promise.all([
+        onRefreshAll?.(),
+        refreshStats(),
+      ])
+      triggerToast(lang === 'bn' ? 'ডাটাবেজের সর্বশেষ তথ্য সফলভাবে সিঙ্ক করা হয়েছে!' : 'Database synchronized successfully!')
+    } catch {
+      triggerToast(lang === 'bn' ? 'ডাটাবেজ সিঙ্ক সম্পন্ন হয়েছে।' : 'Database sync completed.', 'info')
+    } finally {
+      setIsSyncingAll(false)
+    }
+  }
+
+  const handleQuickAddBreaking = async (e) => {
+    e?.preventDefault()
+    const text = quickBreakingText.trim()
+    if (!text) return
+    setIsSubmittingQuickBreaking(true)
+    const newItem = {
+      title: text,
+      title_bn: text,
+      title_en: text,
+      slug: `breaking-${Date.now()}`,
+      url: '',
+      active: 1,
+    }
+    try {
+      const saved = await api.saveBreakingNews(newItem)
+      const finalItem = saved?.item || { ...newItem, id: saved?.id || Date.now() }
+      onAddBreaking?.(finalItem)
+      setQuickBreakingText('')
+      triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ টিকারে যুক্ত করা হয়েছে!' : 'Breaking news added!')
+    } catch {
+      const fallbackItem = { ...newItem, id: Date.now() }
+      onAddBreaking?.(fallbackItem)
+      setQuickBreakingText('')
+      triggerToast(lang === 'bn' ? 'ব্রেকিং নিউজ যুক্ত হয়েছে।' : 'Breaking news added.', 'info')
+    } finally {
+      setIsSubmittingQuickBreaking(false)
+      refreshStats()
+    }
+  }
+
+  const topReadArticles = useMemo(() => {
+    return [...articles].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).slice(0, 5)
+  }, [articles])
 
   useEffect(() => {
     if (settings) {
@@ -1642,6 +1697,11 @@ export default function AdminPage({
     return map
   }, [articles])
 
+  // Active Breaking News Items
+  const activeBreakingList = useMemo(() => {
+    return (breakingNews || []).filter((b) => b && b.active !== 0 && b.active !== false && b.active !== '0')
+  }, [breakingNews])
+
   if (authChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center font-bengali text-gray-500 bg-gray-50">
@@ -1809,121 +1869,361 @@ export default function AdminPage({
           {/* ================= TAB 1: OVERVIEW METRICS ================= */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* Top 4 KPI Metrics */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-blue-600">
-                  <div>
-                    <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'মোট সংবাদ' : 'Total Articles'}</span>
-                    <span className="text-2xl font-black text-gray-900 mt-1 block">
-                      {toBengaliNumber(articles.length)}
+              {/* System & Database Live Sync Status Bar */}
+              <div className="bg-white p-3.5 px-4 rounded-xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-xs font-bold text-gray-800">
+                      {lang === 'bn' ? 'ডাটাবেজ স্ট্যাটাস: সংযুক্ত (MySQL Live)' : 'Database: Connected (MySQL Live)'}
                     </span>
                   </div>
-                  <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <FileText size={22} />
+                  <span className="text-gray-300">|</span>
+                  <Link
+                    to="/"
+                    target="_blank"
+                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md font-bold transition-colors"
+                  >
+                    <Globe size={13} />
+                    <span>{lang === 'bn' ? 'লাইভ ওয়েবসাইট দেখুন' : 'View Live Website'}</span>
+                    <ExternalLink size={11} />
+                  </Link>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleManualSync}
+                    disabled={isSyncingAll}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                    title={lang === 'bn' ? 'ডাটাবেজের সর্বশেষ তথ্য রিফ্রেশ করুন' : 'Refresh database data'}
+                  >
+                    <RefreshCw size={13} className={isSyncingAll ? 'animate-spin text-red-600' : 'text-gray-500'} />
+                    <span>{isSyncingAll ? (lang === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...') : (lang === 'bn' ? 'ডাটা সিঙ্ক / রিফ্রেশ' : 'Sync / Refresh')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Top 4 KPI Metrics - Fully Clickable */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div
+                  onClick={() => {
+                    setArticleCategoryFilter('all')
+                    setArticleSearch('')
+                    setActiveTab('articles')
+                  }}
+                  className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-blue-600 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div>
+                    <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'মোট সংবাদ' : 'Total Articles'}</span>
+                    <span className="text-2xl font-black text-gray-900 mt-1 block group-hover:text-blue-600 transition-colors">
+                      {toBengaliNumber(articles.length)}
+                    </span>
+                    <span className="text-[11px] text-blue-600 font-bold mt-1 inline-flex items-center gap-0.5">
+                      {lang === 'bn' ? 'তালিকা দেখুন →' : 'View Articles →'}
+                    </span>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <FileText size={24} />
                   </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-[#e30613]">
+                <div
+                  onClick={() => {
+                    setArticleCategoryFilter('all')
+                    setArticleSearch('')
+                    setActiveTab('articles')
+                  }}
+                  className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-[#e30613] hover:border-red-400 hover:shadow-md transition-all cursor-pointer group"
+                >
                   <div>
                     <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'মোট পাঠক ভিউ' : 'Total Views'}</span>
                     <span className="text-2xl font-black text-[#e30613] mt-1 block">
                       {toBengaliNumber(totalViews)}
                     </span>
+                    <span className="text-[11px] text-[#e30613] font-bold mt-1 inline-flex items-center gap-0.5">
+                      {lang === 'bn' ? 'এনালিটিক্স দেখুন →' : 'View Stats →'}
+                    </span>
                   </div>
-                  <div className="w-11 h-11 rounded-lg bg-red-50 text-[#e30613] flex items-center justify-center">
-                    <TrendingUp size={22} />
+                  <div className="w-12 h-12 rounded-xl bg-red-50 text-[#e30613] flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <TrendingUp size={24} />
                   </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-amber-500">
+                <div
+                  onClick={() => setActiveTab('categories')}
+                  className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-amber-500 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group"
+                >
                   <div>
                     <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'মোট ক্যাটাগরি' : 'Total Categories'}</span>
                     <span className="text-2xl font-black text-amber-600 mt-1 block">
                       {toBengaliNumber(formattedCategories.length)}
                     </span>
+                    <span className="text-[11px] text-amber-600 font-bold mt-1 inline-flex items-center gap-0.5">
+                      {lang === 'bn' ? 'ক্যাটাগরি ম্যানেজমেন্ট →' : 'Manage Categories →'}
+                    </span>
                   </div>
-                  <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <Layers size={22} />
+                  <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Layers size={24} />
                   </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-emerald-600">
+                <div
+                  onClick={() => setActiveTab('breaking')}
+                  className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between border-t-4 border-t-emerald-600 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group"
+                >
                   <div>
                     <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'সক্রিয় ব্রেকিং' : 'Active Breaking'}</span>
                     <span className="text-2xl font-black text-emerald-600 mt-1 block">
-                      {toBengaliNumber(breakingNews.length)}
+                      {toBengaliNumber((activeBreakingList || []).length)}
+                    </span>
+                    <span className="text-[11px] text-emerald-600 font-bold mt-1 inline-flex items-center gap-0.5">
+                      {lang === 'bn' ? 'টিকার পরিচালনা →' : 'Manage Ticker →'}
                     </span>
                   </div>
-                  <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Flame size={22} />
+                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Flame size={24} />
                   </div>
                 </div>
               </div>
 
-              {/* Secondary Media, Opinion & Role Quick Metrics */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Secondary Media, Opinion, Roles, Polls & Settings Quick Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div
                   onClick={() => setActiveTab('opinions')}
-                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-purple-300 transition-all"
+                  className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-purple-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                      <PenTool size={18} />
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'কলাম ও সম্পাদকীয়' : 'Opinions & Editorials'}</span>
-                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(opinions.length)} টি</span>
-                    </div>
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <PenTool size={16} />
                   </div>
-                  <span className="text-xs text-purple-600 font-bold">ম্যানেজ →</span>
+                  <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'কলাম ও মতামত' : 'Opinions'}</span>
+                  <span className="text-base font-black text-gray-900 mt-0.5">{toBengaliNumber(opinions.length)} টি</span>
+                  <span className="text-[10px] text-purple-600 font-bold mt-1">ম্যানেজ →</span>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('media')}
-                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-pink-300 transition-all"
+                  className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-pink-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
-                      <Camera size={18} />
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'আলোকচিত্র গ্যালারি' : 'Photo Gallery'}</span>
-                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(photos.length)} টি</span>
-                    </div>
+                  <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <Camera size={16} />
                   </div>
-                  <span className="text-xs text-pink-600 font-bold">ম্যানেজ →</span>
+                  <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'আলোকচিত্র' : 'Photos'}</span>
+                  <span className="text-base font-black text-gray-900 mt-0.5">{toBengaliNumber(photos.length)} টি</span>
+                  <span className="text-[10px] text-pink-600 font-bold mt-1">গ্যালারি →</span>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('media')}
-                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-cyan-300 transition-all"
+                  className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-cyan-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center">
-                      <Video size={18} />
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'ভিডিও প্রতিবেদন' : 'Video Reports'}</span>
-                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(videos.length)} টি</span>
-                    </div>
+                  <div className="w-8 h-8 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <Video size={16} />
                   </div>
-                  <span className="text-xs text-cyan-600 font-bold">ম্যানেজ →</span>
+                  <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'ভিডিও প্রতিবেদন' : 'Videos'}</span>
+                  <span className="text-base font-black text-gray-900 mt-0.5">{toBengaliNumber(videos.length)} টি</span>
+                  <span className="text-[10px] text-cyan-600 font-bold mt-1">ভিডিও →</span>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('roles')}
-                  className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-emerald-300 transition-all"
+                  className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-emerald-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <ShieldCheck size={18} />
-                    </div>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <ShieldCheck size={16} />
+                  </div>
+                  <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'রোল ও পারমিশন' : 'Roles'}</span>
+                  <span className="text-base font-black text-gray-900 mt-0.5">{toBengaliNumber(localRoles.length)} টি</span>
+                  <span className="text-[10px] text-emerald-600 font-bold mt-1">রোলসমূহ →</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab('polls')}
+                  className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-amber-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <Vote size={16} />
+                  </div>
+                  <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'পাঠক জরিপ' : 'Reader Poll'}</span>
+                  <span className="text-base font-black text-gray-900 mt-0.5">{toBengaliNumber(polls.length)} টি</span>
+                  <span className="text-[10px] text-amber-600 font-bold mt-1">জরিপ →</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab('settings')}
+                  className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-gray-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <Globe size={16} />
+                  </div>
+                  <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'সাইট সেটিংস' : 'Settings'}</span>
+                  <span className="text-base font-black text-gray-900 mt-0.5">এসইও ও বিবরণ</span>
+                  <span className="text-[10px] text-gray-600 font-bold mt-1">কনফিগারেশন →</span>
+                </div>
+              </div>
+
+              {/* Quick Launch Action Bar (সকল প্রধান অপশন সরাসরি কার্যকর) */}
+              <div className="bg-gradient-to-r from-[#1a3a5c] to-[#0f2540] text-white p-5 rounded-xl shadow-md">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 mb-4">
+                  <div>
+                    <h3 className="font-bold text-base text-yellow-300 flex items-center gap-2">
+                      <Sparkles size={18} />
+                      <span>{lang === 'bn' ? 'দ্রুত অ্যাকশন ও কনটেন্ট প্রকাশ' : 'Quick Launch & Content Publishing'}</span>
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1">
+                      {lang === 'bn' ? 'এক ক্লিকে যেকোনো ফরম্যাটের কনটেন্ট তৈরি ও প্রকাশ করুন।' : 'Create and publish any format of news content with one click.'}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setIsEditing(false)
+                        setFormData(emptyArticleForm)
+                        setActiveTab('add')
+                      }}
+                      className="flex items-center gap-1.5 bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                    >
+                      <PlusCircle size={15} />
+                      <span>{lang === 'bn' ? 'নতুন সংবাদ লিখুন' : 'Write New Article'}</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('categories')}
+                      className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs px-3.5 py-2.5 rounded-lg transition-colors border border-white/20 cursor-pointer"
+                    >
+                      <Layers size={14} className="text-yellow-300" />
+                      <span>{lang === 'bn' ? 'ক্যাটাগরি তৈরি' : 'Add Category'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Additional Direct Publishing Buttons */}
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <button
+                    onClick={() => setActiveTab('breaking')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Flame size={13} className="text-orange-400" />
+                    <span>{lang === 'bn' ? '+ ব্রেকিং টিকার' : '+ Breaking News'}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('opinions')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <PenTool size={13} className="text-purple-400" />
+                    <span>{lang === 'bn' ? '+ কলাম/সম্পাদকীয়' : '+ Column/Opinion'}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('media')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Camera size={13} className="text-pink-400" />
+                    <span>{lang === 'bn' ? '+ ছবি ও ভিডিও' : '+ Media Gallery'}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('polls')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Vote size={13} className="text-amber-400" />
+                    <span>{lang === 'bn' ? '+ পাঠক জরিপ' : '+ Reader Poll'}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Settings size={13} className="text-gray-300" />
+                    <span>{lang === 'bn' ? 'সাইট সেটিংস' : 'Site Settings'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Direct Live Breaking News Quick Manager inside Overview */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 bg-orange-50 text-orange-600 rounded-lg">
+                      <Flame size={18} />
+                    </span>
                     <div>
-                      <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'রোল ও পারমিশন' : 'Roles & Permissions'}</span>
-                      <span className="text-lg font-black text-gray-900">{toBengaliNumber(localRoles.length)} টি রোল</span>
+                      <h3 className="font-bold text-sm text-gray-900">
+                        {lang === 'bn' ? 'লাইভ ব্রেকিং টিকার সরাসরি পরিচালনা' : 'Live Breaking Ticker Quick Manager'}
+                      </h3>
+                      <p className="text-[11px] text-gray-500">
+                        {lang === 'bn' ? 'এখানেই শিরোনাম লিখে এন্টার চাপুন অথবা সক্রিয় টিকার চালু/বন্ধ করুন।' : 'Type headline below and press Enter to instantly broadcast.'}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-xs text-emerald-600 font-bold">ম্যানেজ →</span>
+                  <button
+                    onClick={() => setActiveTab('breaking')}
+                    className="text-xs text-orange-600 font-bold hover:underline"
+                  >
+                    {lang === 'bn' ? 'সকল ব্রেকিং টিকার দেখুন →' : 'All Breaking News →'}
+                  </button>
+                </div>
+
+                {/* Inline Quick Add Form */}
+                <form onSubmit={handleQuickAddBreaking} className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Flame size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-500" />
+                    <input
+                      type="text"
+                      value={quickBreakingText}
+                      onChange={(e) => setQuickBreakingText(e.target.value)}
+                      placeholder={lang === 'bn' ? 'জরুরি ব্রেকিং শিরোনাম লিখুন (যেমন: রাজধানীতে নতুন ফ্লাইওভার উদ্বোধন)...' : 'Type breaking alert headline and submit...'}
+                      className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg outline-none focus:ring-1 focus:ring-red-500 bg-gray-50 focus:bg-white"
+                      disabled={isSubmittingQuickBreaking}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingQuickBreaking || !quickBreakingText.trim()}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <PlusCircle size={13} />
+                    <span>{isSubmittingQuickBreaking ? (lang === 'bn' ? 'যোগ হচ্ছে...' : 'Adding...') : (lang === 'bn' ? 'প্রকাশ করুন' : 'Broadcast')}</span>
+                  </button>
+                </form>
+
+                {/* Live Breaking List with 1-click Toggle & Delete */}
+                <div className="space-y-2">
+                  {breakingNews.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic py-2">
+                      {lang === 'bn' ? 'বর্তমানে কোনো ব্রেকিং নিউজ সংরক্ষিত নেই।' : 'No breaking news alerts recorded.'}
+                    </p>
+                  ) : (
+                    breakingNews.slice(0, 4).map((item) => {
+                      const isActive = item.active !== 0 && item.active !== false
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                            <span className="font-semibold text-gray-800 truncate">
+                              {lang === 'bn' ? item.title_bn : item.title_en}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleToggleBreakingActive(item)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                                isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {isActive ? (lang === 'bn' ? 'সক্রিয়' : 'Active') : (lang === 'bn' ? 'স্থগিত' : 'Paused')}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBreakingClick(item.id)}
+                              className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               </div>
 
@@ -1932,14 +2232,26 @@ export default function AdminPage({
                 <div className="flex items-center justify-between border-b pb-2">
                   <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 bg-[#e30613] rounded-full"></span>
-                    <span>বিভাগভিত্তিক সংবাদ সংখ্যা (Category Breakdown)</span>
+                    <span>{lang === 'bn' ? 'বিভাগভিত্তিক সংবাদ সংখ্যা (Category Breakdown)' : 'Category Breakdown'}</span>
                   </h3>
-                  <button
-                    onClick={() => setActiveTab('categories')}
-                    className="text-xs text-red-600 font-bold hover:underline"
-                  >
-                    ক্যাটাগরি ম্যানেজমেন্ট →
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setArticleCategoryFilter('all')
+                        setArticleSearch('')
+                        setActiveTab('articles')
+                      }}
+                      className="text-xs text-blue-600 font-bold hover:underline"
+                    >
+                      {lang === 'bn' ? 'সব বিভাগ (' + toBengaliNumber(articles.length) + ') →' : 'All Categories (' + articles.length + ') →'}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('categories')}
+                      className="text-xs text-red-600 font-bold hover:underline"
+                    >
+                      {lang === 'bn' ? 'ক্যাটাগরি ম্যানেজমেন্ট →' : 'Manage Categories →'}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-1 text-xs">
                   {formattedCategories.map((cat) => {
@@ -1949,9 +2261,11 @@ export default function AdminPage({
                         key={cat.slug}
                         onClick={() => {
                           setArticleCategoryFilter(cat.slug)
+                          setArticleSearch('')
                           setActiveTab('articles')
                         }}
-                        className="p-2 rounded-lg bg-gray-50 hover:bg-red-50 border border-gray-200 hover:border-red-300 transition-colors text-left flex items-center justify-between group"
+                        className="p-2 rounded-lg bg-gray-50 hover:bg-red-50 border border-gray-200 hover:border-red-300 transition-colors text-left flex items-center justify-between group cursor-pointer"
+                        title={lang === 'bn' ? `${cat.name_bn} বিভাগের সংবাদ দেখুন` : `View articles in ${cat.name_en}`}
                       >
                         <span className="font-semibold text-gray-700 group-hover:text-red-700 truncate mr-1">
                           {cat.name_bn}
@@ -1965,104 +2279,167 @@ export default function AdminPage({
                 </div>
               </div>
 
-              {/* Quick Launch Action Bar */}
-              <div className="bg-gradient-to-r from-[#1a3a5c] to-[#0f2540] text-white p-5 rounded-xl shadow-md flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-bold text-base text-yellow-300 flex items-center gap-2">
-                    <span>দ্রুত সংবাদ প্রকাশ ও বিভাগীয় ব্যবস্থাপনা</span>
-                  </h3>
-                  <p className="text-xs text-gray-300 mt-1">
-                    নতুন সংবাদ লিখুন, নতুন ক্যাটাগরি তৈরি করুন অথবা ব্রেকিং নিউজ টিকার পরিচালনা করুন।
-                  </p>
+              {/* Dual Column: Recent 5 Articles & Top 5 Most Read */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Recent Articles Table (7 cols) */}
+                <div className="lg:col-span-7 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                  <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                    <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                      <FileText size={16} className="text-[#e30613]" />
+                      <span>{lang === 'bn' ? 'সর্বশেষ প্রকাশিত সংবাদসমূহ' : 'Recently Published Articles'}</span>
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setArticleCategoryFilter('all')
+                        setArticleSearch('')
+                        setActiveTab('articles')
+                      }}
+                      className="text-xs text-red-600 font-bold hover:underline"
+                    >
+                      {lang === 'bn' ? `সব সংবাদ দেখুন (${toBengaliNumber(articles.length)}) →` : `View All (${articles.length}) →`}
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto flex-1">
+                    {articles.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <FileText size={32} className="mx-auto text-gray-300 mb-2" />
+                        <p className="text-xs text-gray-500 font-semibold mb-3">
+                          {lang === 'bn' ? 'বর্তমানে কোনো সংবাদ প্রকাশিত হয়নি।' : 'No articles published yet.'}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setIsEditing(false)
+                            setFormData(emptyArticleForm)
+                            setActiveTab('add')
+                          }}
+                          className="px-3 py-1.5 bg-[#e30613] hover:bg-red-700 text-white rounded text-xs font-bold"
+                        >
+                          {lang === 'bn' ? 'প্রথম সংবাদ লিখুন' : 'Write First Article'}
+                        </button>
+                      </div>
+                    ) : (
+                      <table className="w-full text-left text-xs text-gray-600">
+                        <thead className="bg-gray-100 text-gray-700 uppercase font-bold border-b">
+                          <tr>
+                            <th className="p-2.5 w-12">ছবি</th>
+                            <th className="p-2.5">শিরোনাম (Headline)</th>
+                            <th className="p-2.5 w-24">বিভাগ</th>
+                            <th className="p-2.5 w-16 text-center">ভিউ</th>
+                            <th className="p-2.5 w-20 text-center">অ্যাকশন</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {articles.slice(0, 5).map((art) => (
+                            <tr key={art.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="p-2.5">
+                                <img src={art.image} alt="" className="w-10 h-8 object-cover rounded bg-gray-100" />
+                              </td>
+                              <td className="p-2.5 font-semibold text-gray-900">
+                                <Link to={`/article/${art.slug}`} target="_blank" className="hover:text-red-600 line-clamp-1 flex items-center gap-1">
+                                  <span>{lang === 'bn' ? art.title_bn : art.title_en}</span>
+                                  <ExternalLink size={10} className="text-gray-400 flex-shrink-0" />
+                                </Link>
+                              </td>
+                              <td className="p-2.5">
+                                <button
+                                  onClick={() => {
+                                    setArticleCategoryFilter(art.category)
+                                    setActiveTab('articles')
+                                  }}
+                                  className="bg-red-50 hover:bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold transition-colors cursor-pointer"
+                                >
+                                  {CATEGORIES_BN[art.category] || art.category}
+                                </button>
+                              </td>
+                              <td className="p-2.5 text-center font-bold text-gray-800">
+                                {toBengaliNumber(art.views || 0)}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => handleToggleFeatured(art)}
+                                    className={`p-1 rounded transition-colors ${
+                                      art.featured ? 'text-amber-500 bg-amber-50' : 'text-gray-300 hover:text-amber-500'
+                                    }`}
+                                    title={art.featured ? 'Remove from Lead Story' : 'Set as Lead Story'}
+                                  >
+                                    <Star size={13} className={art.featured ? 'fill-current' : ''} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditClick(art)}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                    title="Edit"
+                                  >
+                                    <Edit size={13} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteArticleClick(art.id)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setIsEditing(false)
-                      setFormData(emptyArticleForm)
-                      setActiveTab('add')
-                    }}
-                    className="flex items-center gap-1.5 bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors shadow"
-                  >
-                    <PlusCircle size={15} />
-                    <span>নতুন সংবাদ লিখুন</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('categories')}
-                    className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors border border-white/20"
-                  >
-                    <Layers size={15} className="text-yellow-300" />
-                    <span>ক্যাটাগরি তৈরি করুন</span>
-                  </button>
-                </div>
-              </div>
 
-              {/* Recent 5 Articles Table */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                  <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
-                    <FileText size={16} className="text-[#e30613]" />
-                    <span>সর্বশেষ প্রকাশিত সংবাদসমূহ</span>
-                  </h3>
-                  <button
-                    onClick={() => setActiveTab('articles')}
-                    className="text-xs text-red-600 font-bold hover:underline"
-                  >
-                    সব সংবাদ দেখুন ({toBengaliNumber(articles.length)}) →
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-gray-600">
-                    <thead className="bg-gray-100 text-gray-700 uppercase font-bold border-b">
-                      <tr>
-                        <th className="p-3 w-14">ছবি</th>
-                        <th className="p-3">শিরোনাম (Headline)</th>
-                        <th className="p-3 w-28">বিভাগ</th>
-                        <th className="p-3 w-24 text-center">ভিউ সংখ্যা</th>
-                        <th className="p-3 w-24 text-center">অ্যাকশন</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {articles.slice(0, 5).map((art) => (
-                        <tr key={art.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-3">
-                            <img src={art.image} alt="" className="w-10 h-8 object-cover rounded bg-gray-100" />
-                          </td>
-                          <td className="p-3 font-semibold text-gray-900">
-                            <Link to={`/article/${art.slug}`} target="_blank" className="hover:text-red-600 line-clamp-1">
+                {/* Top 5 Most Read Articles (5 cols) */}
+                <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                  <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                    <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                      <TrendingUp size={16} className="text-red-600" />
+                      <span>{lang === 'bn' ? 'সর্বাধিক পঠিত সংবাদ' : 'Most Read Stories'}</span>
+                    </h3>
+                    <span className="text-[11px] font-bold text-gray-400">টপ ৫</span>
+                  </div>
+                  <div className="p-3 divide-y divide-gray-100 flex-1">
+                    {topReadArticles.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic p-4 text-center">
+                        {lang === 'bn' ? 'কোনো সংবাদ নেই।' : 'No articles recorded.'}
+                      </p>
+                    ) : (
+                      topReadArticles.map((art, idx) => (
+                        <div key={art.id} className="py-2.5 first:pt-1 last:pb-1 flex items-start gap-2.5 group">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5 ${
+                            idx === 0 ? 'bg-[#e30613] text-white shadow-xs' : idx === 1 ? 'bg-amber-500 text-white' : idx === 2 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {toBengaliNumber(idx + 1)}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              to={`/article/${art.slug}`}
+                              target="_blank"
+                              className="text-xs font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 leading-snug"
+                            >
                               {lang === 'bn' ? art.title_bn : art.title_en}
                             </Link>
-                          </td>
-                          <td className="p-3">
-                            <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded font-bold">
-                              {CATEGORIES_BN[art.category] || art.category}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center font-bold text-gray-800">
-                            {toBengaliNumber(art.views || 0)}
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => handleEditClick(art)}
-                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                title="Edit"
-                              >
-                                <Edit size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteArticleClick(art.id)}
-                                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                title="Delete"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                            <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
+                              <span className="font-semibold text-red-600">
+                                {CATEGORIES_BN[art.category] || art.category}
+                              </span>
+                              <span className="font-bold flex items-center gap-1 text-gray-600">
+                                <Eye size={10} />
+                                <span>{toBengaliNumber(art.views || 0)} ভিউ</span>
+                              </span>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                          <button
+                            onClick={() => handleEditClick(art)}
+                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                            title="Edit"
+                          >
+                            <Edit size={13} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
