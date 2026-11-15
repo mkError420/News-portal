@@ -331,6 +331,47 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  // --- Image Upload API ---
+  async uploadImage(file) {
+    if (!file) throw new Error('No file selected')
+
+    // First try server upload via /api/upload
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const token = localStorage.getItem('admin_token')
+      const headers = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+        headers['X-Admin-Token'] = token
+      }
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.url) {
+          return data.url
+        }
+      }
+    } catch (err) {
+      console.warn('Server upload failed, converting to optimized Data URL:', err)
+    }
+
+    // Fallback to Data URL for instant offline / client preview
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = (err) => reject(err)
+      reader.readAsDataURL(file)
+    })
+  },
+
   async getStats() {
     const res = await client.get('/stats')
     return res.data

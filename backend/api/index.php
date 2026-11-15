@@ -885,6 +885,87 @@ if ($resource === 'logout' && $method === 'POST') {
 }
 
 // ----------------------------------------------------
+// ROUTE: POST /api/upload (Image Upload Handler)
+// ----------------------------------------------------
+if ($resource === 'upload' && $method === 'POST') {
+    if (!is_admin()) {
+        json_response(['success' => false, 'message' => 'Unauthorized. Please login as admin to upload images.'], 401);
+    }
+
+    $webRoot = dirname(__DIR__, 2);
+    $uploadsDir = $webRoot . '/uploads';
+    if (!is_dir($uploadsDir)) {
+        @mkdir($uploadsDir, 0755, true);
+    }
+
+    // Security protection inside uploads directory
+    $htaccessFile = $uploadsDir . '/.htaccess';
+    if (!file_exists($htaccessFile)) {
+        @file_put_contents($htaccessFile, "<FilesMatch \"\.(php|php5|php7|php8|phtml|phar|pl|py|cgi|sh|bash)$\">\n  Order Deny,Allow\n  Deny from all\n</FilesMatch>\nOptions -Indexes\n");
+    }
+
+    $uploadedFile = $_FILES['image'] ?? ($_FILES['file'] ?? null);
+
+    // Support base64 upload if sent as JSON payload
+    if (!$uploadedFile) {
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $base64Data = (string) ($input['data'] ?? ($input['base64'] ?? ($input['image'] ?? '')));
+        if (!empty($base64Data) && preg_match('#^data:image/(\w+);base64,(.+)$#is', $base64Data, $matches)) {
+            $ext = strtolower($matches[1]);
+            if ($ext === 'jpeg') $ext = 'jpg';
+            if (!in_array($ext, ['jpg', 'png', 'webp', 'gif', 'svg'], true)) {
+                $ext = 'jpg';
+            }
+            $decoded = base64_decode($matches[2]);
+            if ($decoded !== false) {
+                $filename = 'img_' . date('Ymd_His') . '_' . substr(bin2hex(random_bytes(6)), 0, 8) . '.' . $ext;
+                $targetPath = $uploadsDir . '/' . $filename;
+                if (@file_put_contents($targetPath, $decoded) !== false) {
+                    json_response([
+                        'success' => true,
+                        'message' => 'ছবি সফলভাবে আপলোড হয়েছে।',
+                        'url' => '/uploads/' . $filename,
+                        'filename' => $filename,
+                    ]);
+                }
+            }
+        }
+        json_response(['success' => false, 'message' => 'কোনো ছবি পাওয়া যায়নি। অনুগ্রহ করে ছবি নির্বাচন করুন।'], 400);
+    }
+
+    if ($uploadedFile['error'] !== UPLOAD_ERR_OK) {
+        json_response(['success' => false, 'message' => 'ফাইল আপলোডে সমস্যা হয়েছে (কোড: ' . $uploadedFile['error'] . ')'], 400);
+    }
+
+    // Maximum 15MB limit
+    if ($uploadedFile['size'] > 15 * 1024 * 1024) {
+        json_response(['success' => false, 'message' => 'ছবির সাইজ ১৫ মেগাবাইটের বেশি হতে পারবে না।'], 400);
+    }
+
+    $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+    $origExt = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
+    if (!in_array($origExt, $allowedExts, true)) {
+        json_response(['success' => false, 'message' => 'শুধুমাত্র JPG, PNG, WEBP, GIF অথবা SVG ফরম্যাটের ছবি আপলোড করা যাবে।'], 400);
+    }
+    $ext = ($origExt === 'jpeg') ? 'jpg' : $origExt;
+
+    $filename = 'img_' . date('Ymd_His') . '_' . substr(bin2hex(random_bytes(6)), 0, 8) . '.' . $ext;
+    $targetPath = $uploadsDir . '/' . $filename;
+
+    if (!@move_uploaded_file($uploadedFile['tmp_name'], $targetPath)) {
+        json_response(['success' => false, 'message' => 'সার্ভারে ছবি সংরক্ষণ করা সম্ভব হয়নি। ফোল্ডার পারমিশন চেক করুন।'], 500);
+    }
+
+    json_response([
+        'success' => true,
+        'message' => 'ছবি সফলভাবে সার্ভারে আপলোড হয়েছে।',
+        'url' => '/uploads/' . $filename,
+        'filename' => $filename,
+        'size' => $uploadedFile['size'],
+    ]);
+}
+
+// ----------------------------------------------------
 // ROUTE: /api/categories (Full Dynamic Categories CRUD)
 // ----------------------------------------------------
 if ($resource === 'categories') {

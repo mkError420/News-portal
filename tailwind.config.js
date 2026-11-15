@@ -19,9 +19,10 @@ export default {
         },
       },
       fontFamily: {
-        bengali: ['"Shurjo"', '"Anek Bangla"', '"SolaimanLipi"', '"Kalpurush"', '"Hind Siliguri"', '"Noto Sans Bengali"', 'Arial', 'sans-serif'],
-        'bengali-serif': ['"Shurjo"', '"Noto Serif Bengali"', '"SolaimanLipi"', 'serif'],
-        headline: ['"Shurjo"', '"Anek Bangla"', '"SolaimanLipi"', '"Hind Siliguri"', 'sans-serif'],
+        sans: ['"Noto Sans Bengali"', '"SolaimanLipi"', '"Kalpurush"', 'Arial', 'Helvetica', 'sans-serif'],
+        bengali: ['"Noto Sans Bengali"', '"SolaimanLipi"', '"Kalpurush"', 'Arial', 'Helvetica', 'sans-serif'],
+        'bengali-serif': ['"Noto Sans Bengali"', '"SolaimanLipi"', '"Kalpurush"', 'Arial', 'Helvetica', 'sans-serif'],
+        headline: ['"Noto Sans Bengali"', '"SolaimanLipi"', '"Kalpurush"', 'Arial', 'Helvetica', 'sans-serif'],
       },
       boxShadow: {
         card: '0 2px 8px rgba(0,0,0,0.08)',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -57,6 +57,7 @@ import {
   Maximize2,
   Type,
   ImagePlus,
+  Upload,
 } from 'lucide-react'
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
@@ -67,6 +68,134 @@ import {
   toBengaliNumber,
   formatRelativeTime,
 } from '../utils.js'
+
+// --- Reusable Modern Image Upload & URL Input Component ---
+function ImageUploadInput({
+  label,
+  value,
+  onChange,
+  placeholder = 'https://...',
+  required = false,
+  helperText = '',
+}) {
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadMode, setUploadMode] = useState('upload') // 'upload' | 'url'
+  const fileInputRef = useRef(null)
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploading(true)
+    try {
+      const url = await api.uploadImage(file)
+      onChange(url)
+    } catch (err) {
+      console.warn('Upload error:', err)
+      alert('ছবি আপলোড করতে সমস্যা হয়েছে: ' + (err.message || 'Error'))
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const inputId = `upload-${label ? label.replace(/[^\w\s\u0980-\u09FF]/g, '').trim().replace(/\s+/g, '-') : 'file'}-${Math.random().toString(36).substring(2, 7)}`
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-bold text-gray-700">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <div className="flex items-center gap-1 text-[11px]">
+          <button
+            type="button"
+            onClick={() => setUploadMode('upload')}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${
+              uploadMode === 'upload' ? 'bg-red-50 text-[#e30613]' : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            ফাইল আপলোড
+          </button>
+          <span className="text-gray-300">|</span>
+          <button
+            type="button"
+            onClick={() => setUploadMode('url')}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${
+              uploadMode === 'url' ? 'bg-red-50 text-[#e30613]' : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            ওয়েব লিঙ্ক
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        {uploadMode === 'upload' ? (
+          <div className="flex-1 w-full">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+              id={inputId}
+            />
+            <label
+              htmlFor={inputId}
+              className={`w-full flex items-center justify-center gap-2 p-2.5 border-2 border-dashed rounded-lg cursor-pointer transition-all text-xs font-bold ${
+                isUploading
+                  ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse'
+                  : 'bg-gray-50 hover:bg-red-50/50 border-gray-300 hover:border-red-300 text-gray-700'
+              }`}
+            >
+              {isUploading ? (
+                <>
+                  <RefreshCw size={15} className="animate-spin text-amber-600" />
+                  <span>ছবি সার্ভারে আপলোড হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={15} className="text-[#e30613]" />
+                  <span>ডিভাইস থেকে ছবি আপলোড করুন (Upload from Device)</span>
+                </>
+              )}
+            </label>
+          </div>
+        ) : (
+          <div className="flex-1 w-full">
+            <input
+              type="url"
+              required={required && !value}
+              value={value || ''}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full text-xs p-2.5 border rounded-lg focus:border-red-500 outline-none font-sans bg-white"
+            />
+          </div>
+        )}
+
+        {/* Thumbnail Preview with Remove Button */}
+        {value && (
+          <div className="relative group flex-shrink-0">
+            <div className="w-16 h-12 rounded-lg overflow-hidden border border-gray-300 bg-gray-100 flex items-center justify-center shadow-xs">
+              <img src={value} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow-sm hover:bg-red-700"
+              title="ছবি মুছুন"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+
+      {helperText && <p className="text-[10px] text-gray-400">{helperText}</p>}
+    </div>
+  )
+}
 
 export default function AdminPage({
   articles = [],
@@ -245,7 +374,7 @@ export default function AdminPage({
               setCurrentUser(JSON.parse(localUser))
               setAuthChecking(false)
               return
-            } catch {}
+            } catch { }
           }
           navigate('/login', { replace: true })
         } else {
@@ -262,7 +391,7 @@ export default function AdminPage({
             setCurrentUser(JSON.parse(localUser))
             setAuthChecking(false)
             return
-          } catch {}
+          } catch { }
         }
         navigate('/login', { replace: true })
         setAuthChecking(false)
@@ -385,10 +514,10 @@ export default function AdminPage({
 
   useEffect(() => {
     if (!roles || roles.length === 0) {
-      api.getRoles().then((r) => { if (Array.isArray(r) && r.length > 0) setLocalRoles(r) }).catch(() => {})
+      api.getRoles().then((r) => { if (Array.isArray(r) && r.length > 0) setLocalRoles(r) }).catch(() => { })
     }
     if (!staff || staff.length === 0) {
-      api.getStaff().then((s) => { if (Array.isArray(s) && s.length > 0) setLocalStaff(s) }).catch(() => {})
+      api.getStaff().then((s) => { if (Array.isArray(s) && s.length > 0) setLocalStaff(s) }).catch(() => { })
     }
   }, [])
 
@@ -789,7 +918,7 @@ export default function AdminPage({
     } catch {
       try {
         await api.saveBreakingNews(updated)
-      } catch {}
+      } catch { }
     }
 
     onUpdateBreaking?.(updated)
@@ -1397,8 +1526,8 @@ export default function AdminPage({
                   setActiveTab(tab.id)
                 }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${activeTab === tab.id
-                    ? 'bg-red-50 text-[#e30613] border-l-4 border-l-[#e30613] shadow-xs'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-red-600'
+                  ? 'bg-red-50 text-[#e30613] border-l-4 border-l-[#e30613] shadow-xs'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-red-600'
                   }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -1610,7 +1739,6 @@ export default function AdminPage({
               <div className="bg-gradient-to-r from-[#1a3a5c] to-[#0f2540] text-white p-5 rounded-xl shadow-md flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-base text-yellow-300 flex items-center gap-2">
-                    <Sparkles size={16} />
                     <span>দ্রুত সংবাদ প্রকাশ ও বিভাগীয় ব্যবস্থাপনা</span>
                   </h3>
                   <p className="text-xs text-gray-300 mt-1">
@@ -1741,8 +1869,8 @@ export default function AdminPage({
                   <button
                     onClick={() => setFilterFeaturedOnly(!filterFeaturedOnly)}
                     className={`px-3 py-1.5 rounded border text-xs font-bold transition-colors flex items-center gap-1 ${filterFeaturedOnly
-                        ? 'bg-[#e30613] text-white border-[#e30613]'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                      ? 'bg-[#e30613] text-white border-[#e30613]'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
                       }`}
                   >
                     <Star size={13} className={filterFeaturedOnly ? 'fill-current' : ''} />
@@ -2149,8 +2277,8 @@ export default function AdminPage({
                           type="button"
                           onClick={() => setFormData({ ...formData, category: cat.slug })}
                           className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${isSelected
-                              ? 'bg-[#e30613] text-white shadow-xs scale-102 ring-2 ring-red-400'
-                              : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-gray-50'
+                            ? 'bg-[#e30613] text-white shadow-xs scale-102 ring-2 ring-red-400'
+                            : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-gray-50'
                             }`}
                         >
                           {isSelected && <Check size={12} className="stroke-[3]" />}
@@ -2191,26 +2319,16 @@ export default function AdminPage({
                 </div>
               </div>
 
-              {/* Image URL & Live Preview */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  ছবির ওয়েব লিঙ্ক (Image URL) *
-                </label>
-                <div className="flex gap-4 items-center">
-                  <input
-                    type="url"
-                    required
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full text-sm p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-sans"
-                  />
-                  {formData.image && (
-                    <div className="w-20 h-14 rounded-lg overflow-hidden border border-gray-300 flex-shrink-0 bg-gray-100">
-                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                </div>
+              {/* Image Upload & Live Preview */}
+              <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-200">
+                <ImageUploadInput
+                  label="সংবাদের মূল ফিচার ছবি (Article Feature Image)"
+                  value={formData.image}
+                  onChange={(url) => setFormData({ ...formData, image: url })}
+                  placeholder="https://images.unsplash.com/..."
+                  required={true}
+                  helperText="ডিভাইস থেকে সরাসরি ছবি আপলোড করুন অথবা ওয়েব লিঙ্ক ব্যবহার করুন (ডাটাবেজে স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে)।"
+                />
               </div>
 
               {/* Summary BN & EN */}
@@ -2254,11 +2372,10 @@ export default function AdminPage({
                     <button
                       type="button"
                       onClick={() => setShowInTextImageModal(!showInTextImageModal)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        showInTextImageModal
-                          ? 'bg-red-600 text-white shadow-xs'
-                          : 'bg-red-50 text-[#e30613] hover:bg-red-100 border border-red-200'
-                      }`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showInTextImageModal
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'bg-red-50 text-[#e30613] hover:bg-red-100 border border-red-200'
+                        }`}
                       title="লেখার যেকোনো স্থানে ছবি ও ক্যাপশন প্রবেশ করান"
                     >
                       <ImagePlus size={14} />
@@ -2299,11 +2416,10 @@ export default function AdminPage({
                     <button
                       type="button"
                       onClick={() => setContentPreviewMode(!contentPreviewMode)}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        contentPreviewMode
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                      }`}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${contentPreviewMode
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                        }`}
                       title="পাঠকরা যেভাবে দেখবেন লাইভ প্রিভিউ দেখুন"
                     >
                       {contentPreviewMode ? <Code size={13} /> : <Eye size={13} />}
@@ -2352,18 +2468,14 @@ export default function AdminPage({
 
                       {/* Image Details (9 cols) */}
                       <div className="md:col-span-9 space-y-3">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">
-                            ছবির ওয়েব লিঙ্ক (Image URL) *
-                          </label>
-                          <input
-                            type="url"
-                            value={inTextImageForm.imageUrl}
-                            onChange={(e) => setInTextImageForm({ ...inTextImageForm, imageUrl: e.target.value })}
-                            placeholder="https://images.unsplash.com/... অথবা যেকোনো ছবির লিঙ্ক"
-                            className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500 bg-white"
-                          />
-                        </div>
+                        <ImageUploadInput
+                          label="ইন-টেক্সট ছবি (In-Article Photo)"
+                          value={inTextImageForm.imageUrl}
+                          onChange={(url) => setInTextImageForm({ ...inTextImageForm, imageUrl: url })}
+                          placeholder="https://images.unsplash.com/... অথবা যেকোনো ছবির লিঙ্ক"
+                          required={true}
+                          helperText="ডিভাইস থেকে ছবি আপলোড করুন অথবা ওয়েব লিঙ্ক ব্যবহার করুন।"
+                        />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
@@ -2409,11 +2521,10 @@ export default function AdminPage({
                                 key={alignOpt.id}
                                 type="button"
                                 onClick={() => setInTextImageForm({ ...inTextImageForm, alignment: alignOpt.id })}
-                                className={`p-2 rounded-lg border text-left transition-all ${
-                                  inTextImageForm.alignment === alignOpt.id
-                                    ? 'bg-red-50 border-red-500 text-[#e30613] font-bold shadow-2xs'
-                                    : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
-                                }`}
+                                className={`p-2 rounded-lg border text-left transition-all ${inTextImageForm.alignment === alignOpt.id
+                                  ? 'bg-red-50 border-red-500 text-[#e30613] font-bold shadow-2xs'
+                                  : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                  }`}
                               >
                                 <span className="block font-bold text-[11px]">{alignOpt.label}</span>
                                 <span className="text-[10px] text-gray-400 block mt-0.5">{alignOpt.desc}</span>
@@ -2595,12 +2706,12 @@ export default function AdminPage({
                 const scorePercent = Math.round((passedCount / checks.length) * 100)
 
                 const scoreColor = scorePercent >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-300' :
-                                   scorePercent >= 50 ? 'text-amber-700 bg-amber-50 border-amber-300' :
-                                   'text-red-700 bg-red-50 border-red-300'
+                  scorePercent >= 50 ? 'text-amber-700 bg-amber-50 border-amber-300' :
+                    'text-red-700 bg-red-50 border-red-300'
 
                 const scoreText = scorePercent >= 80 ? 'চমৎকার এসইও (Excellent SEO)' :
-                                  scorePercent >= 50 ? 'চলতি এসইও (Average SEO)' :
-                                  'উন্নতি প্রয়োজন (Needs Improvement)'
+                  scorePercent >= 50 ? 'চলতি এসইও (Average SEO)' :
+                    'উন্নতি প্রয়োজন (Needs Improvement)'
 
                 const slugPreview = formData.slug || 'news-article-slug'
                 const catSlug = formData.category || 'national'
@@ -2611,9 +2722,6 @@ export default function AdminPage({
                     <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-indigo-100">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-xs">
-                            <Sparkles size={18} />
-                          </span>
                           <h4 className="text-base font-extrabold text-gray-900 font-bengali">
                             সার্চ ইঞ্জিন অপ্টিমাইজেশন ও মেটা সেটিংস (SEO Studio)
                           </h4>
@@ -2643,9 +2751,8 @@ export default function AdminPage({
                           <button
                             type="button"
                             onClick={() => setSeoPreviewDevice('desktop')}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all ${
-                              seoPreviewDevice === 'desktop' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
-                            }`}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all ${seoPreviewDevice === 'desktop' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                              }`}
                           >
                             <Monitor size={13} />
                             <span>ডেস্কটপ</span>
@@ -2653,9 +2760,8 @@ export default function AdminPage({
                           <button
                             type="button"
                             onClick={() => setSeoPreviewDevice('mobile')}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all ${
-                              seoPreviewDevice === 'mobile' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
-                            }`}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded font-bold transition-all ${seoPreviewDevice === 'mobile' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                              }`}
                           >
                             <Smartphone size={13} />
                             <span>মোবাইল</span>
@@ -2664,9 +2770,8 @@ export default function AdminPage({
                       </div>
 
                       {/* Google SERP Card Preview */}
-                      <div className={`p-4 bg-white border border-gray-200 rounded-lg transition-all ${
-                        seoPreviewDevice === 'mobile' ? 'max-w-md mx-auto shadow-sm ring-1 ring-gray-200' : 'w-full'
-                      }`}>
+                      <div className={`p-4 bg-white border border-gray-200 rounded-lg transition-all ${seoPreviewDevice === 'mobile' ? 'max-w-md mx-auto shadow-sm ring-1 ring-gray-200' : 'w-full'
+                        }`}>
                         {/* Google URL Line */}
                         <div className="flex items-center gap-2 mb-1">
                           <div className="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">
@@ -2701,9 +2806,8 @@ export default function AdminPage({
                           <label className="block text-xs font-bold text-gray-700">
                             সার্চ ইঞ্জিন মেটা টাইটেল (SEO Title)
                           </label>
-                          <span className={`text-[11px] font-bold ${
-                            formData.seo_title.length >= 40 && formData.seo_title.length <= 70 ? 'text-emerald-600' : 'text-gray-400'
-                          }`}>
+                          <span className={`text-[11px] font-bold ${formData.seo_title.length >= 40 && formData.seo_title.length <= 70 ? 'text-emerald-600' : 'text-gray-400'
+                            }`}>
                             {formData.seo_title.length} / ৬০ অক্ষর
                           </span>
                         </div>
@@ -2743,9 +2847,8 @@ export default function AdminPage({
                         <label className="block text-xs font-bold text-gray-700">
                           সার্চ ইঞ্জিন মেটা ডেসক্রিপশন (Meta Description for Google SERP)
                         </label>
-                        <span className={`text-[11px] font-bold ${
-                          formData.seo_description.length >= 100 && formData.seo_description.length <= 165 ? 'text-emerald-600' : 'text-gray-400'
-                        }`}>
+                        <span className={`text-[11px] font-bold ${formData.seo_description.length >= 100 && formData.seo_description.length <= 165 ? 'text-emerald-600' : 'text-gray-400'
+                          }`}>
                           {formData.seo_description.length} / ১৬০ অক্ষর
                         </span>
                       </div>
@@ -2821,14 +2924,12 @@ export default function AdminPage({
                         {checks.map((chk, i) => (
                           <div
                             key={i}
-                            className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 ${
-                              chk.passed ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800' : 'bg-gray-50 border-gray-200 text-gray-600'
-                            }`}
+                            className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 ${chk.passed ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800' : 'bg-gray-50 border-gray-200 text-gray-600'
+                              }`}
                           >
                             <div className="flex items-center gap-2">
-                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                chk.passed ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-700'
-                              }`}>
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${chk.passed ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-700'
+                                }`}>
                                 {chk.passed ? '✓' : '×'}
                               </span>
                               <span className="font-medium font-bengali">{chk.label}</span>
@@ -2899,11 +3000,10 @@ export default function AdminPage({
                     <button
                       type="button"
                       onClick={() => setBreakingForm((prev) => ({ ...prev, link_type: 'article' }))}
-                      className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${
-                        breakingForm.link_type === 'article'
-                          ? 'bg-[#e30613] text-white shadow-xs'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                      }`}
+                      className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${breakingForm.link_type === 'article'
+                        ? 'bg-[#e30613] text-white shadow-xs'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                        }`}
                     >
                       <FileText size={14} />
                       <span>প্রকাশিত সংবাদের সাথে লিঙ্ক করুন (প্রস্তাবিত)</span>
@@ -2911,11 +3011,10 @@ export default function AdminPage({
                     <button
                       type="button"
                       onClick={() => setBreakingForm((prev) => ({ ...prev, link_type: 'custom' }))}
-                      className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${
-                        breakingForm.link_type === 'custom'
-                          ? 'bg-[#e30613] text-white shadow-xs'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                      }`}
+                      className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${breakingForm.link_type === 'custom'
+                        ? 'bg-[#e30613] text-white shadow-xs'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                        }`}
                     >
                       <LinkIcon size={14} />
                       <span>কাস্টম লিংক বা নিজস্ব শিরোনাম</span>
@@ -3081,9 +3180,8 @@ export default function AdminPage({
                           <div className="flex items-start gap-3 flex-1 min-w-[260px]">
                             {/* Live Pulsing Dot */}
                             <span
-                              className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
-                                isActive ? 'bg-[#e30613] animate-pulse ring-4 ring-red-100' : 'bg-gray-300'
-                              }`}
+                              className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${isActive ? 'bg-[#e30613] animate-pulse ring-4 ring-red-100' : 'bg-gray-300'
+                                }`}
                               title={isActive ? 'সক্রিয় (Live)' : 'স্থগিত (Paused)'}
                             />
 
@@ -3094,11 +3192,10 @@ export default function AdminPage({
                                   {item.title_bn}
                                 </p>
                                 <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    isActive
-                                      ? 'bg-red-50 text-red-700 border border-red-200'
-                                      : 'bg-gray-100 text-gray-500 border border-gray-200'
-                                  }`}
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
+                                    ? 'bg-red-50 text-red-700 border border-red-200'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                    }`}
                                 >
                                   {isActive ? 'সক্রিয় (Live)' : 'স্থগিত (Paused)'}
                                 </span>
@@ -3141,11 +3238,10 @@ export default function AdminPage({
                             {/* 2. Toggle Active / Pause */}
                             <button
                               onClick={() => handleToggleBreakingActive(item)}
-                              className={`p-2 rounded-lg transition-colors border flex items-center gap-1 text-xs font-semibold ${
-                                isActive
-                                  ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200'
-                                  : 'text-green-700 bg-green-50 hover:bg-green-100 border-green-200'
-                              }`}
+                              className={`p-2 rounded-lg transition-colors border flex items-center gap-1 text-xs font-semibold ${isActive
+                                ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200'
+                                : 'text-green-700 bg-green-50 hover:bg-green-100 border-green-200'
+                                }`}
                               title={isActive ? 'টিকারে দেখানো স্থগিত করুন' : 'টিকারে সক্রিয় করুন'}
                             >
                               {isActive ? <Pause size={14} /> : <Play size={14} />}
@@ -3273,12 +3369,12 @@ export default function AdminPage({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">কলামিস্টের ছবি URL</label>
-                    <input
-                      type="url"
+                    <ImageUploadInput
+                      label="কলামিস্টের ছবি (Columnist Photo)"
                       value={newOpinion.author_image}
-                      onChange={(e) => setNewOpinion({ ...newOpinion, author_image: e.target.value })}
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
+                      onChange={(url) => setNewOpinion({ ...newOpinion, author_image: url })}
+                      placeholder="https://images.unsplash.com/..."
+                      helperText="কলামিস্টের পোর্ট্রেট ছবি আপলোড করুন অথবা লিঙ্ক দিন।"
                     />
                   </div>
                   <div>
@@ -3388,14 +3484,13 @@ export default function AdminPage({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">ছবির লিঙ্ক (Image URL) *</label>
-                    <input
-                      type="url"
-                      required
+                    <ImageUploadInput
+                      label="আলোকচিত্র গ্যালারির ছবি (Photo Story Image)"
                       value={newPhoto.image}
-                      onChange={(e) => setNewPhoto({ ...newPhoto, image: e.target.value })}
+                      onChange={(url) => setNewPhoto({ ...newPhoto, image: url })}
                       placeholder="https://images.unsplash.com/..."
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
+                      required={true}
+                      helperText="ডিভাইস থেকে উচ্চ রেজোলিউশনের ছবি আপলোড করুন।"
                     />
                   </div>
                 </div>
@@ -3531,12 +3626,12 @@ export default function AdminPage({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">থাম্বনেইল ছবি URL</label>
-                    <input
-                      type="url"
+                    <ImageUploadInput
+                      label="ভিডিও থাম্বনেইল ছবি (Video Thumbnail)"
                       value={newVideo.thumb}
-                      onChange={(e) => setNewVideo({ ...newVideo, thumb: e.target.value })}
-                      className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
+                      onChange={(url) => setNewVideo({ ...newVideo, thumb: url })}
+                      placeholder="https://images.unsplash.com/..."
+                      helperText="ভিডিও কভার ছবি আপলোড করুন অথবা লিঙ্ক দিন।"
                     />
                   </div>
                 </div>
@@ -3624,11 +3719,10 @@ export default function AdminPage({
                   <button
                     type="button"
                     onClick={() => setRoleSubTab('roles')}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      roleSubTab === 'roles'
-                        ? 'bg-white text-[#e30613] shadow-xs'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${roleSubTab === 'roles'
+                      ? 'bg-white text-[#e30613] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
                     <Shield size={14} />
                     <span>ভূমিকা ও পারমিশন তালিকা</span>
@@ -3639,11 +3733,10 @@ export default function AdminPage({
                   <button
                     type="button"
                     onClick={() => setRoleSubTab('staff')}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      roleSubTab === 'staff'
-                        ? 'bg-white text-[#e30613] shadow-xs'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${roleSubTab === 'staff'
+                      ? 'bg-white text-[#e30613] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
                     <Users size={14} />
                     <span>টিম ও স্টাফ সদস্য</span>
@@ -3772,11 +3865,10 @@ export default function AdminPage({
                           return (
                             <label
                               key={p.key}
-                              className={`flex items-start gap-2.5 p-3 rounded-lg border text-xs cursor-pointer transition-all ${
-                                isChecked
-                                  ? 'bg-red-50/60 border-red-300 text-gray-900 shadow-2xs'
-                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                              }`}
+                              className={`flex items-start gap-2.5 p-3 rounded-lg border text-xs cursor-pointer transition-all ${isChecked
+                                ? 'bg-red-50/60 border-red-300 text-gray-900 shadow-2xs'
+                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                }`}
                             >
                               <input
                                 type="checkbox"
@@ -3845,18 +3937,16 @@ export default function AdminPage({
                         return (
                           <div
                             key={r.id || r.role_key}
-                            className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
-                              isSuperAdmin
-                                ? 'bg-gradient-to-br from-red-50/40 to-white border-red-200 shadow-xs'
-                                : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xs'
-                            }`}
+                            className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${isSuperAdmin
+                              ? 'bg-gradient-to-br from-red-50/40 to-white border-red-200 shadow-xs'
+                              : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xs'
+                              }`}
                           >
                             <div className="space-y-3">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                                    isSuperAdmin ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-700'
-                                  }`}>
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${isSuperAdmin ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-700'
+                                    }`}>
                                     <Shield size={16} />
                                   </div>
                                   <div>
@@ -3864,9 +3954,8 @@ export default function AdminPage({
                                     <span className="text-[10px] text-gray-400 font-mono block">{r.role_key}</span>
                                   </div>
                                 </div>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  r.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'
-                                }`}>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${r.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'
+                                  }`}>
                                   {r.status === 'active' ? 'সক্রিয়' : 'স্থগিত'}
                                 </span>
                               </div>
@@ -4095,9 +4184,8 @@ export default function AdminPage({
                                 </td>
                                 <td className="p-3 font-mono text-gray-500">{m.phone || '—'}</td>
                                 <td className="p-3 text-center">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    m.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'
-                                  }`}>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${m.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'
+                                    }`}>
                                     {m.status === 'active' ? 'সক্রিয়' : 'স্থগিত'}
                                   </span>
                                 </td>
@@ -4262,42 +4350,45 @@ export default function AdminPage({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <label className="block font-bold text-gray-700 mb-1 flex items-center justify-between">
-                        <span>কাস্টম লোগো ছবির লিংক (Custom Logo Image URL)</span>
-                        <span className="text-[10px] text-gray-400 font-normal">ঐচ্ছিক</span>
-                      </label>
-                      <input
-                        type="url"
+                      <ImageUploadInput
+                        label={lang === 'bn' ? 'কাস্টম লোগো ছবি (Custom Logo Image)' : 'Custom Logo Image'}
                         value={siteForm.logo_url}
-                        onChange={(e) => setSiteForm({ ...siteForm, logo_url: e.target.value })}
-                        placeholder="https://... (খালি রাখলে মূল ভেক্টর সূর্য প্রতীক ব্যবহৃত হবে)"
+                        onChange={(val) => setSiteForm({ ...siteForm, logo_url: val })}
+                        placeholder="https://..."
+                        helpText={lang === 'bn' ? 'টিপ: কোনো কাস্টম লোগো আপলোড বা URL দিলে তা দৃশ্যমান হবে, খালি রাখলে মূল ভেক্টর প্রতীক থাকবে।' : 'Upload custom logo image or leave empty for default.'}
+                      />
+                    </div>
+                    <div>
+                      <ImageUploadInput
+                        label={lang === 'bn' ? 'কাস্টম ফেভিকন আইকন (Custom Favicon)' : 'Custom Favicon'}
+                        value={siteForm.favicon_url}
+                        onChange={(val) => setSiteForm({ ...siteForm, favicon_url: val })}
+                        placeholder="https://... (.ico, .png, .svg)"
+                        helpText={lang === 'bn' ? 'ব্রাউজার ট্যাবে প্রদর্শিত ছোট আইকন (favicon)।' : 'Browser tab favicon icon.'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">সংস্করণ (বাংলা)</label>
+                      <input
+                        type="text"
+                        value={siteForm.edition_bn}
+                        onChange={(e) => setSiteForm({ ...siteForm, edition_bn: e.target.value })}
+                        placeholder="বাংলাদেশ"
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
-                      <p className="text-[10px] text-gray-500 mt-1">
-                        টিপ: কোনো কাস্টম লোগোর ইমেজ URL বসালে তা দৃশ্যমান হবে, খালি রাখলে ডিফল্ট প্রতীক থাকবে।
-                      </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block font-bold text-gray-700 mb-1">সংস্করণ (বাংলা)</label>
-                        <input
-                          type="text"
-                          value={siteForm.edition_bn}
-                          onChange={(e) => setSiteForm({ ...siteForm, edition_bn: e.target.value })}
-                          placeholder="বাংলাদেশ"
-                          className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-gray-700 mb-1">Edition (English)</label>
-                        <input
-                          type="text"
-                          value={siteForm.edition_en}
-                          onChange={(e) => setSiteForm({ ...siteForm, edition_en: e.target.value })}
-                          placeholder="Bangladesh"
-                          className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
-                        />
-                      </div>
+                    <div>
+                      <label className="block font-bold text-gray-700 mb-1">Edition (English)</label>
+                      <input
+                        type="text"
+                        value={siteForm.edition_en}
+                        onChange={(e) => setSiteForm({ ...siteForm, edition_en: e.target.value })}
+                        placeholder="Bangladesh"
+                        className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
+                      />
                     </div>
                   </div>
                 </div>
@@ -4755,6 +4846,16 @@ export default function AdminPage({
                         onChange={(e) => setSiteForm({ ...siteForm, meta_keywords_default: e.target.value })}
                         placeholder="সংবাদ, খবর, বাংলাদেশ, প্রথম কালো, ব্রেকিং নিউজ, Prothom kalo"
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <ImageUploadInput
+                        label={lang === 'bn' ? 'ডিফল্ট সোশ্যাল মিডিয়া ও ওপেনগ্রাফ শেয়ার ছবি (Default OpenGraph Share Image)' : 'Default OG Social Share Image'}
+                        value={siteForm.og_image_default}
+                        onChange={(val) => setSiteForm({ ...siteForm, og_image_default: val })}
+                        placeholder="https://..."
+                        helpText={lang === 'bn' ? 'ফেসবুক বা টুইটারে সাইটের হোমপেজ বা কোনো সংবাদ শেয়ার করলে এই ছবিটি থাম্বনেইল হিসেবে প্রদর্শিত হবে।' : 'Default preview image when sharing homepage on Facebook/Twitter.'}
                       />
                     </div>
                   </div>
