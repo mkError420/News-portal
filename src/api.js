@@ -331,6 +331,24 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  // --- Currency & Market Rates API ---
+  async getCurrencyRates() {
+    try {
+      const res = await client.get('/currency')
+      if (res.data?.success && Array.isArray(res.data?.rates)) {
+        return res.data.rates
+      }
+    } catch (err) {
+      // Backend offline or unreachable, will fall back to local market basket
+    }
+    return null
+  },
+
+  async saveCurrencyRates(rates) {
+    const res = await client.post('/currency', { rates })
+    return requireSuccess(res.data)
+  },
+
   // --- Image Upload API ---
   async uploadImage(file) {
     if (!file) throw new Error('No file selected')

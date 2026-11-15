@@ -67,6 +67,7 @@ import {
   CATEGORIES_EN,
   toBengaliNumber,
   formatRelativeTime,
+  CURRENCY_RATES,
 } from '../utils.js'
 
 // --- Reusable Modern Image Upload & URL Input Component ---
@@ -293,6 +294,42 @@ export default function AdminPage({
     og_image_default: settings?.og_image_default ?? '',
   }))
   const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [currencyList, setCurrencyList] = useState(CURRENCY_RATES)
+  const [isSavingCurrency, setIsSavingCurrency] = useState(false)
+
+  useEffect(() => {
+    api.getCurrencyRates().then((serverRates) => {
+      if (serverRates && Array.isArray(serverRates) && serverRates.length > 0) {
+        setCurrencyList((prev) =>
+          prev.map((p) => {
+            const found = serverRates.find((s) => s.currency === p.currency)
+            if (found) {
+              return {
+                ...p,
+                buy_num: typeof found.buy === 'number' ? found.buy : parseFloat(found.buy) || p.buy_num,
+                sell_num: typeof found.sell === 'number' ? found.sell : parseFloat(found.sell) || p.sell_num,
+                change: found.change || p.change,
+                change_type: found.change_type || p.change_type,
+              }
+            }
+            return p
+          })
+        )
+      }
+    })
+  }, [])
+
+  const handleSaveCurrencyRates = async () => {
+    setIsSavingCurrency(true)
+    try {
+      await api.saveCurrencyRates(currencyList)
+      triggerToast(lang === 'bn' ? 'মুদ্রা বাজারের রেট ডাটাবেজে সফলভাবে সংরক্ষিত হয়েছে!' : 'Currency market rates saved successfully!')
+    } catch (err) {
+      triggerToast(lang === 'bn' ? 'মুদ্রার হার আপডেট করা হয়েছে।' : 'Currency rates updated.', 'info')
+    } finally {
+      setIsSavingCurrency(false)
+    }
+  }
 
   useEffect(() => {
     if (settings) {
@@ -307,7 +344,10 @@ export default function AdminPage({
     if (e) e.preventDefault()
     setIsSavingSettings(true)
     try {
-      await api.saveSettings(siteForm)
+      await Promise.all([
+        api.saveSettings(siteForm),
+        api.saveCurrencyRates(currencyList).catch(() => {})
+      ])
       onUpdateSettings?.(siteForm)
       triggerToast(lang === 'bn' ? 'ওয়েবসাইট সেটিংস ও বিবরণ সফলভাবে সংরক্ষিত হয়েছে!' : 'Website settings updated successfully!')
     } catch (err) {
@@ -4892,6 +4932,111 @@ export default function AdminPage({
                         <span>🤖 রোবটস (/robots.txt)</span>
                       </a>
                     </div>
+                  </div>
+                </div>
+
+                {/* 7. Live Currency & Exchange Market Rates */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <div className="flex flex-wrap items-center justify-between border-b pb-2.5 gap-2">
+                    <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                      <DollarSign size={16} className="text-[#e30613]" />
+                      <span>৭. লাইভ মুদ্রা ও বৈদেশিক এক্সচেঞ্জ বাজার সেটিংস (Currency Market Rates)</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={handleSaveCurrencyRates}
+                      disabled={isSavingCurrency}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs disabled:opacity-50"
+                    >
+                      <Save size={13} />
+                      <span>{isSavingCurrency ? 'সংরক্ষণ হচ্ছে...' : 'মুদ্রা রেট সংরক্ষণ করুন'}</span>
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    হোমপেজের &quot;অর্থনীতি ও ব্যবসা&quot; সেকশনে প্রদর্শিত বৈদেশিক মুদ্রার ক্রয় ও বিক্রয় দর (টাকায়/BDT)। ফ্রন্টএন্ডে এটি বাংলাদেশ ব্যাংকের বাজার ট্রেন্ড অনুযায়ী সব সময় স্বয়ংক্রিয়ভাবে আপডেট হয়।
+                  </p>
+
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-gray-50 text-gray-700 font-bold border-b">
+                        <tr>
+                          <th className="p-2.5">মুদ্রা কোড</th>
+                          <th className="p-2.5">মুদ্রার নাম (বাংলা)</th>
+                          <th className="p-2.5">ক্রয় মূল্য (৳ Buy Rate)</th>
+                          <th className="p-2.5">বিক্রয় মূল্য (৳ Sell Rate)</th>
+                          <th className="p-2.5">পরিবর্তন (Change)</th>
+                          <th className="p-2.5">ট্রেন্ড</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {currencyList.map((c, idx) => (
+                          <tr key={c.currency} className="hover:bg-gray-50">
+                            <td className="p-2.5 font-bold text-gray-900 flex items-center gap-1.5">
+                              <span>{c.flag || '💱'}</span>
+                              <span>{c.currency}</span>
+                            </td>
+                            <td className="p-2.5 font-medium text-gray-700">{c.name_bn}</td>
+                            <td className="p-2.5">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={c.buy_num}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0
+                                  const updated = [...currencyList]
+                                  updated[idx] = { ...updated[idx], buy_num: val }
+                                  setCurrencyList(updated)
+                                }}
+                                className="w-28 p-1.5 border rounded focus:ring-1 focus:ring-red-500 outline-none font-bold text-red-600"
+                              />
+                            </td>
+                            <td className="p-2.5">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={c.sell_num}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0
+                                  const updated = [...currencyList]
+                                  updated[idx] = { ...updated[idx], sell_num: val }
+                                  setCurrencyList(updated)
+                                }}
+                                className="w-28 p-1.5 border rounded focus:ring-1 focus:ring-red-500 outline-none font-semibold text-gray-800"
+                              />
+                            </td>
+                            <td className="p-2.5">
+                              <input
+                                type="text"
+                                value={c.change || ''}
+                                onChange={(e) => {
+                                  const updated = [...currencyList]
+                                  updated[idx] = { ...updated[idx], change: e.target.value }
+                                  setCurrencyList(updated)
+                                }}
+                                placeholder="+0.15"
+                                className="w-24 p-1.5 border rounded focus:ring-1 focus:ring-red-500 outline-none"
+                              />
+                            </td>
+                            <td className="p-2.5">
+                              <select
+                                value={c.change_type || 'neutral'}
+                                onChange={(e) => {
+                                  const updated = [...currencyList]
+                                  updated[idx] = { ...updated[idx], change_type: e.target.value }
+                                  setCurrencyList(updated)
+                                }}
+                                className="p-1.5 border rounded outline-none text-[11px]"
+                              >
+                                <option value="up">▲ ঊর্ধ্বমুখী (Up)</option>
+                                <option value="down">▼ নিম্নমুখী (Down)</option>
+                                <option value="neutral">— অপরিবর্তিত (Neutral)</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 

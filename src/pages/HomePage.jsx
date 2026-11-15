@@ -17,6 +17,7 @@ import NewsCard from '../components/NewsCard.jsx'
 import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
 import SEO from '../components/SEO.jsx'
+import CurrencyWidget from '../components/CurrencyWidget.jsx'
 import { PRAYER_TIMES, CURRENCY_RATES, formatRelativeTime } from '../utils.js'
 
 export default function HomePage({
@@ -296,15 +297,8 @@ export default function HomePage({
               ]}
             />
 
-            {/* Live Exchange Rate & Gold Bar */}
-            <div className="bg-gray-50 border border-gray-200 rounded p-2.5 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              {CURRENCY_RATES.map((curr) => (
-                <div key={curr.currency} className="bg-white p-2 rounded border border-gray-100 flex items-center justify-between">
-                  <span className="font-bold text-gray-700">{curr.currency}</span>
-                  <span className="font-semibold text-red-600">৳ {curr.buy}</span>
-                </div>
-              ))}
-            </div>
+            {/* Live Auto-Changing Exchange Rates & Market Widget */}
+            <CurrencyWidget lang={lang} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {economyArticles.slice(0, 2).map((art) => (

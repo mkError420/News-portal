@@ -204,10 +204,16 @@ export const PRAYER_TIMES = [
 ]
 
 export const CURRENCY_RATES = [
-  { currency: 'USD', name_bn: 'মার্কিন ডলার', name_en: 'US Dollar', buy: '১২১.৫০', sell: '১২২.২০' },
-  { currency: 'EUR', name_bn: 'ইউরো', name_en: 'Euro', buy: '১৩১.২০', sell: '১৩২.১০' },
-  { currency: 'GBP', name_bn: 'ব্রিটিশ পাউন্ড', name_en: 'British Pound', buy: '১৫৪.৮০', sell: '১৫৫.৯০' },
-  { currency: 'SAR', name_bn: 'সৌদি রিয়াল', name_en: 'Saudi Riyal', buy: '৩২.৪০', sell: '৩২.৭০' },
+  { currency: 'USD', name_bn: 'মার্কিন ডলার', name_en: 'US Dollar', symbol: '$', flag: '🇺🇸', buy: '১২১.৮০', sell: '১২২.৫০', buy_num: 121.80, sell_num: 122.50, change: '+০.১৫', change_type: 'up' },
+  { currency: 'EUR', name_bn: 'ইউরো', name_en: 'Euro', symbol: '€', flag: '🇪🇺', buy: '১৩১.৪০', sell: '১৩২.২০', buy_num: 131.40, sell_num: 132.20, change: '+০.২০', change_type: 'up' },
+  { currency: 'GBP', name_bn: 'ব্রিটিশ পাউন্ড', name_en: 'British Pound', symbol: '£', flag: '🇬🇧', buy: '১৫৫.১০', sell: '১৫৬.০০', buy_num: 155.10, sell_num: 156.00, change: '-০.১০', change_type: 'down' },
+  { currency: 'SAR', name_bn: 'সৌদি রিয়াল', name_en: 'Saudi Riyal', symbol: '﷼', flag: '🇸🇦', buy: '৩২.৪৫', sell: '৩২.৭৫', buy_num: 32.45, sell_num: 32.75, change: '০.০০', change_type: 'neutral' },
+  { currency: 'AED', name_bn: 'ইউএই দিরহাম', name_en: 'UAE Dirham', symbol: 'د.إ', flag: '🇦🇪', buy: '৩৩.১৫', sell: '৩৩.৪৫', buy_num: 33.15, sell_num: 33.45, change: '+০.০৫', change_type: 'up' },
+  { currency: 'MYR', name_bn: 'মালয়েশিয়ান রিঙ্গিত', name_en: 'Malaysian Ringgit', symbol: 'RM', flag: '🇲🇾', buy: '২৭.৭০', sell: '২৮.০৫', buy_num: 27.70, sell_num: 28.05, change: '+০.০৮', change_type: 'up' },
+  { currency: 'CAD', name_bn: 'কানাডিয়ান ডলার', name_en: 'Canadian Dollar', symbol: 'C$', flag: '🇨🇦', buy: '৮৮.১০', sell: '৮৮.৯০', buy_num: 88.10, sell_num: 88.90, change: '-০.১৫', change_type: 'down' },
+  { currency: 'KWD', name_bn: 'কুয়েতি দিনার', name_en: 'Kuwaiti Dinar', symbol: 'KD', flag: '🇰🇼', buy: '৩৯৫.৫০', sell: '৩৯৭.৮০', buy_num: 395.50, sell_num: 397.80, change: '+০.৫০', change_type: 'up' },
+  { currency: 'INR', name_bn: 'ভারতীয় রুপি', name_en: 'Indian Rupee', symbol: '₹', flag: '🇮🇳', buy: '১.৪২', sell: '১.৪৬', buy_num: 1.42, sell_num: 1.46, change: '০.০০', change_type: 'neutral' },
+  { currency: 'GOLD', name_bn: 'স্বর্ণ (২২ ক্যারেট ভরি)', name_en: 'Gold (22K Bhori)', symbol: 'Au', flag: '🪙', buy: '১,৩৮,৫০০', sell: '১,৪২,০০০', buy_num: 138500, sell_num: 142000, change: '+৬৫০', change_type: 'up' },
 ]
 
 export const UI_TEXT = {
