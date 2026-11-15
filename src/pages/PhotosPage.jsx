@@ -8,7 +8,7 @@ export default function PhotosPage({ photos = [], settings = null, lang = 'bn' }
   const [selectedPhoto, setSelectedPhoto] = useState(null)
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
+    (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 font-bengali">

@@ -22,7 +22,7 @@ export default function SEO({
   noindex = false,
 }) {
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
+    (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
   
   const siteTagline = (lang === 'bn' ? settings?.tagline_bn : settings?.tagline_en) ||
     (lang === 'bn' ? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক' : 'Online Edition • Fearless in Pursuit of Truth')
@@ -45,7 +45,7 @@ export default function SEO({
 
   const metaKeywords = Array.isArray(keywords)
     ? keywords.join(', ')
-    : keywords || settings?.meta_keywords_default || 'সংবাদ, বাংলাদেশ, প্রথম কালো, খবর, ব্রেকিং নিউজ, News, Bangladesh, Prothom kalo'
+    : keywords || settings?.meta_keywords_default || 'সংবাদ, বাংলাদেশ, আলোর পথে, খবর, ব্রেকিং নিউজ, News, Bangladesh, Prothom kalo'
 
   const twitterHandle = settings?.twitter_handle || '@ProthomKalo'
 

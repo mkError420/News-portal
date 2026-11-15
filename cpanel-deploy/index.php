@@ -40,7 +40,7 @@ function get_seo_article($slug) {
 }
 
 // Default Fallback Metadata
-$siteNameBn = $settings['site_name_bn'] ?? 'প্রথম কালো';
+$siteNameBn = $settings['site_name_bn'] ?? 'আলোর পথে';
 $siteNameEn = $settings['site_name_en'] ?? 'Prothom kalo';
 $taglineBn = $settings['tagline_bn'] ?? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক';
 $defaultTitle = $siteNameBn . ' | ' . $taglineBn;

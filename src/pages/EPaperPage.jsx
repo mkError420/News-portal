@@ -10,7 +10,7 @@ export default function EPaperPage({ lang = 'bn', settings = null }) {
   const totalPages = 12
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
+    (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
 
   const pages = [
     { page: 1, title: '১ম পাতা - প্রধান শিরোনাম', en: 'Page 1 - Front Page', img: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80' },

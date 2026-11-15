@@ -61,7 +61,7 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
           author_role_en: 'Live Updates',
           image: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
           imageCaption: matchedBreaking.title_bn,
-          imageCredit: (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ? `ছবি: ${(lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en)}` : 'ছবি: প্রথম কালো',
+          imageCredit: (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ? `ছবি: ${(lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en)}` : 'ছবি: আলোর পথে',
           published_at: matchedBreaking.created_at || new Date().toISOString(),
           read_time: '১ মিনিট পাঠ',
           views: 120,
@@ -73,7 +73,7 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
     })()
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
+    (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
 
   // Reader state
   const [fontSizeLevel, setFontSizeLevel] = useState(1) // 0: small, 1: normal, 2: large

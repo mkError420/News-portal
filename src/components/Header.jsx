@@ -389,7 +389,7 @@ export default function Header({
         <div className="p-4 bg-[#1a3a5c] text-white flex items-center justify-between">
           <div>
             <span className="text-xl font-bold tracking-tight text-red-400 block">
-              {(lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) || (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')}
+              {(lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) || (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')}
             </span>
             <span className="text-[11px] text-gray-300">{todayStr}</span>
           </div>

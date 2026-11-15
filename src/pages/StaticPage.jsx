@@ -7,7 +7,7 @@ export default function StaticPage({ lang = 'bn', settings = null }) {
   const path = location.pathname.replace('/', '')
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
+    (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
   const address = (lang === 'bn' ? settings?.address_bn : settings?.address_en) ||
     (lang === 'bn' ? 'প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫, বাংলাদেশ।' : 'Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215, Bangladesh.')
   const phone = settings?.phone || '+৮৮০ ২ ৮১৮০০৭৮-৮১'

@@ -817,7 +817,7 @@ if ($resource === 'rss' || $resource === 'rss.xml' || $resource === 'feed') {
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     echo '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">' . "\n";
     echo '<channel>' . "\n";
-    echo '  <title>প্রথম কালো | Prothom kalo</title>' . "\n";
+    echo '  <title>আলোর পথে | Prothom kalo</title>' . "\n";
     echo '  <link>' . htmlspecialchars($baseUrl) . '</link>' . "\n";
     echo '  <description>অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক</description>' . "\n";
     echo '  <language>bn</language>' . "\n";
@@ -1286,7 +1286,7 @@ if ($resource === 'categories') {
 // ----------------------------------------------------
 if ($resource === 'settings') {
     $defaultSettings = [
-        'site_name_bn' => 'প্রথম কালো',
+        'site_name_bn' => 'আলোর পথে',
         'site_name_en' => 'Prothom kalo',
         'tagline_bn' => 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক',
         'tagline_en' => 'Online Edition • Fearless in Pursuit of Truth',
@@ -1294,7 +1294,7 @@ if ($resource === 'settings') {
         'favicon_url' => '',
         'editor_bn' => 'সম্পাদক ও প্রকাশক: মতিউর রহমান',
         'editor_en' => 'Editor & Publisher: Matiur Rahman',
-        'about_bn' => 'প্রথম কালো বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় বাংলা দৈনিক ও অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।',
+        'about_bn' => 'আলোর পথে বাংলাদেশের সর্বাধিক পঠিত ও জনপ্রিয় বাংলা দৈনিক ও অনলাইন সংবাদমাধ্যম। নিরপেক্ষ ও বস্তুনিষ্ঠ সাংবাদিকতাই আমাদের মূল শক্তি।',
         'about_en' => 'Prothom kalo is the leading and most trusted news publication in Bangladesh, delivering impartial and accurate news 24/7.',
         'address_bn' => 'প্রগতি ইনস্যুরেন্স ভবন, ২০-২১ কারওয়ান বাজার, ঢাকা ১২১৫, বাংলাদেশ',
         'address_en' => 'Pragati Insurance Bhaban, 20-21 Karwan Bazar, Dhaka 1215, Bangladesh',
@@ -1306,7 +1306,7 @@ if ($resource === 'settings') {
         'youtube_url' => 'https://youtube.com/c/ProthomKalo',
         'instagram_url' => 'https://instagram.com/prothomkalo',
         'linkedin_url' => 'https://linkedin.com/company/prothom-kalo',
-        'copyright_bn' => 'স্বত্ব © ২০২৬ প্রথম কালো | সর্বস্বত্ব সংরক্ষিত।',
+        'copyright_bn' => 'স্বত্ব © ২০২৬ আলোর পথে | সর্বস্বত্ব সংরক্ষিত।',
         'copyright_en' => 'Copyright © 2026 Prothom kalo | All rights reserved.',
         'edition_bn' => 'বাংলাদেশ',
         'edition_en' => 'Bangladesh',
@@ -1321,7 +1321,7 @@ if ($resource === 'settings') {
         'google_site_verification' => '',
         'bing_site_verification' => '',
         'canonical_base_url' => '',
-        'meta_keywords_default' => 'সংবাদ, বাংলাদেশ, প্রথম কালো, খবর, ব্রেকিং নিউজ, News, Bangladesh, Prothom kalo',
+        'meta_keywords_default' => 'সংবাদ, বাংলাদেশ, আলোর পথে, খবর, ব্রেকিং নিউজ, News, Bangladesh, Prothom kalo',
         'og_image_default' => '',
     ];
 

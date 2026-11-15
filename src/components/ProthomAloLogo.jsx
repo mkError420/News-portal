@@ -4,7 +4,7 @@ export default function ProthomAloLogo({ lang = 'bn', size = 'default', settings
   const isSmall = size === 'small'
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
+    (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
   const tagline = (lang === 'bn' ? settings?.tagline_bn : settings?.tagline_en) ||
     (lang === 'bn' ? 'অনলাইন সংস্করণ • সত্যের সন্ধানে নির্ভীক' : 'Online Edition • Fearless in Pursuit of Truth')
   const customLogoUrl = settings?.logo_url?.trim()

@@ -9,7 +9,7 @@ export default function Footer({ lang = 'bn', settings = null, categories = [] }
   const t = UI_TEXT[lang] || UI_TEXT.bn
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
-    (lang === 'bn' ? 'প্রথম কালো' : 'Prothom kalo')
+    (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
 
   const isBengali = (str) => typeof str === 'string' && /[\u0980-\u09FF]/.test(str)
 
