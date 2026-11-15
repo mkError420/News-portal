@@ -18,6 +18,7 @@ import SectionHeader from '../components/SectionHeader.jsx'
 import AdBanner from '../components/AdBanner.jsx'
 import SEO from '../components/SEO.jsx'
 import CurrencyWidget from '../components/CurrencyWidget.jsx'
+import PrayerTimesWidget from '../components/PrayerTimesWidget.jsx'
 import { PRAYER_TIMES, CURRENCY_RATES, formatRelativeTime } from '../utils.js'
 
 export default function HomePage({
@@ -532,34 +533,8 @@ export default function HomePage({
             </Link>
           </div>
 
-          {/* Widget 4: নামাজের সময়সূচি ও আবহাওয়া (Prayer Times & Weather) */}
-          <div className="bg-white p-4 rounded border border-gray-200 shadow-sm text-xs">
-            <div className="border-b pb-2 mb-3 flex items-center justify-between">
-              <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
-                <CloudSun size={16} className="text-orange-500" />
-                <span>{lang === 'bn' ? 'নামাজের সময়সূচি' : 'Prayer Times'}</span>
-              </h4>
-              <span className="text-gray-400 font-medium">ঢাকা</span>
-            </div>
-
-            <div className="grid grid-cols-5 gap-1 text-center bg-gray-50 p-2 rounded">
-              {PRAYER_TIMES.map((p) => (
-                <div key={p.id} className="p-1">
-                  <span className="block text-gray-500 text-[10px] font-semibold">
-                    {lang === 'bn' ? p.bn : p.en}
-                  </span>
-                  <span className="font-bold text-gray-900 text-xs mt-0.5 block">
-                    {p.time}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-gray-600">
-              <span>{lang === 'bn' ? 'আজকের তাপমাত্রা:' : 'Temperature:'}</span>
-              <span className="font-bold text-gray-900">২৭° সে. (আংশিক মেঘলা)</span>
-            </div>
-          </div>
+          {/* Widget 4: নামাজের সময়সূচি ও আবহাওয়া (Prayer Times & Weather - Dynamic & Multi-Division) */}
+          <PrayerTimesWidget lang={lang} />
 
           {/* Widget 5: পাঠক জরিপ / Online Poll */}
           <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
