@@ -197,6 +197,9 @@ function auto_migrate_all_tables(PDO $pdo): void
 
     // 5. Roles & Staff
     auto_migrate_roles_and_staff($pdo);
+
+    // 6. Reader Polls (পাঠক জরিপ)
+    auto_migrate_polls($pdo);
 }
 
 function auto_migrate_seo(PDO $pdo): void
@@ -506,6 +509,87 @@ function auto_migrate_roles_and_staff(PDO $pdo): void
     } catch (Throwable $e) {}
 }
 
+function auto_migrate_polls(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `polls` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `question_bn` VARCHAR(500) NOT NULL,
+            `question_en` VARCHAR(500) NOT NULL DEFAULT '',
+            `options` JSON NOT NULL,
+            `total_votes` INT NOT NULL DEFAULT 0,
+            `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pollCount = (int) $pdo->query('SELECT COUNT(*) FROM polls')->fetchColumn();
+        if ($pollCount === 0) {
+            $insPoll = $pdo->prepare("INSERT INTO `polls` (`question_bn`, `question_en`, `options`, `total_votes`, `status`) VALUES (?, ?, ?, ?, ?)");
+            $defaultOptions = [
+                ['id' => 'yes', 'label_bn' => 'হ্যাঁ', 'label_en' => 'Yes', 'votes' => 158],
+                ['id' => 'no', 'label_bn' => 'না', 'label_en' => 'No', 'votes' => 37],
+                ['id' => 'no_opinion', 'label_bn' => 'মন্তব্য নেই', 'label_en' => 'No Opinion', 'votes' => 13],
+            ];
+            $insPoll->execute([
+                'আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?',
+                'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?',
+                json_encode($defaultOptions, JSON_UNESCAPED_UNICODE),
+                208,
+                'active'
+            ]);
+        }
+    } catch (Throwable $e) {}
+}
+
+function format_poll_item(array $row): array
+{
+    $options = $row['options'] ?? [];
+    if (is_string($options)) {
+        $options = json_decode($options, true);
+    }
+    if (!is_array($options)) {
+        $options = [];
+    }
+    $totalVotes = (int) ($row['total_votes'] ?? 0);
+    $sum = 0;
+    foreach ($options as $opt) {
+        $sum += (int) ($opt['votes'] ?? 0);
+    }
+    if ($totalVotes < $sum) {
+        $totalVotes = $sum;
+    }
+
+    $formattedOptions = [];
+    foreach ($options as $idx => $opt) {
+        $v = (int) ($opt['votes'] ?? 0);
+        $percent = $totalVotes > 0 ? round(($v / $totalVotes) * 100, 1) : 0;
+        $formattedOptions[] = [
+            'id' => (string) ($opt['id'] ?? ('opt_' . ($idx + 1))),
+            'label_bn' => (string) ($opt['label_bn'] ?? ''),
+            'label_en' => (string) ($opt['label_en'] ?? ''),
+            'votes' => $v,
+            'percent' => $percent,
+        ];
+    }
+
+    return [
+        'id' => (int) $row['id'],
+        'question_bn' => (string) ($row['question_bn'] ?? ''),
+        'question_en' => (string) ($row['question_en'] ?? ''),
+        'options' => $formattedOptions,
+        'total_votes' => $totalVotes,
+        'status' => (string) ($row['status'] ?? 'active'),
+        'created_at' => (string) ($row['created_at'] ?? ''),
+        'updated_at' => (string) ($row['updated_at'] ?? ''),
+    ];
+}
+
+
 function get_auth_token(): string
 {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
@@ -635,6 +719,10 @@ if ($apiIndex === false) {
     }
 } else {
     $resource = $segments[$apiIndex + 1] ?? null;
+    $subResource = $segments[$apiIndex + 2] ?? null;
+}
+if (!isset($subResource)) {
+    $subResource = null;
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -2586,6 +2674,343 @@ if ($resource === 'currency') {
 }
 
 // ----------------------------------------------------
+// ROUTE: /api/poll & /api/polls (Dynamic Reader Poll - পাঠক জরিপ)
+// ----------------------------------------------------
+if ($resource === 'poll' || $resource === 'polls') {
+    $dbConn = db();
+    if ($dbConn) {
+        auto_migrate_polls($dbConn);
+    }
+
+    $cacheDir = __DIR__ . '/../cache';
+    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+    $cacheFile = $cacheDir . '/poll.json';
+
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true) ?: $_POST;
+
+    // 1. Voting Endpoint: POST /api/poll/vote or POST /api/poll with action=vote or option_id present (and not poll creation)
+    $isVoteAction = ($method === 'POST') && (
+        $subResource === 'vote' ||
+        (isset($_GET['action']) && $_GET['action'] === 'vote') ||
+        (isset($input['action']) && $input['action'] === 'vote') ||
+        (isset($input['option_id']) && !isset($input['question_bn']) && !isset($input['question']))
+    );
+
+    if ($isVoteAction) {
+        $pollId = (int) ($input['poll_id'] ?? ($_GET['poll_id'] ?? 0));
+        $optionId = trim((string) ($input['option_id'] ?? ''));
+
+        if ($optionId === '') {
+            json_response(['success' => false, 'message' => 'একটি বিকল্প নির্বাচন করুন।'], 400);
+        }
+
+        if ($dbConn) {
+            try {
+                if ($pollId > 0) {
+                    $stmt = $dbConn->prepare("SELECT * FROM polls WHERE id = ? LIMIT 1");
+                    $stmt->execute([$pollId]);
+                    $poll = $stmt->fetch();
+                } else {
+                    $poll = $dbConn->query("SELECT * FROM polls WHERE status = 'active' ORDER BY id DESC LIMIT 1")->fetch();
+                }
+
+                if (!$poll) {
+                    $poll = $dbConn->query("SELECT * FROM polls ORDER BY id DESC LIMIT 1")->fetch();
+                }
+
+                if ($poll) {
+                    if ($poll['status'] === 'closed') {
+                        json_response(['success' => false, 'message' => 'এই পাঠক জরিপটি সমাপ্ত হয়েছে।'], 400);
+                    }
+
+                    $opts = is_string($poll['options']) ? json_decode($poll['options'], true) : $poll['options'];
+                    if (!is_array($opts)) $opts = [];
+                    $found = false;
+                    foreach ($opts as &$o) {
+                        if ((string) ($o['id'] ?? '') === $optionId) {
+                            $o['votes'] = ((int) ($o['votes'] ?? 0)) + 1;
+                            $found = true;
+                            break;
+                        }
+                    }
+                    unset($o);
+
+                    if (!$found && is_numeric($optionId) && isset($opts[(int) $optionId])) {
+                        $idx = (int) $optionId;
+                        $opts[$idx]['votes'] = ((int) ($opts[$idx]['votes'] ?? 0)) + 1;
+                        $found = true;
+                    }
+
+                    $newTotal = ((int) ($poll['total_votes'] ?? 0)) + 1;
+                    $upStmt = $dbConn->prepare("UPDATE polls SET options = ?, total_votes = ?, updated_at = NOW() WHERE id = ?");
+                    $upStmt->execute([json_encode($opts, JSON_UNESCAPED_UNICODE), $newTotal, $poll['id']]);
+
+                    $fStmt = $dbConn->prepare("SELECT * FROM polls WHERE id = ? LIMIT 1");
+                    $fStmt->execute([$poll['id']]);
+                    $updated = $fStmt->fetch();
+                    $formatted = format_poll_item($updated);
+
+                    @file_put_contents($cacheFile, json_encode($formatted, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+                    json_response([
+                        'success' => true,
+                        'message' => 'আপনার মতামত সফলভাবে গৃহীত হয়েছে!',
+                        'poll' => $formatted
+                    ]);
+                }
+            } catch (Throwable $e) {}
+        }
+
+        // Cache fallback if DB offline
+        $cached = file_exists($cacheFile) ? json_decode(file_get_contents($cacheFile), true) : null;
+        if (!$cached) {
+            $cached = [
+                'id' => 1,
+                'question_bn' => 'আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?',
+                'question_en' => 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?',
+                'options' => [
+                    ['id' => 'yes', 'label_bn' => 'হ্যাঁ', 'label_en' => 'Yes', 'votes' => 158, 'percent' => 76.0],
+                    ['id' => 'no', 'label_bn' => 'না', 'label_en' => 'No', 'votes' => 37, 'percent' => 17.8],
+                    ['id' => 'no_opinion', 'label_bn' => 'মন্তব্য নেই', 'label_en' => 'No Opinion', 'votes' => 13, 'percent' => 6.2]
+                ],
+                'total_votes' => 208,
+                'status' => 'active',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+        }
+
+        if ($cached && isset($cached['options'])) {
+            $found = false;
+            foreach ($cached['options'] as &$o) {
+                if ((string) ($o['id'] ?? '') === $optionId) {
+                    $o['votes'] = ((int) ($o['votes'] ?? 0)) + 1;
+                    $found = true;
+                    break;
+                }
+            }
+            unset($o);
+
+            if (!$found && is_numeric($optionId) && isset($cached['options'][(int) $optionId])) {
+                $idx = (int) $optionId;
+                $cached['options'][$idx]['votes'] = ((int) ($cached['options'][$idx]['votes'] ?? 0)) + 1;
+                $found = true;
+            }
+
+            $cached['total_votes'] = ((int) ($cached['total_votes'] ?? 0)) + 1;
+            foreach ($cached['options'] as &$o) {
+                $o['percent'] = $cached['total_votes'] > 0 ? round(($o['votes'] / $cached['total_votes']) * 100, 1) : 0;
+            }
+            unset($o);
+            @file_put_contents($cacheFile, json_encode($cached, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            json_response([
+                'success' => true,
+                'message' => 'আপনার মতামত সফলভাবে গৃহীত হয়েছে!',
+                'poll' => $cached
+            ]);
+        }
+
+        json_response(['success' => false, 'message' => 'জরিপ পাওয়া যায়নি।'], 404);
+    }
+
+    // 2. GET: Get Active Poll or All Polls
+    if ($method === 'GET') {
+        $pollId = (int) ($_GET['id'] ?? 0);
+        $fetchAll = isset($_GET['all']) || isset($_GET['list']);
+
+        if ($dbConn) {
+            try {
+                $allRows = $dbConn->query("SELECT * FROM polls ORDER BY id DESC")->fetchAll();
+                $formattedAll = array_map('format_poll_item', $allRows);
+
+                if ($fetchAll) {
+                    json_response([
+                        'success' => true,
+                        'polls' => $formattedAll
+                    ]);
+                }
+
+                if ($pollId > 0) {
+                    $single = null;
+                    foreach ($formattedAll as $p) {
+                        if ($p['id'] === $pollId) { $single = $p; break; }
+                    }
+                    if ($single) {
+                        json_response(['success' => true, 'poll' => $single]);
+                    }
+                }
+
+                $active = null;
+                foreach ($formattedAll as $p) {
+                    if ($p['status'] === 'active') {
+                        $active = $p;
+                        break;
+                    }
+                }
+                if (!$active && !empty($formattedAll)) {
+                    $active = $formattedAll[0];
+                }
+
+                if ($active) {
+                    @file_put_contents($cacheFile, json_encode($active, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                }
+
+                json_response([
+                    'success' => true,
+                    'poll' => $active,
+                    'polls' => $formattedAll
+                ]);
+            } catch (Throwable $e) {}
+        }
+
+        // Cache fallback
+        $cached = file_exists($cacheFile) ? json_decode(file_get_contents($cacheFile), true) : null;
+        if ($cached) {
+            json_response([
+                'success' => true,
+                'poll' => $cached,
+                'polls' => [$cached]
+            ]);
+        }
+
+        $def = [
+            'id' => 1,
+            'question_bn' => 'আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?',
+            'question_en' => 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?',
+            'options' => [
+                ['id' => 'yes', 'label_bn' => 'হ্যাঁ', 'label_en' => 'Yes', 'votes' => 158, 'percent' => 76.0],
+                ['id' => 'no', 'label_bn' => 'না', 'label_en' => 'No', 'votes' => 37, 'percent' => 17.8],
+                ['id' => 'no_opinion', 'label_bn' => 'মন্তব্য নেই', 'label_en' => 'No Opinion', 'votes' => 13, 'percent' => 6.2]
+            ],
+            'total_votes' => 208,
+            'status' => 'active',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+        json_response(['success' => true, 'poll' => $def, 'polls' => [$def]]);
+    }
+
+    // 3. POST: Admin Create or Update Poll
+    if ($method === 'POST') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($input['id'] ?? 0);
+        $qBn = trim((string) ($input['question_bn'] ?? ($input['question'] ?? '')));
+        $qEn = trim((string) ($input['question_en'] ?? ''));
+        $status = in_array($input['status'] ?? '', ['active', 'closed'], true) ? $input['status'] : 'active';
+        $resetVotes = !empty($input['reset_votes']);
+
+        if ($qBn === '' && $qEn === '') {
+            json_response(['success' => false, 'message' => 'জরিপের প্রশ্ন বাংলায় বা ইংরেজিতে লিখুন।'], 400);
+        }
+        if ($qBn === '') $qBn = $qEn;
+        if ($qEn === '') $qEn = $qBn;
+
+        $rawOpts = $input['options'] ?? [];
+        if (!is_array($rawOpts) || empty($rawOpts)) {
+            $rawOpts = [
+                ['id' => 'yes', 'label_bn' => 'হ্যাঁ', 'label_en' => 'Yes'],
+                ['id' => 'no', 'label_bn' => 'না', 'label_en' => 'No'],
+                ['id' => 'no_opinion', 'label_bn' => 'মন্তব্য নেই', 'label_en' => 'No Opinion']
+            ];
+        }
+
+        $cleanedOpts = [];
+        $totalVotes = 0;
+        foreach ($rawOpts as $idx => $opt) {
+            $optId = trim((string) ($opt['id'] ?? ('opt_' . ($idx + 1))));
+            $lblBn = trim((string) ($opt['label_bn'] ?? ($opt['label'] ?? '')));
+            $lblEn = trim((string) ($opt['label_en'] ?? ''));
+            if ($lblBn === '' && $lblEn === '') continue;
+            if ($lblBn === '') $lblBn = $lblEn;
+            if ($lblEn === '') $lblEn = $lblBn;
+            $votes = $resetVotes ? 0 : (int) ($opt['votes'] ?? 0);
+            $totalVotes += $votes;
+            $cleanedOpts[] = [
+                'id' => $optId,
+                'label_bn' => $lblBn,
+                'label_en' => $lblEn,
+                'votes' => $votes
+            ];
+        }
+
+        if (count($cleanedOpts) < 2) {
+            json_response(['success' => false, 'message' => 'কমপক্ষে ২টি বিকল্প (Options) যুক্ত করুন।'], 400);
+        }
+
+        $dbConn = require_db();
+        auto_migrate_polls($dbConn);
+
+        if ($status === 'active') {
+            try {
+                if ($id > 0) {
+                    $dbConn->prepare("UPDATE polls SET status = 'closed' WHERE id != ?")->execute([$id]);
+                } else {
+                    $dbConn->exec("UPDATE polls SET status = 'closed'");
+                }
+            } catch (Throwable $e) {}
+        }
+
+        $optsJson = json_encode($cleanedOpts, JSON_UNESCAPED_UNICODE);
+
+        if ($id > 0) {
+            if ($resetVotes) {
+                $stmt = $dbConn->prepare("UPDATE polls SET question_bn = ?, question_en = ?, options = ?, total_votes = 0, status = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$qBn, $qEn, $optsJson, $status, $id]);
+            } else {
+                $stmt = $dbConn->prepare("UPDATE polls SET question_bn = ?, question_en = ?, options = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$qBn, $qEn, $optsJson, $status, $id]);
+            }
+            $targetId = $id;
+        } else {
+            $stmt = $dbConn->prepare("INSERT INTO polls (question_bn, question_en, options, total_votes, status) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$qBn, $qEn, $optsJson, $totalVotes, $status]);
+            $targetId = (int) $dbConn->lastInsertId();
+        }
+
+        $fStmt = $dbConn->prepare("SELECT * FROM polls WHERE id = ? LIMIT 1");
+        $fStmt->execute([$targetId]);
+        $saved = $fStmt->fetch();
+        $formatted = format_poll_item($saved);
+
+        $allRows = $dbConn->query("SELECT * FROM polls ORDER BY id DESC")->fetchAll();
+        $allFormatted = array_map('format_poll_item', $allRows);
+
+        @file_put_contents($cacheFile, json_encode($formatted, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        json_response([
+            'success' => true,
+            'message' => $id > 0 ? 'পাঠক জরিপ সফলভাবে আপডেট হয়েছে!' : 'নতুন পাঠক জরিপ সফলভাবে তৈরি হয়েছে!',
+            'poll' => $formatted,
+            'polls' => $allFormatted
+        ]);
+    }
+
+    // 4. DELETE: Delete Poll
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? ($input['id'] ?? 0));
+
+        if ($id <= 0) {
+            json_response(['success' => false, 'message' => 'জরিপ আইডি পাওয়া যায়নি।'], 400);
+        }
+
+        $dbConn = require_db();
+        $stmt = $dbConn->prepare("DELETE FROM polls WHERE id = ?");
+        $stmt->execute([$id]);
+
+        $allRows = $dbConn->query("SELECT * FROM polls ORDER BY id DESC")->fetchAll();
+        $allFormatted = array_map('format_poll_item', $allRows);
+
+        json_response([
+            'success' => true,
+            'message' => 'পাঠক জরিপ সফলভাবে মুছে ফেলা হয়েছে।',
+            'polls' => $allFormatted
+        ]);
+    }
+}
+
+// ----------------------------------------------------
 // ROUTE: GET /api/stats
 // ----------------------------------------------------
 if ($resource === 'stats' && $method === 'GET') {
@@ -2593,6 +3018,7 @@ if ($resource === 'stats' && $method === 'GET') {
     $dbConn = require_db();
     auto_migrate_media_and_opinions($dbConn);
     auto_migrate_roles_and_staff($dbConn);
+    auto_migrate_polls($dbConn);
 
     $totalArticles = (int) $dbConn->query('SELECT COUNT(*) FROM articles')->fetchColumn();
     $totalViews = (int) $dbConn->query('SELECT COALESCE(SUM(views), 0) FROM articles')->fetchColumn();
@@ -2605,6 +3031,8 @@ if ($resource === 'stats' && $method === 'GET') {
     $totalVideos = (int) $dbConn->query('SELECT COUNT(*) FROM videos')->fetchColumn();
     $totalRoles = (int) $dbConn->query('SELECT COUNT(*) FROM roles')->fetchColumn();
     $totalStaff = (int) $dbConn->query('SELECT COUNT(*) FROM admins')->fetchColumn();
+    $totalPolls = (int) $dbConn->query('SELECT COUNT(*) FROM polls')->fetchColumn();
+    $totalPollVotes = (int) $dbConn->query('SELECT COALESCE(SUM(total_votes), 0) FROM polls')->fetchColumn();
 
     json_response([
         'totalArticles' => $totalArticles,
@@ -2616,6 +3044,8 @@ if ($resource === 'stats' && $method === 'GET') {
         'totalVideos' => $totalVideos,
         'totalRoles' => $totalRoles,
         'totalStaff' => $totalStaff,
+        'totalPolls' => $totalPolls,
+        'totalPollVotes' => $totalPollVotes,
     ]);
 }
 

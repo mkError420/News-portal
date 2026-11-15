@@ -19,6 +19,7 @@ import AdBanner from '../components/AdBanner.jsx'
 import SEO from '../components/SEO.jsx'
 import CurrencyWidget from '../components/CurrencyWidget.jsx'
 import PrayerTimesWidget from '../components/PrayerTimesWidget.jsx'
+import ReaderPollWidget from '../components/ReaderPollWidget.jsx'
 import { PRAYER_TIMES, CURRENCY_RATES, formatRelativeTime } from '../utils.js'
 
 export default function HomePage({
@@ -536,84 +537,8 @@ export default function HomePage({
           {/* Widget 4: নামাজের সময়সূচি ও আবহাওয়া (Prayer Times & Weather - Dynamic & Multi-Division) */}
           <PrayerTimesWidget lang={lang} />
 
-          {/* Widget 5: পাঠক জরিপ / Online Poll */}
-          <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-1.5 border-b pb-2 mb-3 text-red-600">
-              <Vote size={18} />
-              <h4 className="font-bold text-sm text-gray-900">
-                {lang === 'bn' ? 'পাঠক জরিপ' : 'Reader Poll'}
-              </h4>
-            </div>
-            <p className="text-xs font-semibold text-gray-800 leading-relaxed mb-3">
-              {lang === 'bn'
-                ? 'আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?'
-                : 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?'}
-            </p>
-
-            {!pollVoted ? (
-              <form onSubmit={handleVote} className="space-y-2 text-xs">
-                {['হ্যাঁ', 'না', 'মন্তব্য নেই'].map((opt, i) => {
-                  const optEn = ['Yes', 'No', 'No Opinion'][i]
-                  return (
-                    <label key={i} className="flex items-center gap-2 p-2 rounded border border-gray-100 hover:bg-gray-50 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="poll"
-                        value={i}
-                        checked={selectedOption === i}
-                        onChange={() => setSelectedOption(i)}
-                        className="text-red-600 focus:ring-red-500"
-                      />
-                      <span>{lang === 'bn' ? opt : optEn}</span>
-                    </label>
-                  )
-                })}
-                <button
-                  type="submit"
-                  disabled={selectedOption === null}
-                  className="w-full mt-2 bg-[#e30613] disabled:opacity-50 text-white font-bold py-1.5 rounded transition-colors text-xs"
-                >
-                  {lang === 'bn' ? 'ভোট দিন' : 'Vote'}
-                </button>
-              </form>
-            ) : (
-              <div className="space-y-2 text-xs">
-                <div className="p-2 bg-green-50 text-green-800 rounded font-semibold flex items-center gap-1.5">
-                  <CheckCircle2 size={15} />
-                  <span>{lang === 'bn' ? 'আপনার মতামত গৃহীত হয়েছে!' : 'Thank you for voting!'}</span>
-                </div>
-                <div className="space-y-1.5 pt-1">
-                  <div>
-                    <div className="flex justify-between text-[11px] mb-0.5">
-                      <span>{lang === 'bn' ? 'হ্যাঁ' : 'Yes'}</span>
-                      <span className="font-bold">৭৬%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                      <div className="bg-green-600 h-full w-[76%]"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px] mb-0.5">
-                      <span>{lang === 'bn' ? 'না' : 'No'}</span>
-                      <span className="font-bold">১৮%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                      <div className="bg-red-600 h-full w-[18%]"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px] mb-0.5">
-                      <span>{lang === 'bn' ? 'মন্তব্য নেই' : 'No opinion'}</span>
-                      <span className="font-bold">৬%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                      <div className="bg-gray-400 h-full w-[6%]"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Widget 5: পাঠক জরিপ / Online Poll (Dynamic from Admin & Database) */}
+          <ReaderPollWidget lang={lang} />
 
           {/* Widget 6: Half Page Ad (300x600) */}
           <AdBanner size="halfpage" lang={lang} settings={settings} />

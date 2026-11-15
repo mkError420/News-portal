@@ -1,0 +1,32 @@
+{
+    "id": 1,
+    "question_bn": "আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?",
+    "question_en": "Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?",
+    "options": [
+        {
+            "id": "yes",
+            "label_bn": "হ্যাঁ",
+            "label_en": "Yes",
+            "votes": 159,
+            "percent": 76.1
+        },
+        {
+            "id": "no",
+            "label_bn": "না",
+            "label_en": "No",
+            "votes": 37,
+            "percent": 17.7
+        },
+        {
+            "id": "no_opinion",
+            "label_bn": "মন্তব্য নেই",
+            "label_en": "No Opinion",
+            "votes": 13,
+            "percent": 6.2
+        }
+    ],
+    "total_votes": 209,
+    "status": "active",
+    "created_at": "2026-11-15 08:06:19",
+    "updated_at": "2026-11-15 08:06:19"
+}

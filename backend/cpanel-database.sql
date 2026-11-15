@@ -380,3 +380,20 @@ INSERT INTO currency_rates (currency, name_bn, name_en, symbol, flag, buy, sell,
 ('INR', 'ভারতীয় রুপি', 'Indian Rupee', '₹', '🇮🇳', 1.42, 1.46, '0.00', 'neutral'),
 ('GOLD', 'স্বর্ণ (২২ ক্যারেট ভরি)', 'Gold (22K Bhori)', 'Au', '🪙', 138500, 142000, '+650', 'up')
 ON DUPLICATE KEY UPDATE buy = VALUES(buy), sell = VALUES(sell);
+
+-- 10. Polls Table (পাঠক জরিপ)
+DROP TABLE IF EXISTS polls;
+CREATE TABLE polls (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question_bn VARCHAR(500) NOT NULL,
+  question_en VARCHAR(500) NOT NULL DEFAULT '',
+  options JSON NOT NULL,
+  total_votes INT NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO polls (question_bn, question_en, options, total_votes, status) VALUES
+('আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?', 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?', '[{"id":"yes","label_bn":"হ্যাঁ","label_en":"Yes","votes":158},{"id":"no","label_bn":"না","label_en":"No","votes":37},{"id":"no_opinion","label_bn":"মন্তব্য নেই","label_en":"No Opinion","votes":13}]', 208, 'active');
+

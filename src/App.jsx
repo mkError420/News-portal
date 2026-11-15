@@ -79,6 +79,8 @@ export default function App() {
         api.getVideos(),
         api.getRoles(),
         api.getStaff(),
+        api.getPoll(),
+        api.getPolls(),
       ])
       if (!active) return
 
@@ -113,6 +115,12 @@ export default function App() {
       }
       if (results[8].status === 'fulfilled' && Array.isArray(results[8].value) && results[8].value.length > 0) {
         updates.staff = results[8].value
+      }
+      if (results[9].status === 'fulfilled' && results[9].value && typeof results[9].value === 'object') {
+        updates.poll = results[9].value
+      }
+      if (results[10].status === 'fulfilled' && Array.isArray(results[10].value) && results[10].value.length > 0) {
+        updates.polls = results[10].value
       }
 
       setNewsData((prev) => {

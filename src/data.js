@@ -589,6 +589,19 @@ export const defaultSiteSettings = {
   og_image_default: '',
 }
 
+export const defaultPoll = {
+  id: 1,
+  question_bn: 'আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?',
+  question_en: 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?',
+  options: [
+    { id: 'yes', label_bn: 'হ্যাঁ', label_en: 'Yes', votes: 158, percent: 76.0 },
+    { id: 'no', label_bn: 'না', label_en: 'No', votes: 37, percent: 17.8 },
+    { id: 'no_opinion', label_bn: 'মন্তব্য নেই', label_en: 'No Opinion', votes: 13, percent: 6.2 },
+  ],
+  total_votes: 208,
+  status: 'active',
+}
+
 export const defaultData = {
   breakingNews,
   articles,
@@ -597,4 +610,6 @@ export const defaultData = {
   videos,
   categories: initialCategories,
   settings: defaultSiteSettings,
+  poll: defaultPoll,
+  polls: [defaultPoll],
 }

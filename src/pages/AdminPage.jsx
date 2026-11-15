@@ -58,6 +58,8 @@ import {
   Type,
   ImagePlus,
   Upload,
+  Vote,
+  BarChart2,
 } from 'lucide-react'
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
@@ -1432,6 +1434,168 @@ export default function AdminPage({
     }
   }
 
+  // --- Reader Poll (পাঠক জরিপ) State & Handlers ---
+  const emptyPollForm = {
+    id: null,
+    question_bn: '',
+    question_en: '',
+    options: [
+      { id: 'yes', label_bn: 'হ্যাঁ', label_en: 'Yes', votes: 0 },
+      { id: 'no', label_bn: 'না', label_en: 'No', votes: 0 },
+      { id: 'no_opinion', label_bn: 'মন্তব্য নেই', label_en: 'No Opinion', votes: 0 },
+    ],
+    status: 'active',
+    reset_votes: false,
+  }
+  const [polls, setPolls] = useState([])
+  const [pollForm, setPollForm] = useState(emptyPollForm)
+  const [editingPollId, setEditingPollId] = useState(null)
+  const [pollLoading, setPollLoading] = useState(false)
+  const [pollSubmitting, setPollSubmitting] = useState(false)
+
+  const refreshPolls = async () => {
+    setPollLoading(true)
+    try {
+      const data = await api.getPolls()
+      if (Array.isArray(data)) {
+        setPolls(data)
+      }
+    } catch (err) {
+      console.warn('Failed to load polls:', err)
+    } finally {
+      setPollLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshPolls()
+  }, [])
+
+  const activePoll = useMemo(() => {
+    return polls.find((p) => p.status === 'active') || polls[0] || null
+  }, [polls])
+
+  const handleAddPollOption = () => {
+    setPollForm((prev) => ({
+      ...prev,
+      options: [
+        ...prev.options,
+        { id: `opt_${Date.now()}`, label_bn: '', label_en: '', votes: 0 },
+      ],
+    }))
+  }
+
+  const handleRemovePollOption = (idx) => {
+    if (pollForm.options.length <= 2) {
+      alert(lang === 'bn' ? 'কমপক্ষে ২টি বিকল্প থাকতে হবে।' : 'At least 2 options are required.')
+      return
+    }
+    setPollForm((prev) => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== idx),
+    }))
+  }
+
+  const handlePollOptionChange = (idx, field, value) => {
+    setPollForm((prev) => {
+      const newOpts = [...prev.options]
+      newOpts[idx] = { ...newOpts[idx], [field]: value }
+      return { ...prev, options: newOpts }
+    })
+  }
+
+  const handlePollSubmit = async (e) => {
+    e.preventDefault()
+    if (!pollForm.question_bn.trim() && !pollForm.question_en.trim()) {
+      alert(lang === 'bn' ? 'দয়া করে জরিপের প্রশ্ন লিখুন।' : 'Please enter poll question.')
+      return
+    }
+
+    const validOptions = pollForm.options.filter((opt) => opt.label_bn.trim() || opt.label_en.trim())
+    if (validOptions.length < 2) {
+      alert(lang === 'bn' ? 'কমপক্ষে ২টি বিকল্পের নাম লিখুন।' : 'Please enter labels for at least 2 options.')
+      return
+    }
+
+    setPollSubmitting(true)
+    try {
+      const payload = {
+        ...pollForm,
+        id: editingPollId,
+        options: validOptions,
+      }
+      const res = await api.savePoll(payload)
+      if (res?.polls) {
+        setPolls(res.polls)
+      } else {
+        await refreshPolls()
+      }
+      triggerToast(editingPollId ? (lang === 'bn' ? 'পাঠক জরিপ আপডেট হয়েছে!' : 'Poll updated!') : (lang === 'bn' ? 'নতুন পাঠক জরিপ তৈরি হয়েছে!' : 'New poll created!'))
+      setPollForm(emptyPollForm)
+      setEditingPollId(null)
+    } catch (err) {
+      alert(lang === 'bn' ? 'জরিপ সংরক্ষণ করতে সমস্যা হয়েছে: ' + (err.message || 'Error') : 'Error saving poll: ' + (err.message || 'Error'))
+    } finally {
+      setPollSubmitting(false)
+    }
+  }
+
+  const handleEditPollClick = (p) => {
+    setEditingPollId(p.id)
+    setPollForm({
+      id: p.id,
+      question_bn: p.question_bn || '',
+      question_en: p.question_en || '',
+      options: Array.isArray(p.options) && p.options.length >= 2 ? p.options : emptyPollForm.options,
+      status: p.status || 'active',
+      reset_votes: false,
+    })
+    const elem = document.getElementById('poll-form-card')
+    if (elem) elem.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleTogglePollStatus = async (p) => {
+    const newStatus = p.status === 'active' ? 'closed' : 'active'
+    try {
+      const res = await api.savePoll({ ...p, status: newStatus })
+      if (res?.polls) setPolls(res.polls)
+      else await refreshPolls()
+      triggerToast(newStatus === 'active' ? (lang === 'bn' ? 'জরিপটি সক্রিয় করা হয়েছে!' : 'Poll activated!') : (lang === 'bn' ? 'জরিপটি বন্ধ করা হয়েছে!' : 'Poll closed!'))
+    } catch (err) {
+      alert(lang === 'bn' ? 'স্ট্যাটাস পরিবর্তনে সমস্যা: ' + err.message : 'Error changing status: ' + err.message)
+    }
+  }
+
+  const handleResetPollVotes = async (p) => {
+    if (confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে "${p.question_bn}" জরিপের সমস্ত ভোট সংখ্যা শূন্য (০) করতে চান?` : `Reset votes for "${p.question_bn}"?`)) {
+      try {
+        const res = await api.savePoll({ ...p, reset_votes: true })
+        if (res?.polls) setPolls(res.polls)
+        else await refreshPolls()
+        triggerToast(lang === 'bn' ? 'ভোট সংখ্যা সফলভাবে রিসেট হয়েছে!' : 'Votes reset successfully!')
+      } catch (err) {
+        alert(lang === 'bn' ? 'ভোট রিসেটে সমস্যা: ' + err.message : 'Error resetting votes: ' + err.message)
+      }
+    }
+  }
+
+  const handleDeletePollClick = async (p) => {
+    if (polls.length <= 1) {
+      alert(lang === 'bn' ? 'একমাত্র জরিপটি মুছে ফেলা সম্ভব নয়।' : 'Cannot delete the only poll.')
+      return
+    }
+    if (confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে এই জরিপটি মুছে ফেলতে চান?\n"${p.question_bn}"` : `Delete poll "${p.question_bn}"?`)) {
+      try {
+        const res = await api.deletePoll(p.id)
+        if (res?.polls) setPolls(res.polls)
+        else setPolls((prev) => prev.filter((item) => item.id !== p.id))
+        triggerToast(lang === 'bn' ? 'জরিপ মুছে ফেলা হয়েছে।' : 'Poll deleted.', 'info')
+      } catch (err) {
+        alert(lang === 'bn' ? 'জরিপ মুছতে সমস্যা: ' + err.message : 'Error deleting poll: ' + err.message)
+      }
+    }
+  }
+
   // Download Database SQL
   const handleDownloadSQL = () => {
     const element = document.createElement('a')
@@ -1579,6 +1743,7 @@ export default function AdminPage({
               { id: 'opinions', icon: <PenTool size={16} />, bn: 'কলাম ও মতামত', en: 'Opinions & Editorials', count: opinions.length },
               { id: 'media', icon: <Camera size={16} />, bn: 'ছবি ও ভিডিও গ্যালারি', en: 'Photos & Videos', count: photos.length + videos.length },
               { id: 'roles', icon: <ShieldCheck size={16} />, bn: 'রোল ও পারমিশন (Role)', en: 'Role & Staff', count: localRoles.length },
+              { id: 'polls', icon: <Vote size={16} />, bn: 'পাঠক জরিপ (Reader Poll)', en: 'Reader Poll', count: polls.length },
               { id: 'settings', icon: <Globe size={16} />, bn: 'ওয়েবসাইট সেটিংস ও বিবরণ', en: 'Website Settings & Details', count: null },
             ].map((tab) => (
               <button
@@ -4285,6 +4450,468 @@ export default function AdminPage({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ================= TAB: READER POLLS (পাঠক জরিপ) ================= */}
+          {activeTab === 'polls' && (
+            <div className="space-y-6">
+              {/* Header Card */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-lg bg-red-50 text-[#e30613] flex items-center justify-center">
+                    <Vote size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">
+                      {lang === 'bn' ? 'পাঠক জরিপ ব্যবস্থাপনা (Reader Polls)' : 'Reader Poll Management'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {lang === 'bn'
+                        ? 'ওয়েবসাইটের হোমপেজে প্রদর্শিত পাঠক মতামত জরিপ তৈরি, সম্পাদনা, ফলাফল পর্যবেক্ষণ ও নিয়ন্ত্রণ করুন।'
+                        : 'Create, edit, observe results, and control the active online reader opinion poll on the homepage.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={refreshPolls}
+                    disabled={pollLoading}
+                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    <RefreshCw size={13} className={pollLoading ? 'animate-spin' : ''} />
+                    <span>{lang === 'bn' ? 'রিফ্রেশ' : 'Refresh'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingPollId(null)
+                      setPollForm(emptyPollForm)
+                      const elem = document.getElementById('poll-form-card')
+                      if (elem) elem.scrollIntoView({ behavior: 'smooth' })
+                    }}
+                    className="px-3.5 py-2 bg-[#e30613] hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                  >
+                    <PlusCircle size={14} />
+                    <span>{lang === 'bn' ? 'নতুন জরিপ লিখুন' : 'New Poll'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Active Poll Widget Card */}
+              {activePoll && (
+                <div className="bg-gradient-to-br from-white to-red-50/30 p-6 rounded-xl border border-red-200 shadow-sm space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-red-600 flex items-center gap-1">
+                        <Vote size={14} />
+                        <span>{lang === 'bn' ? 'হোমপেজে সক্রিয় বর্তমান জরিপ' : 'Currently Active Poll on Homepage'}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        activePoll.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {activePoll.status === 'active' ? (lang === 'bn' ? 'সক্রিয় (Active)' : 'Active') : (lang === 'bn' ? 'বন্ধ (Closed)' : 'Closed')}
+                      </span>
+
+                      <span className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                        {lang === 'bn' ? `মোট ভোট: ${toBengaliNumber(activePoll.total_votes)} টি` : `Total Votes: ${activePoll.total_votes}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-base font-bold text-gray-900 leading-snug">
+                      {activePoll.question_bn || activePoll.question_en}
+                    </h4>
+                    {activePoll.question_en && activePoll.question_bn && (
+                      <p className="text-xs text-gray-500 mt-0.5 italic">
+                        {activePoll.question_en}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Option Progress Breakdown */}
+                  <div className="space-y-3 pt-1">
+                    {(activePoll.options || []).map((opt, i) => {
+                      const total = Number(activePoll.total_votes) || 0
+                      const votes = Number(opt.votes) || 0
+                      const pct = total > 0 ? Math.round((votes / total) * 1000) / 10 : 0
+                      const barColors = ['bg-emerald-500', 'bg-[#e30613]', 'bg-amber-500', 'bg-blue-500', 'bg-purple-500', 'bg-gray-500']
+                      const barColor = barColors[i % barColors.length]
+
+                      return (
+                        <div key={opt.id || i} className="bg-white p-3 rounded-lg border border-gray-100 shadow-2xs space-y-1.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-gray-800 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                              <span>{opt.label_bn || opt.label_en}</span>
+                              {opt.label_en && opt.label_bn && (
+                                <span className="text-gray-400 font-normal text-[11px]">({opt.label_en})</span>
+                              )}
+                            </span>
+                            <span className="font-black text-gray-900">
+                              {toBengaliNumber(pct)}%
+                              <span className="text-gray-400 font-normal ml-1.5 text-[11px]">
+                                ({toBengaliNumber(votes)} ভোট)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${barColor} transition-all duration-500`}
+                              style={{ width: `${Math.min(100, Math.max(pct > 0 ? pct : 2, 0))}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Active Poll Toolbar */}
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-red-100">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePollStatus(activePoll)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                          activePoll.status === 'active'
+                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {activePoll.status === 'active'
+                          ? (lang === 'bn' ? '⏸ জরিপ সমাপ্ত/বন্ধ করুন' : 'Close Poll')
+                          : (lang === 'bn' ? '▶ পুনরায় চালু করুন' : 'Reactivate Poll')}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleResetPollVotes(activePoll)}
+                        className="px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 rounded-lg text-xs font-bold transition-colors"
+                      >
+                        {lang === 'bn' ? '🔄 ভোট ০ তে রিসেট করুন' : 'Reset Votes'}
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleEditPollClick(activePoll)}
+                      className="px-3.5 py-1.5 bg-[#1a3a5c] hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                    >
+                      <Edit size={13} />
+                      <span>{lang === 'bn' ? 'জরিপ সম্পাদনা করুন' : 'Edit Poll'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Poll Create / Edit Form Card */}
+              <div id="poll-form-card" className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-5">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 bg-red-50 text-[#e30613] rounded-lg">
+                      <PlusCircle size={18} />
+                    </span>
+                    <h4 className="text-sm font-bold text-gray-900">
+                      {editingPollId
+                        ? (lang === 'bn' ? 'পাঠক জরিপ সম্পাদনা করুন' : 'Edit Reader Poll')
+                        : (lang === 'bn' ? 'নতুন পাঠক জরিপ তৈরি করুন' : 'Create New Reader Poll')}
+                    </h4>
+                  </div>
+                  {editingPollId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPollId(null)
+                        setPollForm(emptyPollForm)
+                      }}
+                      className="text-xs text-gray-500 hover:text-red-600 font-bold"
+                    >
+                      {lang === 'bn' ? '✕ বাতিল করুন' : '✕ Cancel Edit'}
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handlePollSubmit} className="space-y-4">
+                  {/* Question Inputs */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-700">
+                        {lang === 'bn' ? 'জরিপের মূল প্রশ্ন (বাংলায়) *' : 'Poll Question (Bengali) *'}
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={pollForm.question_bn}
+                        onChange={(e) => setPollForm({ ...pollForm, question_bn: e.target.value })}
+                        placeholder="যেমন: আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?"
+                        className="w-full px-3 py-2 border rounded-lg text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-700">
+                        {lang === 'bn' ? 'জরিপের প্রশ্ন (ইংরেজি)' : 'Poll Question (English)'}
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={pollForm.question_en}
+                        onChange={(e) => setPollForm({ ...pollForm, question_en: e.target.value })}
+                        placeholder="e.g. Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?"
+                        className="w-full px-3 py-2 border rounded-lg text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Toggle & Reset Votes */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-gray-700">
+                        {lang === 'bn' ? 'জরিপের স্থিতি (Status)' : 'Poll Status'}
+                      </label>
+                      <div className="flex items-center gap-4 text-xs pt-1">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="poll_status"
+                            value="active"
+                            checked={pollForm.status === 'active'}
+                            onChange={() => setPollForm({ ...pollForm, status: 'active' })}
+                            className="text-[#e30613] focus:ring-[#e30613]"
+                          />
+                          <span className="font-semibold text-emerald-700">
+                            {lang === 'bn' ? 'সক্রিয় (হোমপেজে লাইভ থাকবে)' : 'Active (Live on homepage)'}
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="poll_status"
+                            value="closed"
+                            checked={pollForm.status === 'closed'}
+                            onChange={() => setPollForm({ ...pollForm, status: 'closed' })}
+                            className="text-[#e30613] focus:ring-[#e30613]"
+                          />
+                          <span className="font-semibold text-gray-600">
+                            {lang === 'bn' ? 'বন্ধ (Closed)' : 'Closed'}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {editingPollId && (
+                      <div className="flex items-center">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-red-600 bg-red-50 p-2 rounded border border-red-200 w-full">
+                          <input
+                            type="checkbox"
+                            checked={pollForm.reset_votes}
+                            onChange={(e) => setPollForm({ ...pollForm, reset_votes: e.target.checked })}
+                            className="rounded text-[#e30613] focus:ring-[#e30613]"
+                          />
+                          <span>{lang === 'bn' ? 'ভোট সংখ্যা ০ তে রিসেট করুন' : 'Reset all votes to 0'}</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Options Builder */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-gray-700">
+                        {lang === 'bn' ? 'জরিপের বিকল্পসমূহ (Options - কমপক্ষে ২টি)' : 'Poll Options (Minimum 2)'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddPollOption}
+                        className="text-xs text-[#e30613] hover:text-red-700 font-bold flex items-center gap-1"
+                      >
+                        <PlusCircle size={13} />
+                        <span>{lang === 'bn' ? '+ নতুন বিকল্প যোগ করুন' : '+ Add Option'}</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {pollForm.options.map((opt, idx) => (
+                        <div key={opt.id || idx} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                          <span className="w-6 h-6 rounded-full bg-white border border-gray-300 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">
+                            {toBengaliNumber(idx + 1)}
+                          </span>
+
+                          <input
+                            type="text"
+                            placeholder={lang === 'bn' ? `বিকল্প ${idx + 1} (বাংলা, যেমন: হ্যাঁ)` : `Option ${idx + 1} (Bengali)`}
+                            value={opt.label_bn}
+                            onChange={(e) => handlePollOptionChange(idx, 'label_bn', e.target.value)}
+                            className="flex-1 px-3 py-1.5 bg-white border rounded text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                            required
+                          />
+
+                          <input
+                            type="text"
+                            placeholder={lang === 'bn' ? `বিকল্প ${idx + 1} (ইংরেজি, যেমন: Yes)` : `Option ${idx + 1} (English)`}
+                            value={opt.label_en}
+                            onChange={(e) => handlePollOptionChange(idx, 'label_en', e.target.value)}
+                            className="flex-1 px-3 py-1.5 bg-white border rounded text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                          />
+
+                          {opt.votes !== undefined && (
+                            <span className="text-[11px] font-bold text-gray-500 px-2 py-1 bg-white border rounded shrink-0">
+                              {toBengaliNumber(opt.votes)} ভোট
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePollOption(idx)}
+                            disabled={pollForm.options.length <= 2}
+                            className="p-1.5 text-gray-400 hover:text-red-600 disabled:opacity-30 transition-colors"
+                            title="মুছে ফেলুন"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={pollSubmitting}
+                      className="px-6 py-2.5 bg-[#e30613] hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow transition-all disabled:opacity-50"
+                    >
+                      <Save size={14} />
+                      <span>
+                        {pollSubmitting
+                          ? (lang === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
+                          : (editingPollId
+                              ? (lang === 'bn' ? 'পাঠক জরিপ আপডেট করুন' : 'Update Reader Poll')
+                              : (lang === 'bn' ? 'জরিপ সংরক্ষণ ও প্রকাশ করুন' : 'Save & Publish Poll'))}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* All Polls History Table */}
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <BarChart2 size={16} className="text-[#e30613]" />
+                    <span>{lang === 'bn' ? 'পাঠক জরিপ আর্কাইভ ও ইতিহাস' : 'Polls Archive & History'}</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold">
+                      {toBengaliNumber(polls.length)}
+                    </span>
+                  </h4>
+                </div>
+
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-600 font-bold border-b">
+                      <tr>
+                        <th className="py-2.5 px-3">আইডি</th>
+                        <th className="py-2.5 px-3">জরিপের প্রশ্ন</th>
+                        <th className="py-2.5 px-3">বিকল্পসমূহ</th>
+                        <th className="py-2.5 px-3 text-center">মোট ভোট</th>
+                        <th className="py-2.5 px-3 text-center">স্ট্যাটাস</th>
+                        <th className="py-2.5 px-3 text-right">অ্যাকশন</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {polls.map((p) => {
+                        const isLive = p.status === 'active'
+                        return (
+                          <tr key={p.id} className={`hover:bg-gray-50 transition-colors ${isLive ? 'bg-red-50/20' : ''}`}>
+                            <td className="py-2.5 px-3 font-mono font-bold text-gray-500">
+                              #{p.id}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="font-bold text-gray-900 block line-clamp-2">
+                                {p.question_bn || p.question_en}
+                              </span>
+                              {p.question_en && p.question_bn && (
+                                <span className="text-[11px] text-gray-400 italic block line-clamp-1">
+                                  {p.question_en}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-gray-600">
+                              <div className="flex flex-wrap gap-1 max-w-xs">
+                                {(p.options || []).map((o, oi) => (
+                                  <span key={oi} className="inline-block px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-700">
+                                    {o.label_bn || o.label_en}: {toBengaliNumber(o.votes || 0)} ({o.percent || 0}%)
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-bold text-gray-900">
+                              {toBengaliNumber(p.total_votes || 0)}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {isLive ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                  সক্রিয় (Live)
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                  বন্ধ (Closed)
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {!isLive && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePollStatus(p)}
+                                    className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded text-[11px] transition-colors"
+                                    title="হোমপেজে সক্রিয় করুন"
+                                  >
+                                    সক্রিয় করুন
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditPollClick(p)}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="সম্পাদনা"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetPollVotes(p)}
+                                  className="p-1 text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                                  title="ভোট রিসেট"
+                                >
+                                  <RefreshCw size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePollClick(p)}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="মুছে ফেলুন"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 

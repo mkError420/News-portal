@@ -390,6 +390,114 @@ export const api = {
     })
   },
 
+  // --- Dynamic Reader Poll API (পাঠক জরিপ) ---
+  async getPoll() {
+    try {
+      const res = await client.get('/poll')
+      if (res.data?.poll) return res.data.poll
+      if (res.data?.success && res.data.poll) return res.data.poll
+    } catch (err) {
+      console.warn('Backend getPoll offline fallback:', err)
+    }
+    // Client fallback
+    try {
+      const local = localStorage.getItem('active_reader_poll')
+      if (local) return JSON.parse(local)
+    } catch {}
+    return {
+      id: 1,
+      question_bn: 'আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?',
+      question_en: 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?',
+      options: [
+        { id: 'yes', label_bn: 'হ্যাঁ', label_en: 'Yes', votes: 158, percent: 76.0 },
+        { id: 'no', label_bn: 'না', label_en: 'No', votes: 37, percent: 17.8 },
+        { id: 'no_opinion', label_bn: 'মন্তব্য নেই', label_en: 'No Opinion', votes: 13, percent: 6.2 },
+      ],
+      total_votes: 208,
+      status: 'active',
+    }
+  },
+
+  async getPolls() {
+    try {
+      const res = await client.get('/poll?all=1')
+      if (Array.isArray(res.data?.polls)) return res.data.polls
+    } catch (err) {
+      console.warn('Backend getPolls offline fallback:', err)
+    }
+    try {
+      const local = localStorage.getItem('all_reader_polls')
+      if (local) return JSON.parse(local)
+    } catch {}
+    return [
+      {
+        id: 1,
+        question_bn: 'আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?',
+        question_en: 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?',
+        options: [
+          { id: 'yes', label_bn: 'হ্যাঁ', label_en: 'Yes', votes: 158, percent: 76.0 },
+          { id: 'no', label_bn: 'না', label_en: 'No', votes: 37, percent: 17.8 },
+          { id: 'no_opinion', label_bn: 'মন্তব্য নেই', label_en: 'No Opinion', votes: 13, percent: 6.2 },
+        ],
+        total_votes: 208,
+        status: 'active',
+        created_at: new Date().toISOString(),
+      },
+    ]
+  },
+
+  async votePoll(pollId, optionId) {
+    try {
+      const res = await client.post('/poll/vote', { poll_id: pollId, option_id: optionId })
+      if (res.data?.poll) {
+        try {
+          localStorage.setItem('active_reader_poll', JSON.stringify(res.data.poll))
+        } catch {}
+        return res.data.poll
+      }
+    } catch (err) {
+      console.warn('Vote online failed, simulating offline vote:', err)
+    }
+
+    // Local offline simulation
+    const current = await this.getPoll()
+    let opts = current.options || []
+    let found = false
+    opts = opts.map((opt) => {
+      if (String(opt.id) === String(optionId)) {
+        found = true
+        return { ...opt, votes: (Number(opt.votes) || 0) + 1 }
+      }
+      return opt
+    })
+    const totalVotes = (Number(current.total_votes) || 0) + 1
+    opts = opts.map((opt) => ({
+      ...opt,
+      percent: totalVotes > 0 ? Math.round(((Number(opt.votes) || 0) / totalVotes) * 1000) / 10 : 0,
+    }))
+    const updated = { ...current, options: opts, total_votes: totalVotes }
+    try {
+      localStorage.setItem('active_reader_poll', JSON.stringify(updated))
+    } catch {}
+    return updated
+  },
+
+  async savePoll(pollData) {
+    const res = await client.post('/poll', pollData)
+    const data = requireSuccess(res.data)
+    if (data?.poll) {
+      try {
+        localStorage.setItem('active_reader_poll', JSON.stringify(data.poll))
+      } catch {}
+    }
+    return data
+  },
+
+  async deletePoll(pollId) {
+    const res = await client.delete(`/poll?id=${pollId}`)
+    return requireSuccess(res.data)
+  },
+
   async getStats() {
     const res = await client.get('/stats')
     return res.data
