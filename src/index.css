@@ -224,6 +224,51 @@ nav .overflow-x-auto::-webkit-scrollbar {
   color: var(--brand-darkred);
 }
 
+/* In-text Image and Figure Styling */
+.news-prose figure {
+  margin: 1.75rem 0;
+  display: block;
+}
+
+.news-prose figure img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: block;
+  object-fit: cover;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.news-prose figcaption {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #555555;
+  margin-top: 0.5rem;
+  font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+}
+
+@media (min-width: 640px) {
+  .news-prose figure.float-left,
+  .news-prose figure.sm\:float-left {
+    float: left;
+    margin: 0.5rem 1.5rem 1rem 0;
+    max-width: 48%;
+  }
+
+  .news-prose figure.float-right,
+  .news-prose figure.sm\:float-right {
+    float: right;
+    margin: 0.5rem 0 1rem 1.5rem;
+    max-width: 48%;
+  }
+}
+
+.news-prose::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
 /* =========================================================
    Section Header
    ========================================================= */

@@ -51,6 +51,12 @@ import {
   Lock,
   UserPlus,
   ShieldAlert,
+  AlignLeft,
+  AlignRight,
+  AlignCenter,
+  Maximize2,
+  Type,
+  ImagePlus,
 } from 'lucide-react'
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
@@ -419,6 +425,83 @@ export default function AdminPage({
   }
   const [staffForm, setStaffForm] = useState(initialStaffForm)
   const [editingStaffId, setEditingStaffId] = useState(null)
+
+  // --- In-Article Text Image Inserter State ---
+  const [showInTextImageModal, setShowInTextImageModal] = useState(false)
+  const [contentPreviewMode, setContentPreviewMode] = useState(false)
+  const [inTextImageForm, setInTextImageForm] = useState({
+    imageUrl: '',
+    caption: '',
+    credit: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
+    alignment: 'full', // 'full' | 'left' | 'right' | 'center'
+  })
+
+  const insertHtmlIntoContent = (htmlToInsert) => {
+    const textarea = document.getElementById('articleContentTextarea')
+    if (textarea) {
+      const start = textarea.selectionStart ?? 0
+      const end = textarea.selectionEnd ?? 0
+      const current = formData.content_bn || ''
+      const updated = current.substring(0, start) + htmlToInsert + current.substring(end)
+      setFormData((prev) => ({ ...prev, content_bn: updated }))
+      setTimeout(() => {
+        textarea.focus()
+        textarea.setSelectionRange(start + htmlToInsert.length, start + htmlToInsert.length)
+      }, 50)
+    } else {
+      const current = formData.content_bn || ''
+      setFormData((prev) => ({ ...prev, content_bn: (current ? current + '\n\n' : '') + htmlToInsert }))
+    }
+  }
+
+  const handleInsertInTextImage = (e) => {
+    e?.preventDefault?.()
+    if (!inTextImageForm.imageUrl.trim()) {
+      alert(lang === 'bn' ? 'দয়া করে ছবির লিঙ্ক প্রদান করুন।' : 'Please enter image URL.')
+      return
+    }
+
+    const imgUrl = inTextImageForm.imageUrl.trim()
+    const cap = inTextImageForm.caption.trim()
+    const cred = inTextImageForm.credit.trim()
+    const align = inTextImageForm.alignment || 'full'
+
+    let figureClass = 'my-6 block clear-both'
+    let imgClass = 'w-full h-auto rounded-lg shadow-sm object-cover max-h-[500px]'
+    let figcapClass = 'mt-2 text-xs text-gray-500 font-normal leading-relaxed text-center'
+
+    if (align === 'left') {
+      figureClass = 'my-4 sm:float-left sm:mr-6 sm:mb-4 sm:max-w-[48%] w-full clear-none'
+      figcapClass = 'mt-1.5 text-[11px] text-gray-500 font-normal leading-relaxed text-left'
+    } else if (align === 'right') {
+      figureClass = 'my-4 sm:float-right sm:ml-6 sm:mb-4 sm:max-w-[48%] w-full clear-none'
+      figcapClass = 'mt-1.5 text-[11px] text-gray-500 font-normal leading-relaxed text-left'
+    } else if (align === 'center') {
+      figureClass = 'my-6 max-w-xl mx-auto block clear-both text-center'
+      figcapClass = 'mt-2 text-xs text-gray-500 font-normal leading-relaxed text-center'
+    }
+
+    let captionHtml = ''
+    if (cap || cred) {
+      captionHtml = `\n  <figcaption class="${figcapClass}">`
+      if (cap) captionHtml += `<span>${cap}</span>`
+      if (cap && cred) captionHtml += ' '
+      if (cred) captionHtml += `<span class="font-semibold text-gray-700">(${cred})</span>`
+      captionHtml += `</figcaption>`
+    }
+
+    const figureSnippet = `\n<figure class="${figureClass}">\n  <img src="${imgUrl}" alt="${cap || 'সংবাদ ছবি'}" class="${imgClass}" />${captionHtml}\n</figure>\n`
+
+    insertHtmlIntoContent(figureSnippet)
+    setShowInTextImageModal(false)
+    setInTextImageForm({
+      imageUrl: '',
+      caption: '',
+      credit: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
+      alignment: 'full',
+    })
+    triggerToast(lang === 'bn' ? 'সংবাদের লেখার মাঝে ছবি যুক্ত হয়েছে!' : 'Image inserted into news text!')
+  }
 
   // Handle Logout
   const handleLogout = async () => {
@@ -2158,19 +2241,283 @@ export default function AdminPage({
                 </div>
               </div>
 
-              {/* Full Content BN */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  মূল সংবাদ বিস্তারিত বিবরণ (বাংলা) *
-                </label>
-                <textarea
-                  rows="7"
-                  required
-                  value={formData.content_bn}
-                  onChange={(e) => setFormData({ ...formData, content_bn: e.target.value })}
-                  placeholder="<p>এখানে অনুচ্ছেদ ও বিস্তারিত বিবরণ লিখুন...</p>"
-                  className="w-full text-sm p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-bengali leading-relaxed"
-                />
+              {/* Full Content BN with In-Text Image Inserter Toolbar */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
+                  <label className="block text-xs font-bold text-gray-800">
+                    মূল সংবাদ বিস্তারিত বিবরণ (বাংলা) *
+                  </label>
+
+                  {/* Toolbar Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {/* 1. Insert In-Text Image Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowInTextImageModal(!showInTextImageModal)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        showInTextImageModal
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-red-50 text-[#e30613] hover:bg-red-100 border border-red-200'
+                      }`}
+                      title="লেখার যেকোনো স্থানে ছবি ও ক্যাপশন প্রবেশ করান"
+                    >
+                      <ImagePlus size={14} />
+                      <span>লেখার মাঝে ছবি যোগ করুন (Add Image)</span>
+                    </button>
+
+                    {/* 2. Quick Paragraph Button */}
+                    <button
+                      type="button"
+                      onClick={() => insertHtmlIntoContent('<p>নতুন অনুচ্ছেদের লেখা এখানে লিখুন...</p>\n')}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+                      title="নতুন অনুচ্ছেদ যোগ করুন"
+                    >
+                      <span className="font-bold">¶</span> অনুচ্ছেদ
+                    </button>
+
+                    {/* 3. Bold Text Button */}
+                    <button
+                      type="button"
+                      onClick={() => insertHtmlIntoContent('<strong>গুরুত্বপূর্ণ অংশ</strong>')}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+                      title="বোল্ড টেক্সট"
+                    >
+                      <span className="font-bold">B</span>
+                    </button>
+
+                    {/* 4. Blockquote Button */}
+                    <button
+                      type="button"
+                      onClick={() => insertHtmlIntoContent('\n<blockquote class="my-4 pl-4 border-l-4 border-red-500 italic text-gray-700 font-serif">\n  "এখানে বিশিষ্ট ব্যক্তির উদ্ধৃতি বা উক্তি লিখুন..."\n</blockquote>\n')}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+                      title="উদ্ধৃতি (Blockquote) যোগ করুন"
+                    >
+                      ❝ উক্তি
+                    </button>
+
+                    {/* 5. Live Preview Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setContentPreviewMode(!contentPreviewMode)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        contentPreviewMode
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                      }`}
+                      title="পাঠকরা যেভাবে দেখবেন লাইভ প্রিভিউ দেখুন"
+                    >
+                      {contentPreviewMode ? <Code size={13} /> : <Eye size={13} />}
+                      <span>{contentPreviewMode ? 'কোড মোড (Editor)' : 'লাইভ প্রিভিউ (Preview)'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* IN-ARTICLE IMAGE INSERTION DRAWER */}
+                {showInTextImageModal && (
+                  <div className="bg-gradient-to-br from-red-50/50 via-white to-gray-50 p-5 rounded-xl border-2 border-red-200 shadow-md space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between border-b border-red-100 pb-2.5">
+                      <div className="flex items-center gap-2 text-[#e30613] font-bold text-xs">
+                        <Camera size={16} />
+                        <span>লেখার মাঝে ছবি যুক্ত করার টুল (In-Article Photo Inserter)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowInTextImageModal(false)}
+                        className="text-xs text-gray-400 hover:text-gray-700 font-bold px-2 py-0.5 rounded"
+                      >
+                        ✕ বন্ধ করুন
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                      {/* Image Preview Box (3 cols) */}
+                      <div className="md:col-span-3">
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">ছবির প্রিভিউ:</label>
+                        <div className="h-32 rounded-lg border-2 border-dashed border-gray-300 bg-white overflow-hidden flex items-center justify-center relative">
+                          {inTextImageForm.imageUrl ? (
+                            <img
+                              src={inTextImageForm.imageUrl}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
+                          ) : (
+                            <div className="text-center p-3 text-gray-400">
+                              <ImageIcon size={28} className="mx-auto mb-1 opacity-50" />
+                              <span className="text-[10px] block">ছবির লিঙ্ক দিলে এখানে দেখা যাবে</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Image Details (9 cols) */}
+                      <div className="md:col-span-9 space-y-3">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            ছবির ওয়েব লিঙ্ক (Image URL) *
+                          </label>
+                          <input
+                            type="url"
+                            value={inTextImageForm.imageUrl}
+                            onChange={(e) => setInTextImageForm({ ...inTextImageForm, imageUrl: e.target.value })}
+                            placeholder="https://images.unsplash.com/... অথবা যেকোনো ছবির লিঙ্ক"
+                            className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500 bg-white"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">
+                              ছবির ক্যাপশন / বিবরণ (বাংলা)
+                            </label>
+                            <input
+                              type="text"
+                              value={inTextImageForm.caption}
+                              onChange={(e) => setInTextImageForm({ ...inTextImageForm, caption: e.target.value })}
+                              placeholder="ঘটনাস্থলে উদ্ধার তৎপরতা চলছে..."
+                              className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">
+                              ছবির ক্রেডিট (Credit)
+                            </label>
+                            <input
+                              type="text"
+                              value={inTextImageForm.credit}
+                              onChange={(e) => setInTextImageForm({ ...inTextImageForm, credit: e.target.value })}
+                              placeholder={siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত'}
+                              className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Alignment Selector */}
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                            লেখার মাঝে ছবির লেআউট / অবস্থান (Alignment):
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            {[
+                              { id: 'full', label: '↔️ পূর্ণ প্রস্থ (Center)', desc: 'পুরো জায়গা জুড়ে' },
+                              { id: 'left', label: '◀️ বামে ভাসমান (Left Float)', desc: 'ডানে লেখা থাকবে' },
+                              { id: 'right', label: '▶️ ডানে ভাসমান (Right Float)', desc: 'বামে লেখা থাকবে' },
+                              { id: 'center', label: '⏹️ মাঝারি মাপ (Medium)', desc: 'মাঝখানে কেন্দ্রস্থ' },
+                            ].map((alignOpt) => (
+                              <button
+                                key={alignOpt.id}
+                                type="button"
+                                onClick={() => setInTextImageForm({ ...inTextImageForm, alignment: alignOpt.id })}
+                                className={`p-2 rounded-lg border text-left transition-all ${
+                                  inTextImageForm.alignment === alignOpt.id
+                                    ? 'bg-red-50 border-red-500 text-[#e30613] font-bold shadow-2xs'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                }`}
+                              >
+                                <span className="block font-bold text-[11px]">{alignOpt.label}</span>
+                                <span className="text-[10px] text-gray-400 block mt-0.5">{alignOpt.desc}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Quick pick from Gallery Photos */}
+                        {photos && photos.length > 0 && (
+                          <div className="pt-2 border-t border-gray-200">
+                            <span className="block text-[11px] font-bold text-gray-600 mb-1.5">
+                              অথবা গ্যালারি থেকে ছবি বেছে নিন (ক্লিক করলেই লিঙ্ক যুক্ত হবে):
+                            </span>
+                            <div className="flex gap-2 overflow-x-auto pb-1 max-h-20">
+                              {photos.slice(0, 8).map((ph) => (
+                                <button
+                                  key={ph.id}
+                                  type="button"
+                                  onClick={() => setInTextImageForm({
+                                    ...inTextImageForm,
+                                    imageUrl: ph.image,
+                                    caption: ph.title_bn || '',
+                                    credit: ph.credit_bn || (siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত'),
+                                  })}
+                                  className="flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border border-gray-200 hover:border-red-500 hover:scale-105 transition-all relative group"
+                                  title={ph.title_bn}
+                                >
+                                  <img src={ph.image} alt="" className="w-full h-full object-cover" />
+                                  <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold">
+                                    যুক্ত করুন
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2 border-t border-red-100">
+                      <button
+                        type="button"
+                        onClick={handleInsertInTextImage}
+                        className="bg-[#e30613] hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors shadow flex items-center gap-2"
+                      >
+                        <PlusCircle size={15} />
+                        <span>লেখার মাঝে ছবি যুক্ত করুন (Insert into Text)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowInTextImageModal(false)}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-lg transition-colors"
+                      >
+                        বাতিল
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* TEXTAREA OR LIVE HTML PREVIEW */}
+                {contentPreviewMode ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <Eye size={13} />
+                        <span>লাইভ প্রিভিউ: সংবাদ প্রকাশ হওয়ার পর পাঠকরা ছবিটি যেভাবে দেখতে পাবেন</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setContentPreviewMode(false)}
+                        className="text-xs text-blue-600 underline font-bold"
+                      >
+                        এডিটর মোডে ফিরুন →
+                      </button>
+                    </div>
+                    <div
+                      className="news-prose text-gray-900 font-bengali p-6 border rounded-xl bg-white shadow-xs min-h-[250px] leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: formData.content_bn || '<p class="text-gray-400 italic">এখনো কোনো বিবরণ লেখা হয়নি। এডিটর মোডে টেক্সট ও ছবি যুক্ত করুন...</p>',
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      id="articleContentTextarea"
+                      rows="9"
+                      required
+                      value={formData.content_bn}
+                      onChange={(e) => setFormData({ ...formData, content_bn: e.target.value })}
+                      placeholder="<p>এখানে অনুচ্ছেদ ও বিস্তারিত বিবরণ লিখুন...</p>"
+                      className="w-full text-sm p-4 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-bengali leading-relaxed shadow-xs"
+                    />
+                    <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-500 mt-1.5 px-1">
+                      <span>
+                        💡 <strong>টিপস:</strong> লেখার যেকোনো অনুচ্ছেদের মাঝে ছবি যুক্ত করতে কার্সার রেখে উপরের <strong>"লেখার মাঝে ছবি যোগ করুন"</strong> বাটনে ক্লিক করুন।
+                      </span>
+                      <span className="font-mono text-gray-400">
+                        {formData.content_bn.length} অক্ষর
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Tags & Featured Lead Toggle */}
