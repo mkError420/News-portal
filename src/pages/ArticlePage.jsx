@@ -69,7 +69,7 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
           content_en: `<p><strong>${matchedBreaking.title_en || matchedBreaking.title_bn}</strong></p><p>More details and live developments are incoming on this breaking story. Please stay tuned.</p>`,
         }
       }
-      return articles[0]
+      return null
     })()
 
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
@@ -81,23 +81,8 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
   const [copied, setCopied] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
 
-  // Comments state
-  const [comments, setComments] = useState([
-    {
-      id: 1,
-      author: lang === 'bn' ? 'মাহমুদুল হাসান' : 'Mahmudul Hasan',
-      date: '2026-11-14T09:00:00.000Z',
-      text: lang === 'bn' ? `খুবই তথ্যবহুল ও সময়োপযোগী প্রতিবেদন। ধন্যবাদ ${siteName}-কে।` : `Very informative and timely report. Thanks to ${siteName}.`,
-      likes: 12,
-    },
-    {
-      id: 2,
-      author: lang === 'bn' ? 'তানিয়া সুলতানা' : 'Tania Sultana',
-      date: '2026-11-14T08:30:00.000Z',
-      text: lang === 'bn' ? 'এই উদ্যোগ দ্রুত বাস্তবায়িত হলে সাধারণ মানুষের অনেক উপকার হবে।' : 'If this initiative is implemented quickly, it will benefit ordinary citizens immensely.',
-      likes: 8,
-    },
-  ])
+  // Comments state (dynamic, starts empty)
+  const [comments, setComments] = useState([])
   const [authorName, setAuthorName] = useState('')
   const [commentText, setCommentText] = useState('')
 

@@ -44,43 +44,55 @@ export default function PhotosPage({ photos = [], settings = null, lang = 'bn' }
       </div>
 
       {/* Photo Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {photos.map((ph) => (
-          <div
-            key={ph.id}
-            onClick={() => setSelectedPhoto(ph)}
-            className="bg-white rounded overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg transition-all cursor-pointer group flex flex-col"
-          >
-            <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
-              <img
-                src={ph.image}
-                alt={ph.title_bn}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                loading="lazy"
-              />
-              <div className="absolute top-2.5 right-2.5 bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera size={14} />
+      {photos.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center my-8 shadow-xs">
+          <Camera size={36} className="mx-auto text-gray-400 mb-3" />
+          <h3 className="text-lg font-bold text-gray-800">
+            {lang === 'bn' ? 'ডাটাবেজে বর্তমানে কোনো আলোকচিত্র পাওয়া যায়নি।' : 'No photos found in database.'}
+          </h3>
+          <p className="text-xs text-gray-500 mt-1">
+            {lang === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ড থেকে নতুন ছবি আপলোড করুন।' : 'Upload photos from the admin dashboard.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {photos.map((ph) => (
+            <div
+              key={ph.id}
+              onClick={() => setSelectedPhoto(ph)}
+              className="bg-white rounded overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg transition-all cursor-pointer group flex flex-col"
+            >
+              <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
+                <img
+                  src={ph.image}
+                  alt={ph.title_bn}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+                <div className="absolute top-2.5 right-2.5 bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera size={14} />
+                </div>
+              </div>
+              <div className="p-4 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="font-bold text-base text-gray-900 group-hover:text-red-600 transition-colors leading-snug mb-1.5">
+                    {lang === 'bn' ? ph.title_bn : ph.title_en}
+                  </h3>
+                  {ph.caption_bn && (
+                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                      {lang === 'bn' ? ph.caption_bn : ph.caption_en}
+                    </p>
+                  )}
+                </div>
+                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
+                  <span>{lang === 'bn' ? ph.credit_bn : ph.credit_en}</span>
+                  <span>{lang === 'bn' ? formatBengaliDate(ph.date) : formatEnglishDate(ph.date)}</span>
+                </div>
               </div>
             </div>
-            <div className="p-4 flex-1 flex flex-col justify-between">
-              <div>
-                <h3 className="font-bold text-base text-gray-900 group-hover:text-red-600 transition-colors leading-snug mb-1.5">
-                  {lang === 'bn' ? ph.title_bn : ph.title_en}
-                </h3>
-                {ph.caption_bn && (
-                  <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                    {lang === 'bn' ? ph.caption_bn : ph.caption_en}
-                  </p>
-                )}
-              </div>
-              <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-                <span>{lang === 'bn' ? ph.credit_bn : ph.credit_en}</span>
-                <span>{lang === 'bn' ? formatBengaliDate(ph.date) : formatEnglishDate(ph.date)}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Fullscreen Lightbox Modal */}
       {selectedPhoto && (

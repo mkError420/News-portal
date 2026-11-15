@@ -25,11 +25,12 @@ import StaticPage from './pages/StaticPage.jsx'
 import { defaultData } from './data.js'
 import { api } from './api.js'
 
-const STORAGE_KEY = 'prothom_alo_portal_data'
+const STORAGE_KEY = 'prothom_portal_data_v3'
 const LANG_STORAGE_KEY = 'prothom_alo_portal_lang'
 
 export default function App() {
   const location = useLocation()
+  const [isLoading, setIsLoading] = useState(true)
 
   // 1. Language State ('bn' | 'en')
   const [lang, setLang] = useState(() => {
@@ -46,13 +47,14 @@ export default function App() {
     document.documentElement.lang = lang
   }, [lang])
 
-  // 2. Data State (Loaded from LocalStorage with fallback to defaultData)
+  // 2. Data State (Loaded dynamically from database with clean empty baseline)
   const [newsData, setNewsData] = useState(() => {
     try {
+      localStorage.removeItem('prothom_alo_portal_data') // Clear old static mock data cache
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        if (parsed && Array.isArray(parsed.articles) && parsed.articles.length > 0) {
+        if (parsed && typeof parsed === 'object') {
           return {
             ...defaultData,
             ...parsed,
@@ -65,73 +67,77 @@ export default function App() {
     return defaultData
   })
 
-  // 3. Load authoritative news from the backend when it is available.
+  // 3. Load authoritative news from the backend database dynamically
   useEffect(() => {
     let active = true
     const syncData = async () => {
-      const results = await Promise.allSettled([
-        api.getArticles(),
-        api.getBreakingNews(),
-        api.getCategories(),
-        api.getSettings(),
-        api.getOpinions(),
-        api.getPhotos(),
-        api.getVideos(),
-        api.getRoles(),
-        api.getStaff(),
-        api.getPoll(),
-        api.getPolls(),
-      ])
-      if (!active) return
+      try {
+        const results = await Promise.allSettled([
+          api.getArticles(),
+          api.getBreakingNews(),
+          api.getCategories(),
+          api.getSettings(),
+          api.getOpinions(),
+          api.getPhotos(),
+          api.getVideos(),
+          api.getRoles(),
+          api.getStaff(),
+          api.getPoll(),
+          api.getPolls(),
+        ])
+        if (!active) return
 
-      const updates = {}
-      if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
-        updates.articles = results[0].value
-      } else {
-        console.error('Unable to load articles from the database:', results[0].reason)
-      }
-      if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
-        updates.breakingNews = results[1].value
-      } else {
-        console.error('Unable to load breaking news from the database:', results[1].reason)
-      }
-      if (results[2].status === 'fulfilled' && Array.isArray(results[2].value) && results[2].value.length > 0) {
-        updates.categories = results[2].value
-      }
-      if (results[3].status === 'fulfilled' && results[3].value && typeof results[3].value === 'object') {
-        updates.settings = results[3].value
-      }
-      if (results[4].status === 'fulfilled' && Array.isArray(results[4].value) && results[4].value.length > 0) {
-        updates.opinions = results[4].value
-      }
-      if (results[5].status === 'fulfilled' && Array.isArray(results[5].value) && results[5].value.length > 0) {
-        updates.photos = results[5].value
-      }
-      if (results[6].status === 'fulfilled' && Array.isArray(results[6].value) && results[6].value.length > 0) {
-        updates.videos = results[6].value
-      }
-      if (results[7].status === 'fulfilled' && Array.isArray(results[7].value) && results[7].value.length > 0) {
-        updates.roles = results[7].value
-      }
-      if (results[8].status === 'fulfilled' && Array.isArray(results[8].value) && results[8].value.length > 0) {
-        updates.staff = results[8].value
-      }
-      if (results[9].status === 'fulfilled' && results[9].value && typeof results[9].value === 'object') {
-        updates.poll = results[9].value
-      }
-      if (results[10].status === 'fulfilled' && Array.isArray(results[10].value) && results[10].value.length > 0) {
-        updates.polls = results[10].value
-      }
-
-      setNewsData((prev) => {
-        const updated = { ...prev, ...updates }
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-        } catch (err) {
-          console.error('LocalStorage save error:', err)
+        const updates = {}
+        if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
+          updates.articles = results[0].value
+        } else {
+          console.error('Unable to load articles from the database:', results[0].reason)
         }
-        return updated
-      })
+        if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
+          updates.breakingNews = results[1].value
+        } else {
+          console.error('Unable to load breaking news from the database:', results[1].reason)
+        }
+        if (results[2].status === 'fulfilled' && Array.isArray(results[2].value) && results[2].value.length > 0) {
+          updates.categories = results[2].value
+        }
+        if (results[3].status === 'fulfilled' && results[3].value && typeof results[3].value === 'object') {
+          updates.settings = results[3].value
+        }
+        if (results[4].status === 'fulfilled' && Array.isArray(results[4].value)) {
+          updates.opinions = results[4].value
+        }
+        if (results[5].status === 'fulfilled' && Array.isArray(results[5].value)) {
+          updates.photos = results[5].value
+        }
+        if (results[6].status === 'fulfilled' && Array.isArray(results[6].value)) {
+          updates.videos = results[6].value
+        }
+        if (results[7].status === 'fulfilled' && Array.isArray(results[7].value)) {
+          updates.roles = results[7].value
+        }
+        if (results[8].status === 'fulfilled' && Array.isArray(results[8].value)) {
+          updates.staff = results[8].value
+        }
+        if (results[9].status === 'fulfilled') {
+          updates.poll = results[9].value || null
+        }
+        if (results[10].status === 'fulfilled' && Array.isArray(results[10].value)) {
+          updates.polls = results[10].value
+        }
+
+        setNewsData((prev) => {
+          const updated = { ...prev, ...updates }
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+          } catch (err) {
+            console.error('LocalStorage save error:', err)
+          }
+          return updated
+        })
+      } finally {
+        if (active) setIsLoading(false)
+      }
     }
 
     syncData()

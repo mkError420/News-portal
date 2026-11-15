@@ -155,39 +155,65 @@ export default function HomePage({
         settings={settings}
       />
       {/* ================= 1. HERO TOP SECTION (প্রধান শীর্ষ সংবাদ) ================= */}
-      <section className="mb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* Main Big Lead Story (7 cols) */}
-          <div className="lg:col-span-7">
-            {leadArticle && <NewsCard article={leadArticle} variant="hero" lang={lang} />}
+      {articles.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center my-8 shadow-xs">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center text-[#e30613]">
+            <Newspaper size={32} />
           </div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            {lang === 'bn' ? 'ডাটাবেজে বর্তমানে কোনো সংবাদ পাওয়া যায়নি' : 'No articles published yet in the database'}
+          </h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+            {lang === 'bn'
+              ? 'অ্যাডমিন ড্যাশবোর্ড থেকে নতুন সংবাদ প্রকাশ করুন অথবা ডাটাবেজ সংযোগ চেক করুন।'
+              : 'Publish news from the Admin Dashboard or check database connection.'}
+          </p>
+          <Link
+            to="/admin"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#e30613] text-white rounded font-medium text-sm hover:bg-[#b80010] transition-colors"
+          >
+            <span>{lang === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ডে যান' : 'Go to Admin Dashboard'}</span>
+          </Link>
+        </div>
+      ) : (
+        <>
+          <section className="mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {/* Main Big Lead Story (7 cols) */}
+              <div className="lg:col-span-7">
+                {leadArticle && <NewsCard article={leadArticle} variant="hero" lang={lang} />}
+              </div>
 
-          {/* Secondary Top Stories (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col gap-3 justify-between">
-            {otherLeadArticles.map((art) => (
-              <NewsCard key={art.id} article={art} variant="list" lang={lang} />
-            ))}
-            {/* Quick in-feed banner */}
-            <div className="mt-1">
-              <AdBanner size="infeed" lang={lang} settings={settings} />
+              {/* Secondary Top Stories (5 cols) */}
+              <div className="lg:col-span-5 flex flex-col gap-3 justify-between">
+                {otherLeadArticles.map((art) => (
+                  <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+                ))}
+                {/* Quick in-feed banner */}
+                <div className="mt-1">
+                  <AdBanner size="infeed" lang={lang} settings={settings} />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* ================= 2. FOUR-COLUMN CURATED HIGHLIGHTS (আজকের নির্বাচিত - ২০টি সংবাদ) ================= */}
-      <section className="mb-8">
-        <SectionHeader
-          title_bn="আজকের নির্বাচিত সংবাদ"
-          title_en="Today's Curated Stories"
-          lang={lang}
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-          {topStories.map((art) => (
-            <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
-          ))}
-        </div>
-      </section>
+          {/* ================= 2. FOUR-COLUMN CURATED HIGHLIGHTS (আজকের নির্বাচিত) ================= */}
+          {topStories.length > 0 && (
+            <section className="mb-8">
+              <SectionHeader
+                title_bn="আজকের নির্বাচিত সংবাদ"
+                title_en="Today's Curated Stories"
+                lang={lang}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+                {topStories.map((art) => (
+                  <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
 
       {/* Leaderboard Mid Ad */}
       <div className="my-8">
@@ -199,240 +225,239 @@ export default function HomePage({
         {/* LEFT / CENTER CONTENT AREA (8 cols) */}
         <div className="lg:col-span-8 space-y-10">
           {/* Section: বাংলাদেশ (National) */}
-          <section>
-            <SectionHeader
-              title_bn="বাংলাদেশ"
-              title_en="Bangladesh"
-              lang={lang}
-              link="/category/national"
-              subcategories={[
-                { bn: 'সারাদেশ', en: 'Nationwide' },
-                { bn: 'রাজধানী', en: 'Capital' },
-                { bn: 'প্রশাসন', en: 'Governance' },
-                { bn: 'অপরাধ', en: 'Crime' },
-              ]}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {nationalArticles[0] && (
-                <NewsCard article={nationalArticles[0]} variant="grid" lang={lang} />
-              )}
-              <div className="space-y-1 divide-y divide-gray-100 bg-white p-3.5 rounded border border-gray-200 shadow-2xs">
-                {nationalArticles.slice(1, 5).map((art) => (
-                  <NewsCard key={art.id} article={art} variant="text" lang={lang} />
-                ))}
+          {nationalArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="বাংলাদেশ"
+                title_en="Bangladesh"
+                lang={lang}
+                link="/category/national"
+                subcategories={[
+                  { bn: 'সারাদেশ', en: 'Nationwide' },
+                  { bn: 'রাজধানী', en: 'Capital' },
+                  { bn: 'প্রশাসন', en: 'Governance' },
+                  { bn: 'অপরাধ', en: 'Crime' },
+                ]}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {nationalArticles[0] && (
+                  <NewsCard article={nationalArticles[0]} variant="grid" lang={lang} />
+                )}
+                <div className="space-y-1 divide-y divide-gray-100 bg-white p-3.5 rounded border border-gray-200 shadow-2xs">
+                  {nationalArticles.slice(1, 5).map((art) => (
+                    <NewsCard key={art.id} article={art} variant="text" lang={lang} />
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* Section: রাজনীতি (Politics) */}
-          <section>
-            <SectionHeader
-              title_bn="রাজনীতি"
-              title_en="Politics"
-              lang={lang}
-              link="/category/politics"
-              subcategories={[
-                { bn: 'সরকার', en: 'Government' },
-                { bn: 'নির্বাচন', en: 'Election' },
-                { bn: 'সংসদ', en: 'Parliament' },
-              ]}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {politicsArticles.slice(0, 2).map((art) => (
-                <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
-              ))}
-            </div>
-          </section>
-
-          {/* Section: খেলা (Sports) with Live Match Highlight Ticker */}
-          <section>
-            <SectionHeader
-              title_bn="খেলাধুলা"
-              title_en="Sports"
-              lang={lang}
-              link="/category/sports"
-              subcategories={[
-                { bn: 'ক্রিকেট', en: 'Cricket' },
-                { bn: 'ফুটবল', en: 'Football' },
-                { bn: 'বিশ্বকাপ', en: 'World Cup' },
-              ]}
-            />
-
-            {/* Prothom Alo Live Score / Tournament Match Strip */}
-            <div className="bg-[#1a3a5c] text-white p-3 rounded-lg mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="bg-red-600 text-white font-bold px-2 py-0.5 rounded text-[10px] uppercase animate-pulse">
-                  LIVE
-                </span>
-                <span className="font-semibold">
-                  {lang === 'bn' ? 'এশিয়া কাপ ফাইনাল: বাংলাদেশ বনাম ভারত' : 'Asia Cup Final: BD vs IND'}
-                </span>
+          {politicsArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="রাজনীতি"
+                title_en="Politics"
+                lang={lang}
+                link="/category/politics"
+                subcategories={[
+                  { bn: 'সরকার', en: 'Government' },
+                  { bn: 'নির্বাচন', en: 'Election' },
+                  { bn: 'সংসদ', en: 'Parliament' },
+                ]}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {politicsArticles.slice(0, 2).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
+                ))}
               </div>
-              <div className="flex items-center gap-3 font-mono font-bold text-yellow-300">
-                <span>BAN 286/7 (50 ov)</span>
-                <span>•</span>
-                <span className="text-gray-300">IND 274 (48.4 ov)</span>
-              </div>
-              <span className="text-[11px] text-green-300 font-semibold">
-                {lang === 'bn' ? 'বাংলাদেশ ১২ রানে জয়ী 🏆' : 'Bangladesh won by 12 runs 🏆'}
-              </span>
-            </div>
+            </section>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sportsArticles.slice(0, 3).map((art) => (
-                <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
-              ))}
-            </div>
-          </section>
+          {/* Section: খেলা (Sports) */}
+          {sportsArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="খেলাধুলা"
+                title_en="Sports"
+                lang={lang}
+                link="/category/sports"
+                subcategories={[
+                  { bn: 'ক্রিকেট', en: 'Cricket' },
+                  { bn: 'ফুটবল', en: 'Football' },
+                  { bn: 'বিশ্বকাপ', en: 'World Cup' },
+                ]}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sportsArticles.slice(0, 3).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: অর্থনীতি ও বাণিজ্য (Economy) with Currency Rate Strip */}
-          <section>
-            <SectionHeader
-              title_bn="অর্থনীতি ও ব্যবসা"
-              title_en="Economy & Business"
-              lang={lang}
-              link="/category/economy"
-              subcategories={[
-                { bn: 'ব্যাংক', en: 'Banking' },
-                { bn: 'শেয়ারবাজার', en: 'Stock Market' },
-                { bn: 'রপ্তানি', en: 'Exports' },
-              ]}
-            />
+          {economyArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="অর্থনীতি ও ব্যবসা"
+                title_en="Economy & Business"
+                lang={lang}
+                link="/category/economy"
+                subcategories={[
+                  { bn: 'ব্যাংক', en: 'Banking' },
+                  { bn: 'শেয়ারবাজার', en: 'Stock Market' },
+                  { bn: 'রপ্তানি', en: 'Exports' },
+                ]}
+              />
 
-            {/* Live Auto-Changing Exchange Rates & Market Widget */}
-            <CurrencyWidget lang={lang} />
+              {/* Live Auto-Changing Exchange Rates & Market Widget */}
+              <CurrencyWidget lang={lang} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {economyArticles.slice(0, 2).map((art) => (
-                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
-              ))}
-            </div>
-          </section>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {economyArticles.slice(0, 2).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: আন্তর্জাতিক (World) */}
-          <section>
-            <SectionHeader
-              title_bn="আন্তর্জাতিক"
-              title_en="International"
-              lang={lang}
-              link="/category/international"
-              subcategories={[
-                { bn: 'এশিয়া', en: 'Asia' },
-                { bn: 'আমেরিকা', en: 'America' },
-                { bn: 'মধ্যপ্রাচ্য', en: 'Middle East' },
-              ]}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {internationalArticles.slice(0, 2).map((art) => (
-                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
-              ))}
-            </div>
-          </section>
+          {internationalArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="আন্তর্জাতিক"
+                title_en="International"
+                lang={lang}
+                link="/category/international"
+                subcategories={[
+                  { bn: 'এশিয়া', en: 'Asia' },
+                  { bn: 'আমেরিকা', en: 'America' },
+                  { bn: 'মধ্যপ্রাচ্য', en: 'Middle East' },
+                ]}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {internationalArticles.slice(0, 2).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: বিনোদন (Entertainment) */}
-          <section>
-            <SectionHeader
-              title_bn="বিনোদন"
-              title_en="Entertainment"
-              lang={lang}
-              link="/category/entertainment"
-              subcategories={[
-                { bn: 'সিনেমা', en: 'Cinema' },
-                { bn: 'নাটক', en: 'Drama' },
-                { bn: 'ওটিটি', en: 'OTT' },
-              ]}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {entertainmentArticles.slice(0, 2).map((art) => (
-                <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
-              ))}
-            </div>
-          </section>
+          {entertainmentArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="বিনোদন"
+                title_en="Entertainment"
+                lang={lang}
+                link="/category/entertainment"
+                subcategories={[
+                  { bn: 'সিনেমা', en: 'Cinema' },
+                  { bn: 'নাটক', en: 'Drama' },
+                  { bn: 'ওটিটি', en: 'OTT' },
+                ]}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {entertainmentArticles.slice(0, 2).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: বিজ্ঞান ও প্রযুক্তি (Science & Tech) */}
-          <section>
-            <SectionHeader
-              title_bn="বিজ্ঞান ও প্রযুক্তি"
-              title_en="Science & Technology"
-              lang={lang}
-              link="/category/technology"
-              subcategories={[
-                { bn: 'কৃত্রিম বুদ্ধিমত্তা', en: 'AI' },
-                { bn: 'গ্যাজেট', en: 'Gadgets' },
-                { bn: 'ইন্টারনেট', en: 'Internet' },
-              ]}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {techArticles.slice(0, 2).map((art) => (
-                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
-              ))}
-            </div>
-          </section>
+          {techArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="বিজ্ঞান ও প্রযুক্তি"
+                title_en="Science & Technology"
+                lang={lang}
+                link="/category/technology"
+                subcategories={[
+                  { bn: 'কৃত্রিম বুদ্ধিমত্তা', en: 'AI' },
+                  { bn: 'গ্যাজেট', en: 'Gadgets' },
+                  { bn: 'ইন্টারনেট', en: 'Internet' },
+                ]}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {techArticles.slice(0, 2).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: শিক্ষা ও চাকরি */}
-          <section>
-            <SectionHeader
-              title_bn="শিক্ষা ও চাকরি"
-              title_en="Education & Jobs"
-              lang={lang}
-              link="/category/education"
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {educationArticles.slice(0, 2).map((art) => (
-                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
-              ))}
-            </div>
-          </section>
+          {educationArticles.length > 0 && (
+            <section>
+              <SectionHeader
+                title_bn="শিক্ষা ও চাকরি"
+                title_en="Education & Jobs"
+                lang={lang}
+                link="/category/education"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {educationArticles.slice(0, 2).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: স্বাস্থ্য ও জীবনযাপন */}
-          <section>
-            <SectionHeader
-              title_bn="স্বাস্থ্য ও জীবনযাপন"
-              title_en="Health & Lifestyle"
-              lang={lang}
-              link="/category/lifestyle"
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[...lifestyleArticles, ...healthArticles].slice(0, 4).map((art) => (
-                <NewsCard key={art.id} article={art} variant="list" lang={lang} />
-              ))}
-            </div>
-          </section>
+          {(lifestyleArticles.length > 0 || healthArticles.length > 0) && (
+            <section>
+              <SectionHeader
+                title_bn="স্বাস্থ্য ও জীবনযাপন"
+                title_en="Health & Lifestyle"
+                lang={lang}
+                link="/category/lifestyle"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[...lifestyleArticles, ...healthArticles].slice(0, 4).map((art) => (
+                  <NewsCard key={art.id} article={art} variant="list" lang={lang} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: মতামত ও সম্পাদকীয় (Opinion Columnists) */}
-          <section className="bg-white p-5 rounded border border-gray-200 shadow-sm">
-            <SectionHeader
-              title_bn="মতামত ও সম্পাদকীয়"
-              title_en="Opinion & Editorials"
-              lang={lang}
-              link="/opinion"
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              {opinions.map((op) => (
-                <div
-                  key={op.id}
-                  className="flex flex-col items-center text-center p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
-                >
-                  <img
-                    src={op.author_image}
-                    alt={op.author_bn}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-red-500 shadow mb-3"
-                  />
-                  <h4 className="font-bold text-sm text-gray-900 leading-snug hover:text-red-600 transition-colors line-clamp-2">
-                    <Link to={`/opinion#${op.slug}`}>
-                      {lang === 'bn' ? op.title_bn : op.title_en}
-                    </Link>
-                  </h4>
-                  <span className="text-xs font-semibold text-red-600 mt-1">
-                    {lang === 'bn' ? op.author_bn : op.author_en}
-                  </span>
-                  <span className="text-[11px] text-gray-500 line-clamp-1">
-                    {lang === 'bn' ? op.author_role_bn : op.author_role_en}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+          {opinions.length > 0 && (
+            <section className="bg-white p-5 rounded border border-gray-200 shadow-sm">
+              <SectionHeader
+                title_bn="মতামত ও সম্পাদকীয়"
+                title_en="Opinion & Editorials"
+                lang={lang}
+                link="/opinion"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {opinions.map((op) => (
+                  <div
+                    key={op.id}
+                    className="flex flex-col items-center text-center p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                  >
+                    <img
+                      src={op.author_image}
+                      alt={op.author_bn}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-red-500 shadow mb-3"
+                    />
+                    <h4 className="font-bold text-sm text-gray-900 leading-snug hover:text-red-600 transition-colors line-clamp-2">
+                      <Link to={`/opinion#${op.slug}`}>
+                        {lang === 'bn' ? op.title_bn : op.title_en}
+                      </Link>
+                    </h4>
+                    <span className="text-xs font-semibold text-red-600 mt-1">
+                      {lang === 'bn' ? op.author_bn : op.author_en}
+                    </span>
+                    <span className="text-[11px] text-gray-500 line-clamp-1">
+                      {lang === 'bn' ? op.author_role_bn : op.author_role_en}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Dynamic Extra Custom Categories Created in Dashboard */}
           {customCategorySections.map((cat) => {
@@ -546,89 +571,95 @@ export default function HomePage({
       </div>
 
       {/* ================= 4. MULTIMEDIA ROW: PHOTOS & VIDEOS ================= */}
-      <section className="mt-12 pt-8 border-t-2 border-gray-300">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Photo Gallery Block */}
-          <div className="bg-white p-5 rounded border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between border-b-2 border-[#e30613] pb-2 mb-4">
-              <div className="flex items-center gap-2">
-                <Camera size={20} className="text-[#e30613]" />
-                <h3 className="font-extrabold text-xl text-gray-900">
-                  {lang === 'bn' ? 'আলোকচিত্র' : 'Photo Gallery'}
-                </h3>
-              </div>
-              <Link to="/photos" className="text-xs font-bold text-red-600 hover:underline">
-                {lang === 'bn' ? 'সব ছবি →' : 'All Photos →'}
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {photos.slice(0, 6).map((ph) => (
-                <div
-                  key={ph.id}
-                  onClick={() => setActivePhoto(ph)}
-                  className="aspect-[4/3] rounded overflow-hidden relative group cursor-pointer bg-gray-100"
-                >
-                  <img
-                    src={ph.image}
-                    alt={ph.title_bn}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                    <p className="text-[11px] text-white font-semibold line-clamp-1">
-                      {lang === 'bn' ? ph.title_bn : ph.title_en}
-                    </p>
+      {(photos.length > 0 || videos.length > 0) && (
+        <section className="mt-12 pt-8 border-t-2 border-gray-300">
+          <div className={`grid grid-cols-1 ${photos.length > 0 && videos.length > 0 ? 'lg:grid-cols-2' : ''} gap-8`}>
+            {/* Photo Gallery Block */}
+            {photos.length > 0 && (
+              <div className="bg-white p-5 rounded border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between border-b-2 border-[#e30613] pb-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Camera size={20} className="text-[#e30613]" />
+                    <h3 className="font-extrabold text-xl text-gray-900">
+                      {lang === 'bn' ? 'আলোকচিত্র' : 'Photo Gallery'}
+                    </h3>
                   </div>
+                  <Link to="/photos" className="text-xs font-bold text-red-600 hover:underline">
+                    {lang === 'bn' ? 'সব ছবি →' : 'All Photos →'}
+                  </Link>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Video News Block */}
-          <div className="bg-white p-5 rounded border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between border-b-2 border-[#e30613] pb-2 mb-4">
-              <div className="flex items-center gap-2">
-                <PlayCircle size={20} className="text-[#e30613]" />
-                <h3 className="font-extrabold text-xl text-gray-900">
-                  {lang === 'bn' ? 'ভিডিও সংবাদ' : 'Video News'}
-                </h3>
-              </div>
-              <Link to="/video" className="text-xs font-bold text-red-600 hover:underline">
-                {lang === 'bn' ? 'সব ভিডিও →' : 'All Videos →'}
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {videos.slice(0, 4).map((v) => (
-                <div
-                  key={v.id}
-                  onClick={() => setActiveVideo(v)}
-                  className="group cursor-pointer bg-gray-50 rounded overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
-                >
-                  <div className="relative aspect-[16/9] bg-black overflow-hidden">
-                    <img
-                      src={v.thumb}
-                      alt={v.title_bn}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform opacity-90"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        ▶
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {photos.slice(0, 6).map((ph) => (
+                    <div
+                      key={ph.id}
+                      onClick={() => setActivePhoto(ph)}
+                      className="aspect-[4/3] rounded overflow-hidden relative group cursor-pointer bg-gray-100"
+                    >
+                      <img
+                        src={ph.image}
+                        alt={ph.title_bn}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                        <p className="text-[11px] text-white font-semibold line-clamp-1">
+                          {lang === 'bn' ? ph.title_bn : ph.title_en}
+                        </p>
                       </div>
                     </div>
-                    <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                      {v.duration}
-                    </span>
-                  </div>
-                  <div className="p-2.5">
-                    <h4 className="text-xs font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2">
-                      {lang === 'bn' ? v.title_bn : v.title_en}
-                    </h4>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Video News Block */}
+            {videos.length > 0 && (
+              <div className="bg-white p-5 rounded border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between border-b-2 border-[#e30613] pb-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <PlayCircle size={20} className="text-[#e30613]" />
+                    <h3 className="font-extrabold text-xl text-gray-900">
+                      {lang === 'bn' ? 'ভিডিও সংবাদ' : 'Video News'}
+                    </h3>
+                  </div>
+                  <Link to="/video" className="text-xs font-bold text-red-600 hover:underline">
+                    {lang === 'bn' ? 'সব ভিডিও →' : 'All Videos →'}
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {videos.slice(0, 4).map((v) => (
+                    <div
+                      key={v.id}
+                      onClick={() => setActiveVideo(v)}
+                      className="group cursor-pointer bg-gray-50 rounded overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
+                    >
+                      <div className="relative aspect-[16/9] bg-black overflow-hidden">
+                        <img
+                          src={v.thumb}
+                          alt={v.title_bn}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform opacity-90"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                            ▶
+                          </div>
+                        </div>
+                        <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          {v.duration}
+                        </span>
+                      </div>
+                      <div className="p-2.5">
+                        <h4 className="text-xs font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2">
+                          {lang === 'bn' ? v.title_bn : v.title_en}
+                        </h4>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* PHOTO PREVIEW MODAL */}
       {activePhoto && (

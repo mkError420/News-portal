@@ -35,11 +35,9 @@ export default function CategoryPage({ articles = [], categories = [], settings 
   })
 
   const hasArticles = filtered.length > 0
-  const displayArticles = hasArticles ? filtered : articles.slice(0, 8)
-
   const lead = hasArticles ? filtered[0] : null
-  const rest = hasArticles ? filtered.slice(1, visibleCount) : displayArticles
-  const mostReadCategory = [...(hasArticles ? filtered : articles)].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
+  const rest = hasArticles ? filtered.slice(1, visibleCount) : []
+  const mostReadCategory = [...filtered].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
 
   // Subcategory filters by category
   const subcategoryMap = {
@@ -160,39 +158,52 @@ export default function CategoryPage({ articles = [], categories = [], settings 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Content Area (8 cols) */}
         <div className="lg:col-span-8 space-y-8">
-          {/* Empty Category Notice if no articles found */}
-          {!hasArticles && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs font-semibold">
-              {lang === 'bn'
-                ? `"${categoryTitle}" বিভাগে এখনও কোনো সংবাদ নেই। নিচে অন্যান্য বিভাগের সর্বশেষ সংবাদ দেখুন:`
-                : `No articles published in "${categoryTitle}" yet. Below are latest stories across other sections:`}
+          {!hasArticles ? (
+            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center my-4 shadow-xs">
+              <h3 className="text-lg font-bold text-gray-800">
+                {lang === 'bn'
+                  ? `"${categoryTitle}" বিভাগে বর্তমানে কোনো সংবাদ পাওয়া যায়নি।`
+                  : `No articles found in "${categoryTitle}".`}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                {lang === 'bn'
+                  ? 'নতুন সংবাদ প্রকাশিত হলে তা এখানে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।'
+                  : 'New stories will appear here as soon as they are published.'}
+              </p>
+              <Link to="/" className="inline-block mt-4 text-xs font-semibold text-red-600 hover:underline">
+                {lang === 'bn' ? '← প্রচ্ছদে ফিরে যান' : '← Back to Home'}
+              </Link>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Category Lead Story */}
+              {lead && (
+                <div>
+                  <NewsCard article={lead} variant="hero" lang={lang} />
+                </div>
+              )}
 
-          {/* Category Lead Story */}
-          {lead && (
-            <div>
-              <NewsCard article={lead} variant="hero" lang={lang} />
-            </div>
-          )}
+              {/* Grid of Other Category Stories */}
+              {rest.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {rest.map((art) => (
+                    <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
+                  ))}
+                </div>
+              )}
 
-          {/* Grid of Other Category Stories */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {rest.map((art) => (
-              <NewsCard key={art.id} article={art} variant="grid" lang={lang} />
-            ))}
-          </div>
-
-          {/* Load More Button */}
-          {visibleCount < displayArticles.length && (
-            <div className="text-center pt-4">
-              <button
-                onClick={() => setVisibleCount((prev) => prev + 6)}
-                className="px-6 py-2.5 bg-white border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white font-bold text-sm rounded transition-colors shadow-sm"
-              >
-                {lang === 'bn' ? 'আরও সংবাদ লোড করুন' : 'Load More News'}
-              </button>
-            </div>
+              {/* Load More Button */}
+              {visibleCount < filtered.length && (
+                <div className="text-center pt-4">
+                  <button
+                    onClick={() => setVisibleCount((prev) => prev + 6)}
+                    className="px-6 py-2.5 bg-white border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white font-bold text-sm rounded transition-colors shadow-sm"
+                  >
+                    {lang === 'bn' ? 'আরও সংবাদ লোড করুন' : 'Load More News'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
