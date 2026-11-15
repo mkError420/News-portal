@@ -62,9 +62,9 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
           <Home size={13} />
           <span>{lang === 'bn' ? '← প্রচ্ছদে ফিরে যান' : '← Back to Homepage'}</span>
         </Link>
-        <span className="text-gray-400">
+        {/*         <span className="text-gray-400">
           {lang === 'bn' ? 'নিরাপদ অ্যাডমিন পোর্টাল' : 'Secure Admin Portal'}
-        </span>
+        </span> */}
       </div>
 
       {/* Main Login Card */}
@@ -168,7 +168,7 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
           </form>
 
           {/* Quick Demo Credentials Assistant */}
-          <div className="mt-6 p-3.5 bg-gray-50 border border-gray-200 rounded-lg text-xs space-y-2">
+          {/*       <div className="mt-6 p-3.5 bg-gray-50 border border-gray-200 rounded-lg text-xs space-y-2">
             <div className="flex items-center justify-between text-gray-700 font-bold">
               <span>{lang === 'bn' ? '🔑 ডিফল্ট অ্যাডমিন তথ্য:' : '🔑 Default Admin Credentials:'}</span>
               <button
@@ -186,7 +186,7 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
               <p><span className="text-gray-400 font-sans">ইমেইল / User:</span> admin@prothomalo.com</p>
               <p><span className="text-gray-400 font-sans">পাসওয়ার্ড / Pass:</span> admin123</p>
             </div>
-          </div>
+          </div> */}
 
         </div>
       </div>

@@ -248,12 +248,12 @@ export default function PrayerTimesWidget({ lang = 'bn' }) {
   // Calculate current date's prayer times for the selected division
   const prayerData = useMemo(() => {
     const base = getDhakaBaseTimes(now)
-    const fajrMin = base.fajr + currentDiv.fajrOffset
-    const sunriseMin = base.sunrise + currentDiv.offsetMinutes
-    const dhuhrMin = base.dhuhr + currentDiv.dhuhrOffset
-    const asrMin = base.asr + currentDiv.asrOffset
-    const maghribMin = base.maghrib + currentDiv.maghribOffset
-    const ishaMin = base.isha + currentDiv.ishaOffset
+    const fajrMin = Math.round(base.fajr + currentDiv.fajrOffset)
+    const sunriseMin = Math.round(base.sunrise + currentDiv.offsetMinutes)
+    const dhuhrMin = Math.round(base.dhuhr + currentDiv.dhuhrOffset)
+    const asrMin = Math.round(base.asr + currentDiv.asrOffset)
+    const maghribMin = Math.round(base.maghrib + currentDiv.maghribOffset)
+    const ishaMin = Math.round(base.isha + currentDiv.ishaOffset)
     const sehriMin = fajrMin - 6
 
     const prayers = [
@@ -330,8 +330,9 @@ export default function PrayerTimesWidget({ lang = 'bn' }) {
       diffMinutes = 24 * 60 - currentMinutes + fajrMin
     }
 
-    const hoursLeft = Math.floor(diffMinutes / 60)
-    const minsLeft = diffMinutes % 60
+    const totalDiff = Math.max(0, Math.round(diffMinutes))
+    const hoursLeft = Math.floor(totalDiff / 60)
+    const minsLeft = Math.round(totalDiff % 60)
     let countdownStr = ''
     if (lang === 'bn') {
       countdownStr =

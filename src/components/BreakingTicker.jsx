@@ -62,7 +62,6 @@ export default function BreakingTicker({ items = [], lang = 'bn', articles = [] 
       <div className="max-w-7xl mx-auto px-4 flex items-center">
         {/* Badge Label */}
         <div className="flex-shrink-0 flex items-center gap-1.5 bg-white text-[#e30613] px-2.5 py-1 rounded-sm text-xs font-bold uppercase tracking-wider shadow-sm z-10 mr-3">
-          <Flame size={14} className="fill-current text-red-600 animate-pulse" />
           <span>{lang === 'bn' ? 'সর্বশেষ' : 'Breaking'}</span>
         </div>
 

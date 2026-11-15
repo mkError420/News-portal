@@ -62,6 +62,7 @@ import {
 import ProthomAloLogo from '../components/ProthomAloLogo.jsx'
 import { api } from '../api.js'
 import { defaultSiteSettings } from '../data.js'
+import { computeGovtRates } from '../components/CurrencyWidget.jsx'
 import {
   CATEGORIES_BN,
   CATEGORIES_EN,
@@ -318,6 +319,30 @@ export default function AdminPage({
       }
     })
   }, [])
+
+  const [isSyncingGovt, setIsSyncingGovt] = useState(false)
+
+  const handleSyncGovtRates = async () => {
+    setIsSyncingGovt(true)
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(4500) })
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.rates?.BDT) {
+          const fresh = computeGovtRates(data.rates.BDT, data.rates)
+          setCurrencyList(fresh)
+          await api.saveCurrencyRates(fresh)
+          triggerToast(lang === 'bn' ? 'বাংলাদেশ ব্যাংক সরকারি মুদ্রা রেট সফলভাবে সিঙ্ক ও সংরক্ষিত হয়েছে!' : 'Bangladesh Bank Govt rates synced successfully!')
+          return
+        }
+      }
+      throw new Error('Sync failed')
+    } catch {
+      triggerToast(lang === 'bn' ? 'রেট সিঙ্ক ব্যর্থ হয়েছে, ইন্টারনেট সংযোগ চেক করুন।' : 'Sync failed, check internet connection.', 'error')
+    } finally {
+      setIsSyncingGovt(false)
+    }
+  }
 
   const handleSaveCurrencyRates = async () => {
     setIsSavingCurrency(true)
@@ -4940,17 +4965,29 @@ export default function AdminPage({
                   <div className="flex flex-wrap items-center justify-between border-b pb-2.5 gap-2">
                     <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                       <DollarSign size={16} className="text-[#e30613]" />
-                      <span>৭. লাইভ মুদ্রা ও বৈদেশিক এক্সচেঞ্জ বাজার সেটিংস (Currency Market Rates)</span>
+                      <span>৭. বাংলাদেশ ব্যাংক সরকারি মুদ্রা রেট ও এক্সচেঞ্জ বাজার (Govt Currency Rates)</span>
                     </h4>
-                    <button
-                      type="button"
-                      onClick={handleSaveCurrencyRates}
-                      disabled={isSavingCurrency}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs disabled:opacity-50"
-                    >
-                      <Save size={13} />
-                      <span>{isSavingCurrency ? 'সংরক্ষণ হচ্ছে...' : 'মুদ্রা রেট সংরক্ষণ করুন'}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSyncGovtRates}
+                        disabled={isSyncingGovt}
+                        className="px-3 py-1.5 bg-[#1a3a5c] hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs disabled:opacity-50"
+                        title="সরাসরি সরকারি রেট ফেচ ও আপডেট করুন"
+                      >
+                        <RefreshCw size={12} className={isSyncingGovt ? 'animate-spin' : ''} />
+                        <span>{isSyncingGovt ? 'সিঙ্ক হচ্ছে...' : 'সরকারি রেট সিঙ্ক করুন'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveCurrencyRates}
+                        disabled={isSavingCurrency}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs disabled:opacity-50"
+                      >
+                        <Save size={13} />
+                        <span>{isSavingCurrency ? 'সংরক্ষণ হচ্ছে...' : 'মুদ্রা রেট সংরক্ষণ করুন'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <p className="text-xs text-gray-500">

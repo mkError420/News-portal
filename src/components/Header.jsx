@@ -297,10 +297,9 @@ export default function Header({
                 to={item.path}
                 end={item.path === '/'}
                 className={({ isActive }) =>
-                  `px-2 sm:px-2.5 md:px-2.5 lg:px-2.5 xl:px-3 py-2 sm:py-2.5 text-[13px] md:text-[13.5px] lg:text-[14px] font-semibold whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${
-                    isActive
-                      ? 'text-[#e30613] border-[#e30613] bg-red-50/50'
-                      : 'text-[#1a1a1a] border-transparent hover:text-[#e30613] hover:border-red-300'
+                  `px-2 sm:px-2.5 md:px-2.5 lg:px-2.5 xl:px-3 py-2 sm:py-2.5 text-[13px] md:text-[13.5px] lg:text-[14px] font-semibold whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${isActive
+                    ? 'text-[#e30613] border-[#e30613] bg-red-50/50'
+                    : 'text-[#1a1a1a] border-transparent hover:text-[#e30613] hover:border-red-300'
                   }`
                 }
               >
@@ -318,7 +317,6 @@ export default function Header({
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <span className="flex-shrink-0 font-bold text-[#e30613] flex items-center gap-1">
-            <Flame size={13} className="text-red-600 fill-current" />
             <span>{lang === 'bn' ? 'আলোচিত বিষয়:' : 'Trending Topics:'}</span>
           </span>
           <div className="flex items-center gap-1.5 flex-nowrap">
@@ -379,16 +377,14 @@ export default function Header({
 
       {/* MOBILE DRAWER */}
       <div
-        className={`fixed inset-0 z-50 bg-black/50 transition-opacity lg:hidden ${
-          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`fixed inset-0 z-50 bg-black/50 transition-opacity lg:hidden ${mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
         onClick={() => setMobileOpen(false)}
       />
 
       <aside
-        className={`fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 lg:hidden flex flex-col font-bengali ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 lg:hidden flex flex-col font-bengali ${mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-4 bg-[#1a3a5c] text-white flex items-center justify-between">
           <div>
@@ -425,8 +421,7 @@ export default function Header({
               end={item.path === '/'}
               onClick={() => setMobileOpen(false)}
               className={({ isActive }) =>
-                `block px-4 py-2.5 text-sm font-semibold border-b border-gray-50 transition-colors ${
-                  isActive ? 'text-[#e30613] bg-red-50/70 border-l-4 border-l-[#e30613]' : 'text-gray-800 hover:text-[#e30613]'
+                `block px-4 py-2.5 text-sm font-semibold border-b border-gray-50 transition-colors ${isActive ? 'text-[#e30613] bg-red-50/70 border-l-4 border-l-[#e30613]' : 'text-gray-800 hover:text-[#e30613]'
                 }`
               }
             >
