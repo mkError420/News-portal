@@ -19,6 +19,10 @@ DirectoryIndex index.php index.html
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  # Pass Authorization header to PHP in Apache FastCGI/CGI environments
+  RewriteCond %{HTTP:Authorization} ^(.*)
+  RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
   # Block sensitive config file
   RewriteRule ^backend/config\.php$ - [F,L,NC]
 

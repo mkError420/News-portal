@@ -347,19 +347,35 @@ export default function App() {
 
   // --- Roles CRUD Handlers ---
   const handleAddRole = (newRole) => {
+    const list = Array.isArray(newsData.roles) ? [...newsData.roles] : []
+    const idx = list.findIndex(
+      (item) => String(item.id) === String(newRole.id) || item.role_key === newRole.role_key
+    )
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...newRole }
+    } else {
+      list.push(newRole)
+    }
     const updated = {
       ...newsData,
-      roles: [...(newsData.roles || []), newRole],
+      roles: list,
     }
     persistData(updated)
   }
 
   const handleUpdateRole = (updatedRole) => {
+    const list = Array.isArray(newsData.roles) ? [...newsData.roles] : []
+    const idx = list.findIndex(
+      (item) => String(item.id) === String(updatedRole.id) || item.role_key === updatedRole.role_key
+    )
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...updatedRole }
+    } else {
+      list.push(updatedRole)
+    }
     const updated = {
       ...newsData,
-      roles: (newsData.roles || []).map((item) =>
-        item.id === updatedRole.id || item.role_key === updatedRole.role_key ? { ...item, ...updatedRole } : item
-      ),
+      roles: list,
     }
     persistData(updated)
   }
@@ -374,19 +390,35 @@ export default function App() {
 
   // --- Staff CRUD Handlers ---
   const handleAddStaff = (newStaff) => {
+    const list = Array.isArray(newsData.staff) ? [...newsData.staff] : []
+    const idx = list.findIndex(
+      (item) => String(item.id) === String(newStaff.id) || (item.email && item.email.toLowerCase() === (newStaff.email || '').toLowerCase())
+    )
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...newStaff }
+    } else {
+      list.push(newStaff)
+    }
     const updated = {
       ...newsData,
-      staff: [...(newsData.staff || []), newStaff],
+      staff: list,
     }
     persistData(updated)
   }
 
   const handleUpdateStaff = (updatedStaff) => {
+    const list = Array.isArray(newsData.staff) ? [...newsData.staff] : []
+    const idx = list.findIndex(
+      (item) => String(item.id) === String(updatedStaff.id) || (item.email && item.email.toLowerCase() === (updatedStaff.email || '').toLowerCase())
+    )
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...updatedStaff }
+    } else {
+      list.push(updatedStaff)
+    }
     const updated = {
       ...newsData,
-      staff: (newsData.staff || []).map((item) =>
-        item.id === updatedStaff.id || item.email === updatedStaff.email ? { ...item, ...updatedStaff } : item
-      ),
+      staff: list,
     }
     persistData(updated)
   }
@@ -631,6 +663,7 @@ export default function App() {
                 settings={newsData.settings}
                 onUpdateSettings={handleUpdateSettings}
                 lang={lang}
+                onLangChange={handleLangChange}
               />
             }
           />

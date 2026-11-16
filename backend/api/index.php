@@ -612,21 +612,39 @@ function auto_migrate_roles_and_staff(PDO $pdo): void
     if ($done) return;
     $done = true;
 
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
     // 1. Roles table
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `roles` (
-            `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `role_key` VARCHAR(100) NOT NULL UNIQUE,
-            `name_bn` VARCHAR(150) NOT NULL,
-            `name_en` VARCHAR(150) NOT NULL DEFAULT '',
-            `description_bn` TEXT NULL,
-            `description_en` TEXT NULL,
-            `permissions` JSON NULL,
-            `is_system` TINYINT(1) DEFAULT 0,
-            `status` VARCHAR(20) DEFAULT 'active',
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        if ($driver === 'sqlite') {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS `roles` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                `role_key` TEXT NOT NULL UNIQUE,
+                `name_bn` TEXT NOT NULL,
+                `name_en` TEXT NOT NULL DEFAULT '',
+                `description_bn` TEXT NULL,
+                `description_en` TEXT NULL,
+                `permissions` TEXT NULL,
+                `is_system` INTEGER DEFAULT 0,
+                `status` TEXT DEFAULT 'active',
+                `created_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TEXT DEFAULT CURRENT_TIMESTAMP
+            )");
+        } else {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS `roles` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `role_key` VARCHAR(100) NOT NULL UNIQUE,
+                `name_bn` VARCHAR(150) NOT NULL,
+                `name_en` VARCHAR(150) NOT NULL DEFAULT '',
+                `description_bn` TEXT NULL,
+                `description_en` TEXT NULL,
+                `permissions` JSON NULL,
+                `is_system` TINYINT(1) DEFAULT 0,
+                `status` VARCHAR(20) DEFAULT 'active',
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        }
 
         $roleCount = (int) $pdo->query('SELECT COUNT(*) FROM roles')->fetchColumn();
         if ($roleCount === 0) {
@@ -702,7 +720,12 @@ function auto_migrate_roles_and_staff(PDO $pdo): void
 
     // 2. Add columns to `admins` table if missing (name, role_key, status, phone)
     try {
-        $cols = $pdo->query("SHOW COLUMNS FROM `admins`")->fetchAll(PDO::FETCH_COLUMN);
+        if ($driver === 'sqlite') {
+            $cStmt = $pdo->query("PRAGMA table_info(`admins`)");
+            $cols = $cStmt ? $cStmt->fetchAll(PDO::FETCH_COLUMN, 1) : [];
+        } else {
+            $cols = $pdo->query("SHOW COLUMNS FROM `admins`")->fetchAll(PDO::FETCH_COLUMN);
+        }
         if (!in_array('name', $cols, true)) {
             $pdo->exec("ALTER TABLE `admins` ADD COLUMN `name` VARCHAR(150) NOT NULL DEFAULT 'Administrator'");
         }
@@ -802,11 +825,37 @@ function format_poll_item(array $row): array
 function get_auth_token(): string
 {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    $lowerHeaders = [];
+    foreach ($headers as $k => $v) {
+        $lowerHeaders[strtolower((string)$k)] = $v;
+    }
+
+    $authHeader = $lowerHeaders['authorization'] 
+        ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ''));
+
     if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
         return trim($matches[1]);
     }
-    return trim($headers['X-Admin-Token'] ?? $headers['x-admin-token'] ?? ($_SERVER['HTTP_X_ADMIN_TOKEN'] ?? ''));
+
+    $adminTokenHeader = $lowerHeaders['x-admin-token']
+        ?? ($_SERVER['HTTP_X_ADMIN_TOKEN'] ?? ($_SERVER['REDIRECT_HTTP_X_ADMIN_TOKEN'] ?? ''));
+    if (!empty($adminTokenHeader)) {
+        return trim($adminTokenHeader);
+    }
+
+    if (!empty($_COOKIE['admin_token'])) {
+        return trim($_COOKIE['admin_token']);
+    }
+
+    if (!empty($_GET['token'])) {
+        return trim((string)$_GET['token']);
+    }
+
+    if (!empty($_POST['token'])) {
+        return trim((string)$_POST['token']);
+    }
+
+    return '';
 }
 
 function verify_admin_token(string $token): ?array
@@ -815,13 +864,21 @@ function verify_admin_token(string $token): ?array
     $parts = explode('.', $token);
     if (count($parts) !== 2) return null;
     [$payloadB64, $signature] = $parts;
-    $payloadJson = base64_decode(strtr($payloadB64, '-_', '+/'));
+    
+    // Ensure padding for standard base64 decoding
+    $remainder = strlen($payloadB64) % 4;
+    $paddedB64 = $payloadB64 . ($remainder ? str_repeat('=', 4 - $remainder) : '');
+
+    $payloadJson = base64_decode(strtr($paddedB64, '-_', '+/'));
     if (!$payloadJson) return null;
     $payload = json_decode($payloadJson, true);
     if (!is_array($payload) || empty($payload['id']) || empty($payload['email'])) return null;
     $secret = 'newsportal_auth_secret_token_key_2026';
-    $expectedSig = hash_hmac('sha256', $payloadB64, $secret);
-    if (!hash_equals($expectedSig, $signature)) return null;
+    $expectedSig = hash_hmac('sha256', rtrim($payloadB64, '='), $secret);
+    if (!hash_equals($expectedSig, $signature)) {
+        $expectedSig2 = hash_hmac('sha256', $paddedB64, $secret);
+        if (!hash_equals($expectedSig2, $signature)) return null;
+    }
     return $payload;
 }
 
@@ -1192,6 +1249,14 @@ if ($resource === 'login' && $method === 'POST') {
         $_SESSION['admin_email'] = $adminUser['email'];
 
         $token = create_admin_token((int) $adminUser['id'], $adminUser['email']);
+        try {
+            setcookie('admin_token', $token, [
+                'expires' => time() + 86400 * 30,
+                'path' => '/',
+                'httponly' => false,
+                'samesite' => 'Lax'
+            ]);
+        } catch (Throwable $e) {}
 
         $perms = [];
         if (!empty($adminUser['permissions'])) {
@@ -2505,11 +2570,21 @@ if ($resource === 'roles') {
 
         $nameBn = trim((string) ($input['name_bn'] ?? ($input['name'] ?? '')));
         $nameEn = trim((string) ($input['name_en'] ?? ''));
-        $roleKey = strtolower(trim((string) ($input['role_key'] ?? '')));
-        if ($roleKey === '') {
-            $roleKey = preg_replace('/[^a-z0-9_]/', '_', strtolower($nameEn ?: $nameBn));
-            $roleKey = trim($roleKey, '_') ?: ('role_' . time());
+        if ($nameEn === '' || $nameEn === $nameBn) {
+            $nameEn = '';
         }
+        $rawRoleKey = strtolower(trim((string) ($input['role_key'] ?? '')));
+        $roleKey = trim(preg_replace('/[^a-z0-9_]+/', '_', $rawRoleKey), '_');
+
+        if ($roleKey === '' || strlen($roleKey) < 2) {
+            if ($nameEn !== '') {
+                $roleKey = trim(preg_replace('/[^a-z0-9_]+/', '_', strtolower($nameEn)), '_');
+            }
+            if ($roleKey === '' || strlen($roleKey) < 2) {
+                $roleKey = 'role_' . dechex(time());
+            }
+        }
+
         $descBn = trim((string) ($input['description_bn'] ?? ''));
         $descEn = trim((string) ($input['description_en'] ?? ''));
         $perms = $input['permissions'] ?? ['manage_articles'];
@@ -2522,32 +2597,43 @@ if ($resource === 'roles') {
             json_response(['success' => false, 'message' => 'রোলের বাংলা নাম আবশ্যক। (Role name is required)'], 400);
         }
 
-        // Check if role_key already exists
-        $chk = $dbConn->prepare('SELECT id FROM roles WHERE role_key = ? LIMIT 1');
-        $chk->execute([$roleKey]);
-        if ($chk->fetch()) {
-            json_response(['success' => false, 'message' => 'এই রোল কি (Role Key) ইতিমধ্যে বিদ্যমান। অনুগ্রহ করে নতুন কি ব্যবহার করুন।'], 400);
+        // If role_key already exists, guarantee uniqueness by appending suffix
+        $baseKey = $roleKey;
+        $counter = 1;
+        while (true) {
+            $chk = $dbConn->prepare('SELECT id FROM roles WHERE role_key = ? LIMIT 1');
+            $chk->execute([$roleKey]);
+            if (!$chk->fetch()) {
+                break;
+            }
+            $roleKey = $baseKey . '_' . $counter;
+            $counter++;
         }
 
         $ins = $dbConn->prepare('INSERT INTO roles (role_key, name_bn, name_en, description_bn, description_en, permissions, is_system, status) VALUES (?, ?, ?, ?, ?, ?, 0, ?)');
-        $ins->execute([$roleKey, $nameBn, $nameEn, $descBn, $descEn, json_encode($perms, JSON_UNESCAPED_UNICODE), $status]);
+        $ins->execute([$roleKey, $nameBn, $nameEn ?: $nameBn, $descBn, $descEn, json_encode($perms, JSON_UNESCAPED_UNICODE), $status]);
         $newId = (int) $dbConn->lastInsertId();
+
+        $savedRole = [
+            'id' => $newId,
+            'role_key' => $roleKey,
+            'name_bn' => $nameBn,
+            'name_en' => $nameEn ?: $nameBn,
+            'description_bn' => $descBn,
+            'description_en' => $descEn,
+            'permissions' => $perms,
+            'is_system' => false,
+            'status' => $status,
+            'user_count' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
 
         json_response([
             'success' => true,
             'message' => 'নতুন রোল সফলভাবে তৈরি হয়েছে।',
-            'role' => [
-                'id' => $newId,
-                'role_key' => $roleKey,
-                'name_bn' => $nameBn,
-                'name_en' => $nameEn,
-                'description_bn' => $descBn,
-                'description_en' => $descEn,
-                'permissions' => $perms,
-                'is_system' => false,
-                'status' => $status,
-                'user_count' => 0,
-            ]
+            'role' => $savedRole,
+            'item' => $savedRole,
         ], 201);
     }
 
@@ -2584,20 +2670,23 @@ if ($resource === 'roles') {
         $upd = $dbConn->prepare('UPDATE roles SET name_bn = ?, name_en = ?, description_bn = ?, description_en = ?, permissions = ?, status = ? WHERE id = ?');
         $upd->execute([$nameBn, $nameEn, $descBn, $descEn, json_encode($perms, JSON_UNESCAPED_UNICODE), $status, (int)$existing['id']]);
 
+        $savedRole = [
+            'id' => (int) $existing['id'],
+            'role_key' => $existing['role_key'],
+            'name_bn' => $nameBn,
+            'name_en' => $nameEn,
+            'description_bn' => $descBn,
+            'description_en' => $descEn,
+            'permissions' => $perms,
+            'is_system' => (bool) $existing['is_system'],
+            'status' => $status,
+        ];
+
         json_response([
             'success' => true,
             'message' => 'রোল সফলভাবে আপডেট করা হয়েছে।',
-            'role' => [
-                'id' => (int) $existing['id'],
-                'role_key' => $existing['role_key'],
-                'name_bn' => $nameBn,
-                'name_en' => $nameEn,
-                'description_bn' => $descBn,
-                'description_en' => $descEn,
-                'permissions' => $perms,
-                'is_system' => (bool) $existing['is_system'],
-                'status' => $status,
-            ]
+            'role' => $savedRole,
+            'item' => $savedRole,
         ]);
     }
 
@@ -2675,52 +2764,74 @@ if ($resource === 'staff') {
 
         $email = strtolower(trim((string) ($input['email'] ?? '')));
         $name = trim((string) ($input['name'] ?? ''));
-        $password = (string) ($input['password'] ?? '');
-        $roleKey = trim((string) ($input['role_key'] ?? 'editor'));
+        $password = trim((string) ($input['password'] ?? ''));
+        $roleKey = trim((string) ($input['role_key'] ?? 'admin'));
         $phone = trim((string) ($input['phone'] ?? ''));
         $status = in_array($input['status'] ?? 'active', ['active', 'inactive'], true) ? $input['status'] : 'active';
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            json_response(['success' => false, 'message' => 'সঠিক ইমেইল এড্রেস প্রদান করুন।'], 400);
+        // Support username input like "admin2"
+        if ($email !== '' && strpos($email, '@') === false) {
+            $email = $email . '@newsportal.com';
         }
-        if (strlen($password) < 6) {
-            json_response(['success' => false, 'message' => 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'], 400);
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            json_response(['success' => false, 'message' => 'সঠিক ইমেইল এড্রেস প্রদান করুন। (Please enter a valid email address)'], 400);
+        }
+        if (strlen($password) < 4) {
+            json_response(['success' => false, 'message' => 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে। (Password must be at least 4 characters)'], 400);
         }
         if ($name === '') {
             $name = explode('@', $email)[0];
         }
 
-        // Check if email exists
+        // Check if email already exists
         $chk = $dbConn->prepare('SELECT id FROM admins WHERE email = ? LIMIT 1');
         $chk->execute([$email]);
-        if ($chk->fetch()) {
-            json_response(['success' => false, 'message' => 'এই ইমেইলটি ইতিমধ্যে ব্যবহৃত হয়েছে।'], 400);
-        }
+        $existingAdmin = $chk->fetch();
 
         $hash = password_hash($password, PASSWORD_BCRYPT);
-        $ins = $dbConn->prepare('INSERT INTO admins (email, password_hash, name, role_key, status, phone) VALUES (?, ?, ?, ?, ?, ?)');
-        $ins->execute([$email, $hash, $name, $roleKey, $status, $phone]);
-        $newId = (int) $dbConn->lastInsertId();
+
+        if ($existingAdmin) {
+            // Update the existing admin account instead of blocking with an error
+            $upd = $dbConn->prepare('UPDATE admins SET name = ?, password_hash = ?, role_key = ?, status = ?, phone = ? WHERE id = ?');
+            $upd->execute([$name, $hash, $roleKey, $status, $phone, (int)$existingAdmin['id']]);
+            $newId = (int)$existingAdmin['id'];
+            $msg = 'টিম সদস্যের তথ্য ও পাসওয়ার্ড সফলভাবে আপডেট করা হয়েছে।';
+        } else {
+            $ins = $dbConn->prepare('INSERT INTO admins (email, password_hash, name, role_key, status, phone) VALUES (?, ?, ?, ?, ?, ?)');
+            $ins->execute([$email, $hash, $name, $roleKey, $status, $phone]);
+            $newId = (int) $dbConn->lastInsertId();
+            $msg = 'নতুন টিম সদস্য সফলভাবে যুক্ত করা হয়েছে।';
+        }
 
         // Get role details
-        $rStmt = $dbConn->prepare('SELECT name_bn, name_en FROM roles WHERE role_key = ? LIMIT 1');
+        $rStmt = $dbConn->prepare('SELECT name_bn, name_en, permissions FROM roles WHERE role_key = ? LIMIT 1');
         $rStmt->execute([$roleKey]);
         $rData = $rStmt->fetch();
+        $perms = [];
+        if (!empty($rData['permissions'])) {
+            $dec = json_decode($rData['permissions'], true);
+            if (is_array($dec)) $perms = $dec;
+        }
+
+        $savedStaff = [
+            'id' => $newId,
+            'name' => $name,
+            'email' => $email,
+            'role_key' => $roleKey,
+            'role_name_bn' => $rData['name_bn'] ?? ($roleKey === 'admin' ? 'প্রধান প্রশাসক (Super Admin)' : $roleKey),
+            'role_name_en' => $rData['name_en'] ?? ($roleKey === 'admin' ? 'Super Administrator' : $roleKey),
+            'status' => $status,
+            'phone' => $phone,
+            'permissions' => $perms,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
 
         json_response([
             'success' => true,
-            'message' => 'নতুন টিম সদস্য সফলভাবে যুক্ত করা হয়েছে।',
-            'staff' => [
-                'id' => $newId,
-                'name' => $name,
-                'email' => $email,
-                'role_key' => $roleKey,
-                'role_name_bn' => $rData['name_bn'] ?? $roleKey,
-                'role_name_en' => $rData['name_en'] ?? $roleKey,
-                'status' => $status,
-                'phone' => $phone,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]
+            'message' => $msg,
+            'staff' => $savedStaff,
+            'item' => $savedStaff,
         ], 201);
     }
 
@@ -2729,17 +2840,87 @@ if ($resource === 'staff') {
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $id = (int) ($input['id'] ?? 0);
 
-        $stmt = $dbConn->prepare('SELECT * FROM admins WHERE id = ? LIMIT 1');
-        $stmt->execute([$id]);
-        $existing = $stmt->fetch();
+        $existing = null;
+        if ($id > 0) {
+            $stmt = $dbConn->prepare('SELECT * FROM admins WHERE id = ? LIMIT 1');
+            $stmt->execute([$id]);
+            $existing = $stmt->fetch();
+        }
+        if (!$existing && !empty($input['email'])) {
+            $stmtEmail = $dbConn->prepare('SELECT * FROM admins WHERE email = ? LIMIT 1');
+            $stmtEmail->execute([strtolower(trim((string)$input['email']))]);
+            $existing = $stmtEmail->fetch();
+            if ($existing) {
+                $id = (int) $existing['id'];
+            }
+        }
+
+        // If still not found, auto-insert so editing never gets lost
         if (!$existing) {
-            json_response(['success' => false, 'message' => 'সদস্য খুঁজে পাওয়া যায়নি।'], 404);
+            $inputEmail = strtolower(trim((string) ($input['email'] ?? '')));
+            if (!filter_var($inputEmail, FILTER_VALIDATE_EMAIL)) {
+                json_response(['success' => false, 'message' => 'সঠিক ইমেইল এড্রেস প্রদান করুন।'], 400);
+            }
+            $name = trim((string) ($input['name'] ?? ''));
+            if ($name === '') $name = explode('@', $inputEmail)[0];
+            $roleKey = trim((string) ($input['role_key'] ?? 'editor'));
+            $phone = trim((string) ($input['phone'] ?? ''));
+            $status = in_array($input['status'] ?? 'active', ['active', 'inactive'], true) ? $input['status'] : 'active';
+            $password = (string) ($input['password'] ?? '123456');
+            if (strlen($password) < 6) $password = '123456';
+            $hash = password_hash($password, PASSWORD_BCRYPT);
+
+            $ins = $dbConn->prepare('INSERT INTO admins (email, password_hash, name, role_key, status, phone) VALUES (?, ?, ?, ?, ?, ?)');
+            $ins->execute([$inputEmail, $hash, $name, $roleKey, $status, $phone]);
+            $id = (int) $dbConn->lastInsertId();
+
+            $rStmt = $dbConn->prepare('SELECT name_bn, name_en, permissions FROM roles WHERE role_key = ? LIMIT 1');
+            $rStmt->execute([$roleKey]);
+            $rData = $rStmt->fetch();
+            $perms = [];
+            if (!empty($rData['permissions'])) {
+                $decoded = json_decode($rData['permissions'], true);
+                if (is_array($decoded)) $perms = $decoded;
+            }
+
+            $savedStaff = [
+                'id' => $id,
+                'name' => $name,
+                'email' => $inputEmail,
+                'role_key' => $roleKey,
+                'role_name_bn' => $rData['name_bn'] ?? ($roleKey === 'admin' ? 'প্রধান প্রশাসক' : $roleKey),
+                'role_name_en' => $rData['name_en'] ?? ($roleKey === 'admin' ? 'Super Admin' : $roleKey),
+                'status' => $status,
+                'phone' => $phone,
+                'permissions' => $perms,
+                'created_at' => date('Y-m-d H:i:s'),
+            ];
+            json_response([
+                'success' => true,
+                'message' => 'সদস্যের তথ্য সফলভাবে সংরক্ষিত হয়েছে।',
+                'staff' => $savedStaff,
+                'item' => $savedStaff
+            ]);
+        }
+
+        $inputEmail = strtolower(trim((string) ($input['email'] ?? '')));
+        $targetEmail = $existing['email'];
+        if ($inputEmail !== '' && filter_var($inputEmail, FILTER_VALIDATE_EMAIL)) {
+            if ($inputEmail !== strtolower($existing['email'])) {
+                $chkDup = $dbConn->prepare('SELECT id FROM admins WHERE email = ? AND id != ? LIMIT 1');
+                $chkDup->execute([$inputEmail, $id]);
+                if ($chkDup->fetch()) {
+                    json_response(['success' => false, 'message' => 'এই ইমেইলটি ইতিমধ্যে অন্য সদস্যের জন্য ব্যবহৃত হয়েছে।'], 400);
+                }
+                $targetEmail = $inputEmail;
+            }
         }
 
         $name = trim((string) ($input['name'] ?? $existing['name']));
+        if ($name === '') $name = explode('@', $targetEmail)[0];
         $roleKey = trim((string) ($input['role_key'] ?? $existing['role_key']));
-        $phone = trim((string) ($input['phone'] ?? $existing['phone']));
-        $status = in_array($input['status'] ?? $existing['status'], ['active', 'inactive'], true) ? $input['status'] : $existing['status'];
+        $phone = trim((string) ($input['phone'] ?? ($existing['phone'] ?? '')));
+        $status = in_array($input['status'] ?? ($existing['status'] ?? 'active'), ['active', 'inactive'], true) ? $input['status'] : ($existing['status'] ?? 'active');
         $newPassword = (string) ($input['password'] ?? '');
 
         if (!empty($newPassword)) {
@@ -2747,30 +2928,40 @@ if ($resource === 'staff') {
                 json_response(['success' => false, 'message' => 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'], 400);
             }
             $hash = password_hash($newPassword, PASSWORD_BCRYPT);
-            $upd = $dbConn->prepare('UPDATE admins SET name = ?, role_key = ?, status = ?, phone = ?, password_hash = ? WHERE id = ?');
-            $upd->execute([$name, $roleKey, $status, $phone, $hash, $id]);
+            $upd = $dbConn->prepare('UPDATE admins SET name = ?, email = ?, role_key = ?, status = ?, phone = ?, password_hash = ? WHERE id = ?');
+            $upd->execute([$name, $targetEmail, $roleKey, $status, $phone, $hash, $id]);
         } else {
-            $upd = $dbConn->prepare('UPDATE admins SET name = ?, role_key = ?, status = ?, phone = ? WHERE id = ?');
-            $upd->execute([$name, $roleKey, $status, $phone, $id]);
+            $upd = $dbConn->prepare('UPDATE admins SET name = ?, email = ?, role_key = ?, status = ?, phone = ? WHERE id = ?');
+            $upd->execute([$name, $targetEmail, $roleKey, $status, $phone, $id]);
         }
 
-        $rStmt = $dbConn->prepare('SELECT name_bn, name_en FROM roles WHERE role_key = ? LIMIT 1');
+        $rStmt = $dbConn->prepare('SELECT name_bn, name_en, permissions FROM roles WHERE role_key = ? LIMIT 1');
         $rStmt->execute([$roleKey]);
         $rData = $rStmt->fetch();
+        $perms = [];
+        if (!empty($rData['permissions'])) {
+            $decoded = json_decode($rData['permissions'], true);
+            if (is_array($decoded)) $perms = $decoded;
+        }
+
+        $savedStaff = [
+            'id' => (int) $id,
+            'name' => $name,
+            'email' => $targetEmail,
+            'role_key' => $roleKey,
+            'role_name_bn' => $rData['name_bn'] ?? ($roleKey === 'admin' ? 'প্রধান প্রশাসক' : $roleKey),
+            'role_name_en' => $rData['name_en'] ?? ($roleKey === 'admin' ? 'Super Admin' : $roleKey),
+            'status' => $status,
+            'phone' => $phone,
+            'permissions' => $perms,
+            'created_at' => $existing['created_at'] ?? date('Y-m-d H:i:s'),
+        ];
 
         json_response([
             'success' => true,
             'message' => 'সদস্যের তথ্য সফলভাবে আপডেট করা হয়েছে।',
-            'staff' => [
-                'id' => $id,
-                'name' => $name,
-                'email' => $existing['email'],
-                'role_key' => $roleKey,
-                'role_name_bn' => $rData['name_bn'] ?? $roleKey,
-                'role_name_en' => $rData['name_en'] ?? $roleKey,
-                'status' => $status,
-                'phone' => $phone,
-            ]
+            'staff' => $savedStaff,
+            'item' => $savedStaff
         ]);
     }
 

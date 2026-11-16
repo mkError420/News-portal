@@ -565,11 +565,24 @@ export default function AdminPage({
   onRefreshAll,
   onUpdateSettings,
   lang = 'bn',
+  onLangChange,
 }) {
   const navigate = useNavigate()
   const [currentUser, setCurrentUser] = useState(null)
   const [authChecking, setAuthChecking] = useState(true)
   const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'articles' | 'categories' | 'add' | 'breaking' | 'opinions' | 'media' | 'roles' | 'settings'
+
+  const handleToggleLang = (targetLang) => {
+    const nextLang = targetLang || (lang === 'bn' ? 'en' : 'bn')
+    if (onLangChange) {
+      onLangChange(nextLang)
+    } else {
+      localStorage.setItem('prothom_alo_portal_lang', nextLang)
+      localStorage.setItem('news_lang', nextLang)
+      document.documentElement.lang = nextLang
+      window.location.reload()
+    }
+  }
 
   // Server health state
   const [serverHealth, setServerHealth] = useState({ status: 'checking', database: 'checking' })
@@ -998,7 +1011,7 @@ export default function AdminPage({
     name: '',
     email: '',
     password: '',
-    role_key: 'editor',
+    role_key: 'admin',
     phone: '',
     status: 'active',
   }
@@ -1767,11 +1780,21 @@ export default function AdminPage({
       return
     }
 
+    // Clean and validate role_key: strip non-alphanumeric/underscore and trim leading/trailing underscores
+    let cleanKey = (roleForm.role_key || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '')
+    if (!cleanKey) {
+      const enKey = (roleForm.name_en || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '')
+      cleanKey = enKey || `role_${Date.now().toString(36)}`
+    }
+
     const payload = {
       ...roleForm,
       ...(editingRoleId ? { id: editingRoleId } : {}),
       name_en: roleForm.name_en.trim() || roleForm.name_bn.trim(),
-      role_key: roleForm.role_key.trim() || roleForm.name_en.toLowerCase().replace(/[^a-z0-9_]/g, '_') || `role_${Date.now()}`,
+      role_key: cleanKey,
+      permissions: Array.isArray(roleForm.permissions) && roleForm.permissions.length > 0
+        ? roleForm.permissions
+        : ['manage_articles'],
     }
 
     try {
@@ -1784,30 +1807,42 @@ export default function AdminPage({
       }
       if (editingRoleId) {
         onUpdateRole?.(savedRole)
-        setLocalRoles((prev) => prev.map((item) => (item.id === savedRole.id ? { ...item, ...savedRole } : item)))
+        setLocalRoles((prev) =>
+          prev.map((item) =>
+            String(item.id) === String(savedRole.id) || item.role_key === savedRole.role_key
+              ? { ...item, ...savedRole }
+              : item
+          )
+        )
         triggerToast(lang === 'bn' ? 'রোল সফলভাবে আপডেট হয়েছে!' : 'Role updated successfully!')
       } else {
         onAddRole?.(savedRole)
-        setLocalRoles((prev) => [...prev, savedRole])
+        setLocalRoles((prev) => {
+          const exists = prev.some(
+            (item) => String(item.id) === String(savedRole.id) || item.role_key === savedRole.role_key
+          )
+          if (exists) {
+            return prev.map((item) =>
+              String(item.id) === String(savedRole.id) || item.role_key === savedRole.role_key
+                ? { ...item, ...savedRole }
+                : item
+            )
+          }
+          return [...prev, savedRole]
+        })
         triggerToast(lang === 'bn' ? 'নতুন রোল ডাটাবেজে তৈরি হয়েছে!' : 'New role saved in database!')
       }
+
+      // Re-fetch roles from server to ensure 100% database sync
+      api.getRoles().then((r) => {
+        if (Array.isArray(r) && r.length > 0) setLocalRoles(r)
+      }).catch(() => {})
+
       refreshStats()
     } catch (err) {
-      console.warn('API saveRole error:', err)
-      const fallback = {
-        ...payload,
-        id: editingRoleId || Date.now(),
-        user_count: 0,
-      }
-      if (editingRoleId) {
-        onUpdateRole?.(fallback)
-        setLocalRoles((prev) => prev.map((item) => (item.id === fallback.id ? { ...item, ...fallback } : item)))
-        triggerToast(lang === 'bn' ? 'রোল আপডেট হয়েছে (লোকাল)!' : 'Role updated (local)!')
-      } else {
-        onAddRole?.(fallback)
-        setLocalRoles((prev) => [...prev, fallback])
-        triggerToast(lang === 'bn' ? 'রোল তৈরি হয়েছে (লোকাল)!' : 'Role added (local)!')
-      }
+      console.error('API saveRole error:', err)
+      const msg = err.response?.data?.message || err.message || (lang === 'bn' ? 'রোল তৈরি বা সংরক্ষণ করতে ব্যর্থ হয়েছে।' : 'Failed to save role.')
+      alert(msg)
     }
     setRoleForm(initialRoleForm)
     setEditingRoleId(null)
@@ -1825,7 +1860,7 @@ export default function AdminPage({
         console.warn('Backend deleteRole error:', err)
       }
       onDeleteRole?.(r.id || r.role_key)
-      setLocalRoles((prev) => prev.filter((item) => item.id !== r.id && item.role_key !== r.role_key))
+      setLocalRoles((prev) => prev.filter((item) => String(item.id) !== String(r.id) && item.role_key !== r.role_key))
       refreshStats()
       triggerToast(lang === 'bn' ? 'রোল মুছে ফেলা হয়েছে।' : 'Role deleted.', 'info')
     }
@@ -1839,7 +1874,7 @@ export default function AdminPage({
       name: m.name || '',
       email: m.email || '',
       password: '',
-      role_key: m.role_key || 'editor',
+      role_key: m.role_key || 'admin',
       phone: m.phone || '',
       status: m.status || 'active',
     })
@@ -1853,19 +1888,25 @@ export default function AdminPage({
 
   const handleStaffSubmit = async (e) => {
     e.preventDefault()
-    if (!staffForm.email.trim()) {
+    let emailVal = staffForm.email.trim().toLowerCase()
+    if (!emailVal) {
       alert(lang === 'bn' ? 'দয়া করে ইমেইল এড্রেস লিখুন।' : 'Please enter an email address.')
       return
     }
-    if (!editingStaffId && (!staffForm.password || staffForm.password.length < 6)) {
-      alert(lang === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters.')
+    if (!emailVal.includes('@')) {
+      emailVal = `${emailVal}@newsportal.com`
+    }
+    if (!editingStaffId && (!staffForm.password || staffForm.password.length < 4)) {
+      alert(lang === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।' : 'Password must be at least 4 characters.')
       return
     }
 
     const payload = {
       ...staffForm,
-      ...(editingStaffId ? { id: editingStaffId } : {}),
-      name: staffForm.name.trim() || staffForm.email.split('@')[0],
+      id: editingStaffId || staffForm.id || null,
+      email: emailVal,
+      name: staffForm.name.trim() || emailVal.split('@')[0],
+      role_key: staffForm.role_key || 'admin',
     }
 
     try {
@@ -1877,30 +1918,64 @@ export default function AdminPage({
       }
       if (editingStaffId) {
         onUpdateStaff?.(savedStaff)
-        setLocalStaff((prev) => prev.map((item) => (item.id === savedStaff.id ? { ...item, ...savedStaff } : item)))
+        setLocalStaff((prev) =>
+          prev.map((item) =>
+            String(item.id) === String(editingStaffId) ||
+            String(item.id) === String(savedStaff.id) ||
+            (item.email && item.email.toLowerCase() === payload.email)
+              ? { ...item, ...savedStaff }
+              : item
+          )
+        )
+        // If current admin updated their own account, update session & currentUser
+        if (currentUser && (String(currentUser.id) === String(editingStaffId) || currentUser.email === payload.email)) {
+          const updatedUser = {
+            ...currentUser,
+            name: savedStaff.name,
+            email: savedStaff.email,
+            role: savedStaff.role_key,
+            role_name_bn: savedStaff.role_name_bn,
+            role_name_en: savedStaff.role_name_en,
+          }
+          setCurrentUser(updatedUser)
+          localStorage.setItem('admin_user', JSON.stringify(updatedUser))
+        }
         triggerToast(lang === 'bn' ? 'সদস্যের তথ্য সফলভাবে আপডেট হয়েছে!' : 'Staff member updated successfully!')
       } else {
         onAddStaff?.(savedStaff)
-        setLocalStaff((prev) => [...prev, savedStaff])
-        triggerToast(lang === 'bn' ? 'নতুন টিম সদস্য ডাটাবেজে যুক্ত হয়েছে!' : 'Staff member added in database!')
+        setLocalStaff((prev) => {
+          const exists = prev.some(
+            (item) =>
+              String(item.id) === String(savedStaff.id) ||
+              (item.email && item.email.toLowerCase() === savedStaff.email?.toLowerCase())
+          )
+          if (exists) {
+            return prev.map((item) =>
+              String(item.id) === String(savedStaff.id) ||
+              (item.email && item.email.toLowerCase() === savedStaff.email?.toLowerCase())
+                ? { ...item, ...savedStaff }
+                : item
+            )
+          }
+          return [...prev, savedStaff]
+        })
+        triggerToast(
+          lang === 'bn'
+            ? 'নতুন টিম সদস্য / অ্যাডমিন ডাটাবেজে যুক্ত হয়েছে!'
+            : 'Staff member / Admin added in database!'
+        )
       }
+
+      // Re-fetch staff from server to ensure 100% database sync
+      api.getStaff().then((s) => {
+        if (Array.isArray(s) && s.length > 0) setLocalStaff(s)
+      }).catch(() => {})
+
       refreshStats()
     } catch (err) {
-      console.warn('API saveStaff error:', err)
-      const fallback = {
-        ...payload,
-        id: editingStaffId || Date.now(),
-        created_at: new Date().toISOString(),
-      }
-      if (editingStaffId) {
-        onUpdateStaff?.(fallback)
-        setLocalStaff((prev) => prev.map((item) => (item.id === fallback.id ? { ...item, ...fallback } : item)))
-        triggerToast(lang === 'bn' ? 'সদস্য আপডেট হয়েছে (লোকাল)!' : 'Staff updated (local)!')
-      } else {
-        onAddStaff?.(fallback)
-        setLocalStaff((prev) => [...prev, fallback])
-        triggerToast(lang === 'bn' ? 'সদস্য যুক্ত হয়েছে (লোকাল)!' : 'Staff added (local)!')
-      }
+      console.error('API saveStaff error:', err)
+      const msg = err.response?.data?.message || err.message || (lang === 'bn' ? 'টিম সদস্য তৈরি বা সংরক্ষণ করতে ব্যর্থ হয়েছে।' : 'Failed to save staff member.')
+      alert(msg)
     }
     setStaffForm(initialStaffForm)
     setEditingStaffId(null)
@@ -2183,20 +2258,36 @@ export default function AdminPage({
             </span>
           </div>
 
-          {/* Center: Live Database Connection Badge */}
-          <div className="hidden md:flex items-center gap-2 text-xs">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15">
-              <span
-                className={`w-2 h-2 rounded-full ${serverHealth.database === 'connected' ? 'bg-green-400 animate-pulse' : 'bg-amber-400'
-                  }`}
-              />
-              <span className="text-gray-200">
-                {serverHealth.database === 'connected' ? (
-                  <span className="text-green-300 font-semibold">MySQL Live: সংযুক্ত (Online)</span>
-                ) : (
-                  <span className="text-amber-300 font-semibold">Local Sync: সক্রিয়</span>
-                )}
-              </span>
+          {/* Center: Language Switcher Button (Replaces MySQL Live Badge) */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <div className="flex items-center bg-white/10 p-0.5 rounded-full border border-white/20 shadow-xs backdrop-blur-xs">
+              <button
+                type="button"
+                onClick={() => handleToggleLang('bn')}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  lang === 'bn'
+                    ? 'bg-[#e30613] text-white shadow-xs ring-1 ring-white/30'
+                    : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+                title="বাংলায় দেখুন (Switch to Bengali)"
+              >
+                <span>🇧🇩</span>
+                <span>বাংলা</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleLang('en')}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  lang === 'en'
+                    ? 'bg-[#e30613] text-white shadow-xs ring-1 ring-white/30'
+                    : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+                title="Switch to English"
+              >
+                <span>🌐</span>
+                <span>English</span>
+              </button>
             </div>
           </div>
 
@@ -2496,7 +2587,6 @@ export default function AdminPage({
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 mb-4">
                   <div>
                     <h3 className="font-bold text-base text-yellow-300 flex items-center gap-2">
-                      <Sparkles size={18} />
                       <span>{lang === 'bn' ? 'দ্রুত অ্যাকশন ও কনটেন্ট প্রকাশ' : 'Quick Launch & Content Publishing'}</span>
                     </h3>
                     <p className="text-xs text-gray-300 mt-1">
@@ -5018,10 +5108,11 @@ export default function AdminPage({
                           type="text"
                           value={roleForm.role_key}
                           onChange={(e) => setRoleForm({ ...roleForm, role_key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') })}
-                          placeholder="editor / reporter"
+                          placeholder="স্বয়ংক্রিয় তৈরি হবে (অথবা: sub_editor)"
                           disabled={editingRoleId && roleForm.role_key === 'admin'}
                           className="w-full text-xs p-2.5 border rounded-lg outline-none font-mono focus:border-red-500 disabled:bg-gray-100"
                         />
+                        <span className="text-[10px] text-gray-400 block mt-1">খালি রাখলে স্বয়ংক্রিয় ইউনিক রোল কি তৈরি হবে</span>
                       </div>
                     </div>
 
@@ -5292,7 +5383,7 @@ export default function AdminPage({
                           required={!editingStaffId}
                           value={staffForm.password}
                           onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-                          placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড"
+                          placeholder="কমপক্ষে ৪ অক্ষরের পাসওয়ার্ড"
                           className="w-full text-xs p-2.5 border rounded-lg outline-none font-sans focus:border-red-500"
                         />
                       </div>
@@ -5308,7 +5399,7 @@ export default function AdminPage({
                         >
                           {localRoles.map((r) => (
                             <option key={r.role_key} value={r.role_key}>
-                              {r.name_bn} ({r.role_key})
+                              {r.role_key === 'admin' ? '⭐ প্রধান প্রশাসক / অ্যাডমিন (Super Admin)' : `${r.name_bn} (${r.role_key})`}
                             </option>
                           ))}
                         </select>

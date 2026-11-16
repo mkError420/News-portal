@@ -15,6 +15,10 @@ Options -Indexes
 DirectoryIndex index.php index.html
 RewriteEngine On
 
+# Pass Authorization header to PHP in Apache FastCGI/CGI environments
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
 RewriteRule ^backend/config\.php$ - [F,L,NC]
 
 # SEO & Google Verification / Feeds / Ads.txt routes
