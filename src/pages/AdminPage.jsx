@@ -114,9 +114,8 @@ function ImageUploadInput({
           <button
             type="button"
             onClick={() => setUploadMode('upload')}
-            className={`px-2 py-0.5 rounded font-bold transition-colors ${
-              uploadMode === 'upload' ? 'bg-red-50 text-[#e30613]' : 'text-gray-500 hover:text-gray-800'
-            }`}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${uploadMode === 'upload' ? 'bg-red-50 text-[#e30613]' : 'text-gray-500 hover:text-gray-800'
+              }`}
           >
             ফাইল আপলোড
           </button>
@@ -124,9 +123,8 @@ function ImageUploadInput({
           <button
             type="button"
             onClick={() => setUploadMode('url')}
-            className={`px-2 py-0.5 rounded font-bold transition-colors ${
-              uploadMode === 'url' ? 'bg-red-50 text-[#e30613]' : 'text-gray-500 hover:text-gray-800'
-            }`}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${uploadMode === 'url' ? 'bg-red-50 text-[#e30613]' : 'text-gray-500 hover:text-gray-800'
+              }`}
           >
             ওয়েব লিঙ্ক
           </button>
@@ -146,11 +144,10 @@ function ImageUploadInput({
             />
             <label
               htmlFor={inputId}
-              className={`w-full flex items-center justify-center gap-2 p-2.5 border-2 border-dashed rounded-lg cursor-pointer transition-all text-xs font-bold ${
-                isUploading
-                  ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse'
-                  : 'bg-gray-50 hover:bg-red-50/50 border-gray-300 hover:border-red-300 text-gray-700'
-              }`}
+              className={`w-full flex items-center justify-center gap-2 p-2.5 border-2 border-dashed rounded-lg cursor-pointer transition-all text-xs font-bold ${isUploading
+                ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse'
+                : 'bg-gray-50 hover:bg-red-50/50 border-gray-300 hover:border-red-300 text-gray-700'
+                }`}
             >
               {isUploading ? (
                 <>
@@ -464,11 +461,10 @@ const VisualRichTextEditor = forwardRef(function VisualRichTextEditor(
           <button
             type="button"
             onClick={() => setIsCodeMode(!isCodeMode)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-              isCodeMode
-                ? 'bg-gray-900 text-white border-gray-900 shadow-xs'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-200'
-            }`}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${isCodeMode
+              ? 'bg-gray-900 text-white border-gray-900 shadow-xs'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-200'
+              }`}
             title={isCodeMode ? 'ভিজ্যুয়াল এডিটরে ফিরে ছবি সরাসরি দেখুন' : 'এইচটিএমএল সোর্স কোড দেখুন'}
           >
             {isCodeMode ? <Eye size={13} /> : <Code size={13} />}
@@ -758,7 +754,7 @@ export default function AdminPage({
     try {
       const [settingsRes] = await Promise.all([
         api.saveSettings(siteForm),
-        api.saveCurrencyRates(currencyList).catch(() => {})
+        api.saveCurrencyRates(currencyList).catch(() => { })
       ])
       const finalSettings = settingsRes?.settings || siteForm
       onUpdateSettings?.(finalSettings)
@@ -2296,33 +2292,6 @@ export default function AdminPage({
               </button>
             ))}
           </div>
-
-          {/* Quick System Status Card */}
-          <div className="bg-[#1a3a5c] text-white p-4 rounded-xl text-xs space-y-2.5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-[#2a4d74] pb-2">
-              <span className="font-bold flex items-center gap-1.5 text-yellow-300">
-                <Database size={13} />
-                <span>সিস্টেম লাইভ স্ট্যাটাস</span>
-              </span>
-              <span className="text-[10px] bg-green-500/20 text-green-300 font-bold px-1.5 py-0.5 rounded border border-green-500/30">
-                Active
-              </span>
-            </div>
-            <div className="space-y-1.5 text-[11px] text-gray-300">
-              <div className="flex justify-between">
-                <span>ডাটাবেজ:</span>
-                <span className="font-semibold text-white">MySQL (cPanel Ready)</span>
-              </div>
-              <div className="flex justify-between">
-                <span>সক্রিয় ক্যাটাগরি:</span>
-                <span className="font-semibold text-yellow-300">{toBengaliNumber(formattedCategories.length)} টি</span>
-              </div>
-              <div className="flex justify-between">
-                <span>এনকোডিং:</span>
-                <span className="font-semibold text-white">utf8mb4_unicode_ci</span>
-              </div>
-            </div>
-          </div>
         </aside>
 
         {/* RIGHT MAIN WORKSPACE (9 cols) */}
@@ -2331,7 +2300,7 @@ export default function AdminPage({
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* System & Database Live Sync Status Bar */}
-              <div className="bg-white p-3.5 px-4 rounded-xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+              {/*  <div className="bg-white p-3.5 px-4 rounded-xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -2362,7 +2331,7 @@ export default function AdminPage({
                     <span>{isSyncingAll ? (lang === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing...') : (lang === 'bn' ? 'ডাটা সিঙ্ক / রিফ্রেশ' : 'Sync / Refresh')}</span>
                   </button>
                 </div>
-              </div>
+              </div> */}
 
               {/* Top 4 KPI Metrics - Fully Clickable */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2667,9 +2636,8 @@ export default function AdminPage({
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button
                               onClick={() => handleToggleBreakingActive(item)}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
-                                isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${isActive ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
                             >
                               {isActive ? (lang === 'bn' ? 'সক্রিয়' : 'Active') : (lang === 'bn' ? 'স্থগিত' : 'Paused')}
                             </button>
@@ -2819,9 +2787,8 @@ export default function AdminPage({
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     onClick={() => handleToggleFeatured(art)}
-                                    className={`p-1 rounded transition-colors ${
-                                      art.featured ? 'text-amber-500 bg-amber-50' : 'text-gray-300 hover:text-amber-500'
-                                    }`}
+                                    className={`p-1 rounded transition-colors ${art.featured ? 'text-amber-500 bg-amber-50' : 'text-gray-300 hover:text-amber-500'
+                                      }`}
                                     title={art.featured ? 'Remove from Lead Story' : 'Set as Lead Story'}
                                   >
                                     <Star size={13} className={art.featured ? 'fill-current' : ''} />
@@ -2867,9 +2834,8 @@ export default function AdminPage({
                     ) : (
                       topReadArticles.map((art, idx) => (
                         <div key={art.id} className="py-2.5 first:pt-1 last:pb-1 flex items-start gap-2.5 group">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5 ${
-                            idx === 0 ? 'bg-[#e30613] text-white shadow-xs' : idx === 1 ? 'bg-amber-500 text-white' : idx === 2 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
-                          }`}>
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5 ${idx === 0 ? 'bg-[#e30613] text-white shadow-xs' : idx === 1 ? 'bg-amber-500 text-white' : idx === 2 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                            }`}>
                             {toBengaliNumber(idx + 1)}
                           </span>
                           <div className="flex-1 min-w-0">
@@ -3359,11 +3325,10 @@ export default function AdminPage({
                       return (
                         <div
                           key={catSlug}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all shadow-2xs ${
-                            isPrimary
-                              ? 'bg-[#e30613] text-white ring-2 ring-red-300'
-                              : 'bg-red-50 text-[#e30613] border border-red-200 hover:bg-red-100'
-                          }`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all shadow-2xs ${isPrimary
+                            ? 'bg-[#e30613] text-white ring-2 ring-red-300'
+                            : 'bg-red-50 text-[#e30613] border border-red-200 hover:bg-red-100'
+                            }`}
                         >
                           <button
                             type="button"
@@ -3383,11 +3348,10 @@ export default function AdminPage({
                           <button
                             type="button"
                             onClick={() => handleToggleCategory(catSlug)}
-                            className={`rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ml-0.5 ${
-                              isPrimary
-                                ? 'bg-black/20 hover:bg-black/40 text-white'
-                                : 'bg-red-200 hover:bg-red-300 text-red-800'
-                            }`}
+                            className={`rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ml-0.5 ${isPrimary
+                              ? 'bg-black/20 hover:bg-black/40 text-white'
+                              : 'bg-red-200 hover:bg-red-300 text-red-800'
+                              }`}
                             title="এই ক্যাটাগরি বাদ দিন"
                           >
                             ✕
@@ -3416,13 +3380,12 @@ export default function AdminPage({
                           key={cat.slug}
                           type="button"
                           onClick={() => handleToggleCategory(cat.slug)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                            isSelected
-                              ? isPrimary
-                                ? 'bg-[#e30613] text-white shadow-xs ring-2 ring-red-400 scale-102'
-                                : 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400 scale-101'
-                              : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-red-50/50'
-                          }`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${isSelected
+                            ? isPrimary
+                              ? 'bg-[#e30613] text-white shadow-xs ring-2 ring-red-400 scale-102'
+                              : 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400 scale-101'
+                            : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-red-50/50'
+                            }`}
                           title={
                             isSelected
                               ? isPrimary
@@ -3432,11 +3395,10 @@ export default function AdminPage({
                           }
                         >
                           <span
-                            className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
-                              isSelected
-                                ? 'bg-white/30 text-white font-bold'
-                                : 'border border-gray-300 text-transparent'
-                            }`}
+                            className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${isSelected
+                              ? 'bg-white/30 text-white font-bold'
+                              : 'border border-gray-300 text-transparent'
+                              }`}
                           >
                             ✓
                           </span>
@@ -3483,7 +3445,6 @@ export default function AdminPage({
                 </div>
 
                 <div className="text-[11px] text-gray-500 bg-white/70 p-2 rounded-lg border border-gray-200/80 flex items-center gap-2">
-                  <Sparkles size={14} className="text-amber-500 flex-shrink-0" />
                   <span>
                     <strong>টিপস:</strong> সংবাদটি যে যে ক্যাটাগরিতে যুক্ত থাকবে, হোমপেইজের সেসব ক্যাটাগরি সেকশনে এবং সংশ্লিষ্ট প্রতিটি ক্যাটাগরি পেইজে পাঠকরা এই সংবাদ দেখতে পারবেন।
                   </span>
@@ -3914,7 +3875,7 @@ export default function AdminPage({
                       className="w-4 h-4 text-red-600 rounded focus:ring-red-500 cursor-pointer accent-[#e30613]"
                     />
                     <label htmlFor="featLeadCheck" className="text-xs font-bold text-gray-800 cursor-pointer select-none">
-                      ⭐ প্রধান শীর্ষ সংবাদ (Lead Story) হিসেবে হোমপেজে দেখান
+                      প্রধান শীর্ষ সংবাদ (Lead Story) হিসেবে হোমপেজে দেখান
                     </label>
                   </div>
                   <span className="text-[11px] text-gray-500">
@@ -4237,7 +4198,6 @@ export default function AdminPage({
               <form onSubmit={handleSubmitBreaking} className="bg-white p-6 sm:p-7 rounded-xl border border-gray-200 shadow-sm space-y-5">
                 <div className="flex items-center justify-between border-b pb-3.5">
                   <div className="flex items-center gap-2.5 text-[#e30613] font-bold text-base">
-                    <Flame size={20} className="fill-current animate-pulse text-[#e30613]" />
                     <span>{editingBreakingId ? 'ব্রেকিং নিউজ সম্পাদনা করুন (Edit Breaking Ticker)' : 'নতুন ব্রেকিং নিউজ টিকার যোগ করুন'}</span>
                   </div>
                   {editingBreakingId && (
@@ -4399,7 +4359,6 @@ export default function AdminPage({
                 <div className="p-4 border-b bg-gray-50 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h4 className="font-bold text-sm text-gray-800 flex items-center gap-2">
-                      <Flame size={16} className="text-[#e30613] fill-current" />
                       <span>চলমান ব্রেকিং স্ট্রিপ তালিকা ({toBengaliNumber(breakingNews.length)} টি)</span>
                     </h4>
                     <span className="text-[11px] text-gray-500">
@@ -4967,9 +4926,9 @@ export default function AdminPage({
                   <div>
                     <h2 className="text-base font-black text-gray-900 flex items-center gap-2">
                       <span>রোল ও পারমিশন ব্যবস্থাপনা (Role & Staff Management)</span>
-                      <span className="text-[10px] bg-red-100 text-[#e30613] font-bold px-2.5 py-0.5 rounded-full border border-red-200">
+                      {/*                       <span className="text-[10px] bg-red-100 text-[#e30613] font-bold px-2.5 py-0.5 rounded-full border border-red-200">
                         MySQL লাইভ ডাটাবেজ
-                      </span>
+                      </span> */}
                     </h2>
                     <p className="text-xs text-gray-500 mt-0.5">
                       ব্যবহারকারীদের রোল তৈরি, অ্যাক্সেস পারমিশন কন্ট্রোল এবং টিম মেম্বারদের দায়িত্ব বণ্টন করুন।
@@ -5018,7 +4977,7 @@ export default function AdminPage({
                     <div className="flex items-center justify-between border-b pb-3 text-[#e30613] font-bold">
                       <div className="flex items-center gap-2">
                         <Key size={18} />
-                        <span>{editingRoleId ? 'রোল সম্পাদনা করুন (Edit Role)' : 'নতুন ভূমিকা / রোল তৈরি করুন (Create New Role)'}</span>
+                        <span>{editingRoleId ? 'রোল সম্পাদনা করুন (Edit Role)' : 'রোল তৈরি করুন (Create New Role)'}</span>
                       </div>
                       {editingRoleId && (
                         <button
@@ -5188,9 +5147,9 @@ export default function AdminPage({
                         </h3>
                         <p className="text-xs text-gray-500 mt-0.5">ডাটাবেজে সংরক্ষিত প্রতিটি রোলের পারমিশন ও স্টাফ সংখ্যা</p>
                       </div>
-                      <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      {/*                       <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                         সিস্টেম কানেক্টেড
-                      </span>
+                      </span> */}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -5547,9 +5506,8 @@ export default function AdminPage({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        activePoll.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'
-                      }`}>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${activePoll.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'
+                        }`}>
                         {activePoll.status === 'active' ? (lang === 'bn' ? 'সক্রিয় (Active)' : 'Active') : (lang === 'bn' ? 'বন্ধ (Closed)' : 'Closed')}
                       </span>
 
@@ -5613,11 +5571,10 @@ export default function AdminPage({
                       <button
                         type="button"
                         onClick={() => handleTogglePollStatus(activePoll)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                          activePoll.status === 'active'
-                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        }`}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${activePoll.status === 'active'
+                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
                       >
                         {activePoll.status === 'active'
                           ? (lang === 'bn' ? '⏸ জরিপ সমাপ্ত/বন্ধ করুন' : 'Close Poll')
@@ -5826,8 +5783,8 @@ export default function AdminPage({
                         {pollSubmitting
                           ? (lang === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
                           : (editingPollId
-                              ? (lang === 'bn' ? 'পাঠক জরিপ আপডেট করুন' : 'Update Reader Poll')
-                              : (lang === 'bn' ? 'জরিপ সংরক্ষণ ও প্রকাশ করুন' : 'Save & Publish Poll'))}
+                            ? (lang === 'bn' ? 'পাঠক জরিপ আপডেট করুন' : 'Update Reader Poll')
+                            : (lang === 'bn' ? 'জরিপ সংরক্ষণ ও প্রকাশ করুন' : 'Save & Publish Poll'))}
                       </span>
                     </button>
                   </div>
@@ -5963,13 +5920,13 @@ export default function AdminPage({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+                  {/*                   <button
                     type="button"
                     onClick={handleResetSiteSettingsToDefault}
                     className="px-3.5 py-2 text-xs font-semibold text-gray-600 hover:text-red-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                   >
                     ডিফল্ট ফিরিয়ে আনুন
-                  </button>
+                  </button> */}
                   <button
                     type="button"
                     onClick={handleSaveSettings}
@@ -5986,12 +5943,11 @@ export default function AdminPage({
               <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3">
                 <div className="flex items-center justify-between border-b pb-2.5">
                   <span className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-amber-500" />
                     <span>লাইভ ব্র্যান্ডিং প্রিভিউ (Live Header Preview)</span>
                   </span>
-                  <span className="text-[10px] bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
+                  {/*                   <span className="text-[10px] bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
                     সরাসরি দৃশ্যমান
-                  </span>
+                  </span> */}
                 </div>
                 <div className="p-4 bg-[#f8f9fa] border rounded-lg flex flex-wrap items-center justify-between gap-4">
                   <div className="bg-white p-3 rounded-lg border shadow-xs">
@@ -6749,80 +6705,6 @@ export default function AdminPage({
                   </button>
                 </div>
               </form>
-
-              {/* Database Status, 1-Click Backup Export & Reset Card */}
-              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-5">
-                <h4 className="text-sm font-bold text-gray-900 border-b pb-2 flex items-center gap-2">
-                  <Database size={16} className="text-[#1a3a5c]" />
-                  <span>ডাটাবেজ সিস্টেম হেলথ ও ব্যাকআপ টুলস</span>
-                </h4>
-
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3 bg-white rounded-lg border">
-                      <span className="text-gray-500 block">ডাটাবেজ স্ট্যাটাস:</span>
-                      <span className={`font-bold text-sm ${serverHealth.database === 'connected' ? 'text-green-700' : 'text-amber-700'}`}>
-                        {serverHealth.database === 'connected' ? 'Connected (MySQL Online)' : 'Standalone Sync'}
-                      </span>
-                    </div>
-                    <div className="p-3 bg-white rounded-lg border">
-                      <span className="text-gray-500 block">হোস্টিং কনফিগ:</span>
-                      <span className="font-bold text-gray-800 text-sm">sql201.infinityfree.com</span>
-                    </div>
-                    <div className="p-3 bg-white rounded-lg border">
-                      <span className="text-gray-500 block">অ্যাডমিন ইউজার:</span>
-                      <span className="font-bold text-gray-800 text-sm">admin@mknews.com</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Database 1-Click Backup Export */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
-                    <div>
-                      <h5 className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
-                        <Download size={14} />
-                        <span>cPanel / phpMyAdmin SQL ব্যাকআপ ফাইল</span>
-                      </h5>
-                      <p className="text-[11px] text-blue-700 mt-0.5">
-                        নিরাপদ `cpanel-database.sql` ফাইলটি ডাউনলোড করুন।
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleDownloadSQL}
-                      className="flex items-center gap-1.5 bg-[#1a3a5c] hover:bg-[#122942] text-white font-bold text-xs px-3.5 py-2 rounded-lg transition-colors whitespace-nowrap"
-                    >
-                      <Download size={13} />
-                      <span>SQL ডাউনলোড</span>
-                    </button>
-                  </div>
-
-                  {/* Reset to Sample Data */}
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3">
-                    <div>
-                      <h5 className="font-bold text-xs text-red-900 flex items-center gap-1.5">
-                        <RefreshCw size={14} />
-                        <span>ডাটা রিসেট (Sample Data)</span>
-                      </h5>
-                      <p className="text-[11px] text-red-700 mt-0.5">
-                        লোকাল ক্যাশ মুছে ডিফল্ট ডেমো ডেটায় ফিরুন।
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm('আপনি কি সমস্ত ডেটা রিসেট করতে চান?')) {
-                          onResetData?.()
-                        }
-                      }}
-                      className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition-colors whitespace-nowrap"
-                    >
-                      ডেটা রিসেট
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </main>
