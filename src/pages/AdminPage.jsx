@@ -165,7 +165,7 @@ function ImageUploadInput({
         ) : (
           <div className="flex-1 w-full">
             <input
-              type="url"
+              type="text"
               required={required && !value}
               value={value || ''}
               onChange={(e) => onChange(e.target.value)}
@@ -6562,7 +6562,7 @@ export default function AdminPage({
                     </div>
 
                     {/* Modal Form */}
-                    <form onSubmit={handleSaveAdModal} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                    <form onSubmit={handleSaveAdModal} noValidate className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
                       {/* Slot Key & Position */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -6708,10 +6708,10 @@ export default function AdminPage({
                               {lang === 'bn' ? 'অথবা ছবির সরাসরি ওয়েব লিংক (Image URL)' : 'Or Banner Image URL'}
                             </label>
                             <input
-                              type="url"
+                              type="text"
                               value={adForm.image_url}
                               onChange={(e) => setAdForm({ ...adForm, image_url: e.target.value })}
-                              placeholder="https://example.com/banner.jpg"
+                              placeholder="/uploads/... বা https://example.com/banner.jpg"
                               className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613]"
                             />
                           </div>
@@ -6748,7 +6748,7 @@ export default function AdminPage({
                             <div className="relative">
                               <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                               <input
-                                type="url"
+                                type="text"
                                 value={adForm.target_url}
                                 onChange={(e) => setAdForm({ ...adForm, target_url: e.target.value })}
                                 placeholder="https://advertiser-website.com"
