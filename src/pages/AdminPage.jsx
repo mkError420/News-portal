@@ -2352,6 +2352,7 @@ export default function AdminPage({
       if (adFilter === 'inactive' && item.status !== 'inactive') return false
       if (adFilter === 'home' && !item.slot_key?.startsWith('home_')) return false
       if (adFilter === 'article' && !item.slot_key?.startsWith('article_')) return false
+      if (adFilter === 'opinion' && !item.slot_key?.startsWith('opinion_')) return false
       if (adFilter === 'sidebar' && !item.slot_key?.includes('sidebar')) return false
 
       if (adSearch.trim()) {
@@ -2531,48 +2532,169 @@ export default function AdminPage({
       <div className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT NAVIGATION SIDEBAR (3 cols) */}
         <aside className="lg:col-span-3 space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 space-y-1">
-            {[
-              { id: 'overview', icon: <LayoutDashboard size={16} />, bn: 'ড্যাশবোর্ড ওভারভিউ', en: 'Dashboard Overview', count: null },
-              { id: 'articles', icon: <FileText size={16} />, bn: 'সংবাদ তালিকা', en: 'Articles Management', count: articles.length },
-              { id: 'categories', icon: <Layers size={16} />, bn: 'ক্যাটাগরি তালিকা', en: 'Categories', count: formattedCategories.length },
-              { id: 'add', icon: <PlusCircle size={16} />, bn: isEditing ? 'সংবাদ সম্পাদনা' : 'নতুন সংবাদ লিখুন', en: isEditing ? 'Edit Article' : 'Write New Article', count: null },
-              { id: 'breaking', icon: <Flame size={16} />, bn: 'ব্রেকিং নিউজ টিকার', en: 'Breaking Ticker', count: breakingNews.length },
-              { id: 'opinions', icon: <PenTool size={16} />, bn: 'কলাম ও মতামত', en: 'Opinions & Editorials', count: opinions.length },
-              { id: 'media', icon: <Camera size={16} />, bn: 'ছবি ও ভিডিও গ্যালারি', en: 'Photos & Videos', count: photos.length + videos.length },
-              { id: 'roles', icon: <ShieldCheck size={16} />, bn: 'রোল ও পারমিশন (Role)', en: 'Role & Staff', count: localRoles.length },
-              { id: 'polls', icon: <Vote size={16} />, bn: 'পাঠক জরিপ (Reader Poll)', en: 'Reader Poll', count: polls.length },
-              { id: 'ads', icon: <Megaphone size={16} />, bn: 'বিজ্ঞাপন ব্যবস্থাপনা (Advertise)', en: 'Advertisement', count: adsList.filter(a => a.status === 'active').length },
-              { id: 'settings', icon: <Globe size={16} />, bn: 'ওয়েবসাইট সেটিংস ও বিবরণ', en: 'Website Settings & Details', count: null },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  if (tab.id === 'add' && activeTab !== 'add') {
-                    setIsEditing(false)
-                    setFormData(emptyArticleForm)
-                  }
-                  setActiveTab(tab.id)
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left ${activeTab === tab.id
-                  ? 'bg-red-50 text-[#e30613] border-l-4 border-l-[#e30613] shadow-xs'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-red-600'
-                  }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className={activeTab === tab.id ? 'text-[#e30613]' : 'text-gray-400'}>{tab.icon}</span>
-                  <span>{lang === 'bn' ? tab.bn : tab.en}</span>
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3.5 space-y-4 sticky top-6">
+            {/* 1. Classical Masthead / Newsroom Banner */}
+            <div className="pb-3 border-b border-gray-100 flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-700 font-sans">
+                  {lang === 'bn' ? 'নিউজ পোর্টাল CMS' : 'Newsroom CMS Portal'}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                PROTHOM KALO
+              </span>
+            </div>
+
+            {/* 2. Structured Section-Wise Groups */}
+            <nav className="space-y-4">
+              {[
+                {
+                  group_bn: 'প্রধান নিয়ন্ত্রণ',
+                  group_en: 'CORE DASHBOARD',
+                  items: [
+                    { id: 'overview', icon: <LayoutDashboard size={15} />, bn: 'ড্যাশবোর্ড ওভারভিউ', en: 'Dashboard Overview', count: null },
+                  ],
+                },
+                {
+                  group_bn: 'সম্পাদকীয় ও সংবাদ ডেস্ক',
+                  group_en: 'EDITORIAL & NEWS DESK',
+                  items: [
+                    { id: 'add', icon: <PlusCircle size={15} />, bn: isEditing ? 'সংবাদ সম্পাদনা' : 'নতুন সংবাদ লিখুন', en: isEditing ? 'Edit Article' : 'Write New Article', count: null, highlight: true },
+                    { id: 'articles', icon: <FileText size={15} />, bn: 'সংবাদ তালিকা ও আর্কাইভ', en: 'Articles Management', count: articles.length },
+                    { id: 'breaking', icon: <Flame size={15} />, bn: 'ব্রেকিং নিউজ টিকার', en: 'Breaking Ticker', count: breakingNews.length },
+                    { id: 'categories', icon: <Layers size={15} />, bn: 'ক্যাটাগরি তালিকা', en: 'Categories', count: formattedCategories.length },
+                    { id: 'opinions', icon: <PenTool size={15} />, bn: 'কলাম ও মতামত', en: 'Opinions & Editorials', count: opinions.length },
+                  ],
+                },
+                {
+                  group_bn: 'মাল্টিমিডিয়া ও পাঠক জরিপ',
+                  group_en: 'MULTIMEDIA & AUDIENCE',
+                  items: [
+                    { id: 'media', icon: <Camera size={15} />, bn: 'ছবি ও ভিডিও গ্যালারি', en: 'Photos & Videos', count: photos.length + videos.length },
+                    { id: 'polls', icon: <Vote size={15} />, bn: 'পাঠক জরিপ (Reader Poll)', en: 'Reader Poll', count: polls.length },
+                  ],
+                },
+                {
+                  group_bn: 'বিজ্ঞাপন ও বাণিজ্যিক',
+                  group_en: 'COMMERCIAL & ADS',
+                  items: [
+                    { id: 'ads', icon: <Megaphone size={15} />, bn: 'বিজ্ঞাপন ব্যবস্থাপনা (Advertise)', en: 'Advertisement', count: adsList.filter(a => a.status === 'active').length },
+                  ],
+                },
+                {
+                  group_bn: 'প্রশাসন ও সিস্টেম কনফিগ',
+                  group_en: 'ADMIN & SYSTEM',
+                  items: [
+                    { id: 'roles', icon: <ShieldCheck size={15} />, bn: 'রোল ও পারমিশন (Role)', en: 'Role & Staff', count: localRoles.length },
+                    { id: 'settings', icon: <Globe size={15} />, bn: 'ওয়েবসাইট সেটিংস ও বিবরণ', en: 'Website Settings & Details', count: null },
+                  ],
+                },
+              ].map((section, sIdx) => (
+                <div key={sIdx} className="space-y-1">
+                  {/* Section Classical Subtitle */}
+                  <div className="px-2.5 pb-1 flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 font-sans">
+                      {lang === 'bn' ? section.group_bn : section.group_en}
+                    </span>
+                    <span className="h-px bg-gray-100 flex-1 ml-2"></span>
+                  </div>
+
+                  {/* Section Nav Items */}
+                  <div className="space-y-0.5">
+                    {section.items.map((tab) => {
+                      const isActive = activeTab === tab.id
+                      const isSpecialAdd = tab.highlight
+
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => {
+                            if (tab.id === 'add' && activeTab !== 'add') {
+                              setIsEditing(false)
+                              setFormData(emptyArticleForm)
+                            }
+                            setActiveTab(tab.id)
+                          }}
+                          className={`w-full group flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all text-left cursor-pointer ${
+                            isSpecialAdd
+                              ? isActive
+                                ? 'bg-[#e30613] text-white font-bold shadow-sm'
+                                : 'bg-red-50/70 hover:bg-red-100/80 text-[#e30613] font-bold border border-red-200/60'
+                              : isActive
+                              ? 'bg-red-50 text-[#e30613] font-bold border-l-4 border-l-[#e30613] shadow-2xs'
+                              : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900 font-medium'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={`transition-colors ${
+                                isSpecialAdd
+                                  ? isActive
+                                    ? 'text-white'
+                                    : 'text-[#e30613]'
+                                  : isActive
+                                  ? 'text-[#e30613]'
+                                  : 'text-gray-400 group-hover:text-gray-600'
+                              }`}
+                            >
+                              {tab.icon}
+                            </span>
+                            <span className="truncate">{lang === 'bn' ? tab.bn : tab.en}</span>
+                          </div>
+
+                          {tab.count !== null && (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono transition-colors ${
+                                isActive
+                                  ? 'bg-[#e30613] text-white'
+                                  : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
+                              }`}
+                            >
+                              {toBengaliNumber(tab.count)}
+                            </span>
+                          )}
+
+                          {isSpecialAdd && !isActive && (
+                            <span className="text-[10px] font-bold text-[#e30613] bg-white px-1.5 py-0.2 rounded border border-red-200 shadow-2xs">
+                              {lang === 'bn' ? '+ নতুন' : '+ New'}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-                {tab.count !== null && (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === tab.id ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-600'
-                      }`}
-                  >
-                    {toBengaliNumber(tab.count)}
+              ))}
+            </nav>
+
+            {/* 3. Classical Quick Footer Masthead */}
+            <div className="pt-3 border-t border-gray-100 space-y-2">
+              <Link
+                to="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 hover:text-red-600 rounded-lg text-xs font-bold transition-all border border-gray-200 shadow-2xs group"
+              >
+                <Globe size={13} className="text-gray-400 group-hover:text-red-600 transition-colors" />
+                <span>{lang === 'bn' ? 'লাইভ ওয়েবসাইট দেখুন' : 'View Live Site'}</span>
+                <ExternalLink size={11} className="text-gray-400 group-hover:text-red-600 transition-colors" />
+              </Link>
+
+              {currentUser && (
+                <div className="px-2.5 py-1.5 bg-gray-50/70 rounded-lg border border-gray-100 flex items-center justify-between text-[11px]">
+                  <span className="text-gray-500 font-medium truncate max-w-[120px]">
+                    {currentUser.name || currentUser.email}
                   </span>
-                )}
-              </button>
-            ))}
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-100 text-red-700">
+                    {currentUser.role === 'superadmin' ? (lang === 'bn' ? 'প্রধান প্রশাসক' : 'Super Admin') : currentUser.role}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </aside>
 
@@ -6288,6 +6410,7 @@ export default function AdminPage({
                     { id: 'all', bn: 'সকল স্লট', en: 'All Slots' },
                     { id: 'home', bn: 'হোমপেজ', en: 'Homepage' },
                     { id: 'article', bn: 'সংবাদ পেজ', en: 'Article Details' },
+                    { id: 'opinion', bn: 'মতামত পেজ', en: 'Opinion Page' },
                     { id: 'sidebar', bn: 'সাইডবার বিজ্ঞাপন', en: 'Sidebar' },
                     { id: 'active', bn: 'সক্রিয় (Active)', en: 'Active' },
                     { id: 'inactive', bn: 'নিষ্ক্রিয় (Inactive)', en: 'Inactive' },

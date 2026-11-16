@@ -984,6 +984,18 @@ function auto_migrate_advertisements(PDO $pdo): void
                     'image_url' => '',
                     'target_url' => 'https://alo.com.bd',
                     'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'opinion_sidebar_2',
+                    'title' => 'মতামত পেজ সাইডবার বটম হাফপেজ ব্যানার',
+                    'title_en' => 'Opinion Page Sidebar Bottom Halfpage',
+                    'position_name_bn' => 'কলাম ও মতামত পেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)',
+                    'position_name_en' => 'Opinion Page Sidebar Halfpage',
+                    'size' => 'halfpage',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
                 ]
             ];
 
@@ -1003,6 +1015,45 @@ function auto_migrate_advertisements(PDO $pdo): void
                     $slot['target_url'],
                     $slot['status']
                 ]);
+            }
+        } else {
+            // Ensure any missing standard slot (like opinion_sidebar_2) is added to existing database
+            $defaultSlots = [
+                [
+                    'slot_key' => 'opinion_sidebar_2',
+                    'title' => 'মতামত পেজ সাইডবার বটম হাফপেজ ব্যানার',
+                    'title_en' => 'Opinion Page Sidebar Bottom Halfpage',
+                    'position_name_bn' => 'কলাম ও মতামত পেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)',
+                    'position_name_en' => 'Opinion Page Sidebar Halfpage',
+                    'size' => 'halfpage',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ]
+            ];
+
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM `advertisements` WHERE `slot_key` = ?");
+            $insertStmt = $pdo->prepare("INSERT INTO `advertisements` 
+                (`slot_key`, `title`, `title_en`, `position_name_bn`, `position_name_en`, `size`, `ad_type`, `image_url`, `target_url`, `status`) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+            foreach ($defaultSlots as $slot) {
+                $checkStmt->execute([$slot['slot_key']]);
+                if ((int) $checkStmt->fetchColumn() === 0) {
+                    $insertStmt->execute([
+                        $slot['slot_key'],
+                        $slot['title'],
+                        $slot['title_en'],
+                        $slot['position_name_bn'],
+                        $slot['position_name_en'],
+                        $slot['size'],
+                        $slot['ad_type'],
+                        $slot['image_url'],
+                        $slot['target_url'],
+                        $slot['status']
+                    ]);
+                }
             }
         }
     } catch (Throwable $e) {}
@@ -4098,9 +4149,6 @@ if ($resource === 'stats' && $method === 'GET') {
         'totalStaff' => $totalStaff,
         'totalPolls' => $totalPolls,
         'totalPollVotes' => $totalPollVotes,
-        'totalAds' => $totalAds,
-        'activeAds' => $activeAds,
-        'totalAdClicks' => $totalAdClicks,
     ]);
 }
 

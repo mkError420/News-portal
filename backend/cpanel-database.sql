@@ -428,6 +428,7 @@ INSERT INTO advertisements (slot_key, title, title_en, position_name_bn, positio
 ('article_sidebar_1', 'সংবাদ বিস্তারিত সাইডবার টপ ব্যানার', 'Article Sidebar Top Ad', 'সংবাদ পেজ ডান সাইডবার শীর্ষ (Rectangle 300×250)', 'Article Sidebar Top', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0),
 ('article_sidebar_2', 'সংবাদ বিস্তারিত সাইডবার বটম ব্যানার', 'Article Sidebar Bottom Halfpage', 'সংবাদ পেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)', 'Article Sidebar Halfpage', 'image', '', 'https://alo.com.bd', '', '', 'halfpage', 'active', 0, 0),
 ('category_sidebar', 'ক্যাটাগরি পেজ সাইডবার ব্যানার', 'Category Page Sidebar Ad', 'ক্যাটাগরি আর্কাইভ পেজ সাইডবার (Rectangle 300×250)', 'Category Page Sidebar', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0),
-('opinion_sidebar_1', 'মতামত পেজ সাইডবার ব্যানার', 'Opinion Page Sidebar Ad', 'কলাম ও মতামত পেজ সাইডবার (Rectangle 300×250)', 'Opinion Page Sidebar', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0)
+('opinion_sidebar_1', 'মতামত পেজ সাইডবার ব্যানার', 'Opinion Page Sidebar Ad', 'কলাম ও মতামত পেজ সাইডবার (Rectangle 300×250)', 'Opinion Page Sidebar', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0),
+('opinion_sidebar_2', 'মতামত পেজ সাইডবার বটম হাফপেজ ব্যানার', 'Opinion Page Sidebar Bottom Halfpage', 'কলাম ও মতামত পেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)', 'Opinion Page Sidebar Halfpage', 'image', '', 'https://alo.com.bd', '', '', 'halfpage', 'active', 0, 0)
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
