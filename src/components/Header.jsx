@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Menu, X, Search, Globe, User, Bell, LogOut, Flame } from 'lucide-react'
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
+import { Menu, X, Search, Globe, User, Bell, LogOut, Flame, ChevronDown } from 'lucide-react'
 import ProthomAloLogo from './ProthomAloLogo.jsx'
 import {
   NAV_ITEMS,
@@ -26,8 +26,11 @@ export default function Header({
   const [searchOpen, setSearchOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
   const [isAuth, setIsAuth] = useState(false)
+  const [moreNavOpen, setMoreNavOpen] = useState(false)
   const searchInputRef = useRef(null)
+  const moreDropdownRef = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const t = UI_TEXT[lang] || UI_TEXT.bn
   const todayStr = lang === 'bn' ? formatBengaliDate(new Date().toISOString()) : formatEnglishDate(new Date().toISOString())
@@ -123,6 +126,43 @@ export default function Header({
 
     return list
   }, [categories])
+
+  // Top 12 categories shown directly in navbar, others grouped into dropdown
+  const visibleNavItems = useMemo(() => {
+    return navItems.slice(0, 12)
+  }, [navItems])
+
+  const extraNavItems = useMemo(() => {
+    return navItems.slice(12)
+  }, [navItems])
+
+  const isExtraActive = useMemo(() => {
+    if (!extraNavItems.length) return false
+    const current = (location.pathname || '').toLowerCase()
+    return extraNavItems.some((item) => {
+      const p = (item.path || '').toLowerCase()
+      return p === current || (p !== '/' && current.startsWith(p))
+    })
+  }, [extraNavItems, location.pathname])
+
+  // Handle outside click for "Other" categories dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(e.target)) {
+        setMoreNavOpen(false)
+      }
+    }
+    if (moreNavOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [moreNavOpen])
+
+  useEffect(() => {
+    setMoreNavOpen(false)
+  }, [location.pathname])
 
   // --- Dynamic Trending Topics (derived from latest article tags) ---
   const dynamicTrending = useMemo(() => {
@@ -286,26 +326,83 @@ export default function Header({
 
       {/* 3. STICKY HORIZONTAL CATEGORY NAVIGATION BAR */}
       <nav className="bg-white border-b-2 border-[#e30613] shadow-sm sticky top-0 z-30 font-bengali">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <div
-            className="flex items-center overflow-x-auto scrollbar-none py-0 w-full"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === '/'}
-                className={({ isActive }) =>
-                  `px-2 sm:px-2.5 md:px-2.5 lg:px-2.5 xl:px-3 py-2 sm:py-2.5 text-[13px] md:text-[13.5px] lg:text-[14px] font-semibold whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${isActive
-                    ? 'text-[#e30613] border-[#e30613] bg-red-50/50'
-                    : 'text-[#1a1a1a] border-transparent hover:text-[#e30613] hover:border-red-300'
-                  }`
-                }
-              >
-                {lang === 'bn' ? item.label_bn : item.label_en}
-              </NavLink>
-            ))}
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between relative">
+          <div className="flex items-center flex-1 min-w-0">
+            {/* Top 12 Category Items */}
+            <div
+              className="flex items-center overflow-x-auto scrollbar-none py-0"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {visibleNavItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === '/'}
+                  className={({ isActive }) =>
+                    `px-2 sm:px-2.5 md:px-2.5 lg:px-2.5 xl:px-3 py-2 sm:py-2.5 text-[13px] md:text-[13.5px] lg:text-[14px] font-semibold whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${isActive
+                      ? 'text-[#e30613] border-[#e30613] bg-red-50/50'
+                      : 'text-[#1a1a1a] border-transparent hover:text-[#e30613] hover:border-red-300'
+                    }`
+                  }
+                >
+                  {lang === 'bn' ? item.label_bn : item.label_en}
+                </NavLink>
+              ))}
+            </div>
+
+            {/* Other categories dropdown button (shown when more than 12 items) */}
+            {extraNavItems.length > 0 && (
+              <div ref={moreDropdownRef} className="relative flex-shrink-0 ml-1">
+                <button
+                  type="button"
+                  onClick={() => setMoreNavOpen((prev) => !prev)}
+                  className={`px-2.5 sm:px-3 py-2 sm:py-2.5 text-[13px] md:text-[13.5px] lg:text-[14px] font-semibold whitespace-nowrap border-b-2 transition-all flex items-center gap-1 cursor-pointer select-none ${
+                    (isExtraActive || moreNavOpen)
+                      ? 'text-[#e30613] border-[#e30613] bg-red-50/50'
+                      : 'text-[#1a1a1a] border-transparent hover:text-[#e30613] hover:border-red-300'
+                  }`}
+                  aria-expanded={moreNavOpen}
+                  title={lang === 'bn' ? 'আরও বিভাগ দেখুন' : 'View more categories'}
+                >
+                  <span>{lang === 'bn' ? 'অন্যান্য' : 'More'}</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${moreNavOpen ? 'rotate-180 text-[#e30613]' : 'text-gray-500'}`}
+                  />
+                </button>
+
+                {/* Dropdown Menu */}
+                {moreNavOpen && (
+                  <div className="absolute top-full right-0 mt-0.5 w-60 sm:w-72 bg-white border border-gray-200 rounded-b-xl shadow-2xl z-50 py-2 max-h-[380px] overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="px-3 py-1.5 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                      <span>{lang === 'bn' ? 'আরও বিভাগসমূহ' : 'More Categories'}</span>
+                      <span className="text-[10px] bg-red-50 text-[#e30613] px-2 py-0.5 rounded-full font-bold">
+                        {extraNavItems.length}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 p-1.5">
+                      {extraNavItems.map((item) => (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setMoreNavOpen(false)}
+                          className={({ isActive }) =>
+                            `px-2.5 py-2 text-xs sm:text-[13px] font-semibold rounded-lg transition-colors flex items-center justify-between ${
+                              isActive
+                                ? 'text-[#e30613] bg-red-50 font-bold'
+                                : 'text-gray-700 hover:text-[#e30613] hover:bg-gray-50'
+                            }`
+                          }
+                        >
+                          <span>{lang === 'bn' ? item.label_bn : item.label_en}</span>
+                          <span className="text-[10px] text-gray-400">›</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </nav>

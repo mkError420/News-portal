@@ -1,3 +1,16 @@
+# ----------------------------------------------------------------------
+# 1. MIME Types (Required for strict MIME checking in modern browsers)
+# ----------------------------------------------------------------------
+<IfModule mod_mime.c>
+  AddType text/css .css
+  AddType application/javascript .js .mjs
+  AddType image/svg+xml .svg
+  AddType image/x-icon .ico
+  AddType application/json .json
+  AddType image/webp .webp
+  AddType font/woff2 .woff2
+</IfModule>
+
 Options -Indexes
 DirectoryIndex index.php index.html
 RewriteEngine On
@@ -13,9 +26,14 @@ RewriteRule ^ads\.txt$ backend/api/index.php?endpoint=ads-txt [L]
 # API routes
 RewriteRule ^api(?:/.*)?$ backend/api/index.php [QSA,L]
 
+# Serve existing physical files or directories directly
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
+
+# Do NOT rewrite missing static assets (.js, .css, images) to HTML!
+RewriteCond %{REQUEST_URI} \.(css|js|mjs|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$ [NC]
+RewriteRule ^ - [R=404,L]
 
 RewriteCond %{DOCUMENT_ROOT}/index.php -f
 RewriteRule ^ index.php [L]
