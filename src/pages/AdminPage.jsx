@@ -834,8 +834,9 @@ export default function AdminPage({
     api.checkAuth()
       .then((user) => {
         if (!user) {
+          const token = localStorage.getItem('admin_token')
           const localUser = localStorage.getItem('admin_user')
-          if (localUser) {
+          if (token && localUser) {
             try {
               setCurrentUser(JSON.parse(localUser))
               setAuthChecking(false)
@@ -851,8 +852,9 @@ export default function AdminPage({
       })
       .catch((err) => {
         console.error('Auth verification failed:', err)
+        const token = localStorage.getItem('admin_token')
         const localUser = localStorage.getItem('admin_user')
-        if (localUser) {
+        if (token && localUser) {
           try {
             setCurrentUser(JSON.parse(localUser))
             setAuthChecking(false)
@@ -1127,6 +1129,7 @@ export default function AdminPage({
     localStorage.removeItem('admin_auth')
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_token')
+    setCurrentUser(null)
     navigate('/login', { replace: true })
   }
 

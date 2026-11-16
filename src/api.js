@@ -88,15 +88,21 @@ export const api = {
           localStorage.setItem('admin_user', JSON.stringify(res.data.user))
         }
         return res.data.user
+      } else {
+        // Backend confirmed unauthenticated: clear any stale storage
+        localStorage.removeItem('admin_user')
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_auth')
+        return null
       }
     } catch {
-      // Backend offline or unreachable: fall back to cached session
+      // Backend offline or unreachable: fall back to cached session ONLY if token exists
     }
 
     try {
-      const cached = localStorage.getItem('admin_user')
       const token = localStorage.getItem('admin_token')
-      if (cached && token) {
+      const cached = localStorage.getItem('admin_user')
+      if (token && cached) {
         return JSON.parse(cached)
       }
     } catch {}
@@ -110,6 +116,14 @@ export const api = {
     } catch {}
     localStorage.removeItem('admin_token')
     localStorage.removeItem('admin_user')
+    localStorage.removeItem('admin_auth')
+    try {
+      sessionStorage.clear()
+    } catch {}
+    try {
+      document.cookie = 'admin_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+      document.cookie = 'PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    } catch {}
     return { success: true, message: 'Logged out successfully' }
   },
 

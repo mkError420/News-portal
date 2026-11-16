@@ -39,10 +39,15 @@ export default function Header({
   const bengaliSolarStr = formatBengaliSolarDate(new Date())
 
   useEffect(() => {
+    const token = localStorage.getItem('admin_token')
+    if (!token) {
+      setIsAuth(false)
+      return
+    }
     api.checkAuth()
       .then((user) => setIsAuth(!!user))
       .catch((err) => console.error('Unable to verify the admin session:', err))
-  }, [])
+  }, [location.pathname])
 
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
@@ -69,7 +74,7 @@ export default function Header({
     try {
       await api.logout()
       setIsAuth(false)
-      navigate('/')
+      navigate('/login')
     } catch (err) {
       console.error('Unable to end the admin session:', err)
       alert(lang === 'bn' ? 'লগআউট করা যায়নি। আবার চেষ্টা করুন।' : 'Unable to log out. Please try again.')

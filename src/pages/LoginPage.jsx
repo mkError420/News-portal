@@ -15,8 +15,11 @@ export default function LoginPage({ lang = 'bn', onLoginSuccess, settings = null
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
     (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
 
-  // If already logged in, redirect to admin
+  // If already logged in, redirect to admin ONLY if active session token exists in localStorage
   useEffect(() => {
+    const token = localStorage.getItem('admin_token')
+    if (!token) return
+
     api.checkAuth().then((user) => {
       if (user) {
         navigate('/admin', { replace: true })

@@ -1119,7 +1119,36 @@ function get_auth_token(): string
     return '';
 }
 
-function verify_admin_token(string $token): ?array
+function revoke_admin_token(?int $adminId = null): void
+{
+    if (!$adminId) {
+        $adminId = $_SESSION['admin_id'] ?? null;
+    }
+    if (!$adminId) {
+        $token = get_auth_token();
+        $v = verify_admin_token($token, false);
+        if ($v && !empty($v['id'])) {
+            $adminId = (int) $v['id'];
+        }
+    }
+    if ($adminId) {
+        try {
+            $db = db();
+            if ($db) {
+                $now = time();
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                if ($driver === 'sqlite') {
+                    $stmt = $db->prepare("INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES (?, ?) ON CONFLICT(`setting_key`) DO UPDATE SET `setting_value` = excluded.`setting_value`");
+                } else {
+                    $stmt = $db->prepare("INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`)");
+                }
+                $stmt->execute(['admin_logout_' . (int)$adminId, (string)$now]);
+            }
+        } catch (Throwable $e) {}
+    }
+}
+
+function verify_admin_token(string $token, bool $checkRevoked = true): ?array
 {
     if (empty($token)) return null;
     $parts = explode('.', $token);
@@ -1140,6 +1169,22 @@ function verify_admin_token(string $token): ?array
         $expectedSig2 = hash_hmac('sha256', $paddedB64, $secret);
         if (!hash_equals($expectedSig2, $signature)) return null;
     }
+
+    // Check if token was revoked upon logout
+    if ($checkRevoked && !empty($payload['id']) && !empty($payload['time'])) {
+        try {
+            $db = db();
+            if ($db) {
+                $stmt = $db->prepare("SELECT `setting_value` FROM `settings` WHERE `setting_key` = ? LIMIT 1");
+                $stmt->execute(['admin_logout_' . (int)$payload['id']]);
+                $logoutTime = (int) $stmt->fetchColumn();
+                if ($logoutTime > 0 && (int)$payload['time'] < $logoutTime) {
+                    return null; // Token revoked by logout!
+                }
+            }
+        } catch (Throwable $e) {}
+    }
+
     return $payload;
 }
 
@@ -1552,6 +1597,19 @@ if ($resource === 'login' && $method === 'POST') {
 
         $token = create_admin_token((int) $adminUser['id'], $adminUser['email']);
         try {
+            $db = db();
+            if ($db) {
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                if ($driver === 'sqlite') {
+                    $stmt = $db->prepare("INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES (?, ?) ON CONFLICT(`setting_key`) DO UPDATE SET `setting_value` = excluded.`setting_value`");
+                } else {
+                    $stmt = $db->prepare("INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`)");
+                }
+                $stmt->execute(['admin_logout_' . (int)$adminUser['id'], '0']);
+            }
+        } catch (Throwable $e) {}
+
+        try {
             setcookie('admin_token', $token, [
                 'expires' => time() + 86400 * 30,
                 'path' => '/',
@@ -1643,11 +1701,36 @@ if ($resource === 'me' && $method === 'GET') {
 }
 
 // ----------------------------------------------------
-// ROUTE: POST /api/logout
+// ROUTE: POST/GET /api/logout
 // ----------------------------------------------------
-if ($resource === 'logout' && $method === 'POST') {
+if ($resource === 'logout') {
+    revoke_admin_token();
+
     $_SESSION = [];
-    if (session_id()) session_destroy();
+    if (session_id()) {
+        @session_destroy();
+    }
+
+    // Expire PHP session cookie
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 86400,
+            $params["path"] ?? '/', $params["domain"] ?? '',
+            $params["secure"] ?? false, $params["httponly"] ?? true
+        );
+    }
+
+    // Expire admin_token cookie across potential domain/paths
+    setcookie('admin_token', '', [
+        'expires' => time() - 86400 * 30,
+        'path' => '/',
+        'httponly' => false,
+        'samesite' => 'Lax'
+    ]);
+    setcookie('admin_token', '', time() - 86400 * 30, '/');
+    setcookie('admin_token', '', time() - 86400 * 30);
+    unset($_COOKIE['admin_token']);
+
     json_response(['success' => true, 'message' => 'Logged out successfully']);
 }
 
