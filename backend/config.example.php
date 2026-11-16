@@ -1,4 +1,12 @@
 <?php
+/**
+ * Example Database Configuration File
+ *
+ * For local development or cPanel hosting:
+ * 1. Copy this file to 'config.php' in the same folder.
+ * 2. Put your database credentials in config.php or .env.
+ * 3. 'config.php' and '.env' are ignored by Git and will NEVER be pushed to GitHub.
+ */
 
 // Auto-load .env file if present in backend or root
 $envFiles = [__DIR__ . '/.env', dirname(__DIR__) . '/.env'];

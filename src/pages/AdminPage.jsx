@@ -5354,36 +5354,79 @@ export default function AdminPage({
                   </div>
                 </div>
 
-                {/* Sub Tab Switcher Pills */}
-                <div className="flex items-center gap-1.5 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => setRoleSubTab('roles')}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${roleSubTab === 'roles'
-                      ? 'bg-white text-[#e30613] shadow-xs'
-                      : 'text-gray-600 hover:text-gray-900'
+                {/* Sub Tab Switcher Pills & Action Buttons */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1.5 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setRoleSubTab('roles')}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${roleSubTab === 'roles'
+                        ? 'bg-white text-[#e30613] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                      <Shield size={14} />
+                      <span>ভূমিকা ও পারমিশন তালিকা</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-50 text-[#e30613] font-bold">
+                        {toBengaliNumber(localRoles.length)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRoleSubTab('staff')}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${roleSubTab === 'staff'
+                        ? 'bg-white text-[#e30613] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                      <Users size={14} />
+                      <span>টিম ও স্টাফ সদস্য</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-600 font-bold">
+                        {toBengaliNumber(localStaff.length)}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Super Admin Quick Create Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRoleSubTab('roles')
+                        handleCancelRoleEdit()
+                        setTimeout(() => {
+                          document.getElementById('role-form-section')?.scrollIntoView({ behavior: 'smooth' })
+                        }, 50)
+                      }}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                        roleSubTab === 'roles' && !editingRoleId
+                          ? 'bg-[#e30613] hover:bg-red-700 text-white'
+                          : 'bg-red-50 hover:bg-red-100 text-[#e30613] border border-red-200'
                       }`}
-                  >
-                    <Shield size={14} />
-                    <span>ভূমিকা ও পারমিশন তালিকা</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-50 text-[#e30613] font-bold">
-                      {toBengaliNumber(localRoles.length)}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRoleSubTab('staff')}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${roleSubTab === 'staff'
-                      ? 'bg-white text-[#e30613] shadow-xs'
-                      : 'text-gray-600 hover:text-gray-900'
+                    >
+                      <PlusCircle size={14} />
+                      <span>নতুন রোল তৈরি করুন</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRoleSubTab('staff')
+                        handleCancelStaffEdit()
+                        setTimeout(() => {
+                          document.getElementById('staff-form-section')?.scrollIntoView({ behavior: 'smooth' })
+                        }, 50)
+                      }}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                        roleSubTab === 'staff' && !editingStaffId
+                          ? 'bg-[#e30613] hover:bg-red-700 text-white'
+                          : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200'
                       }`}
-                  >
-                    <Users size={14} />
-                    <span>টিম ও স্টাফ সদস্য</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-600 font-bold">
-                      {toBengaliNumber(localStaff.length)}
-                    </span>
-                  </button>
+                    >
+                      <UserPlus size={14} />
+                      <span>নতুন টিম সদস্য</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -5391,7 +5434,7 @@ export default function AdminPage({
               {roleSubTab === 'roles' && (
                 <div className="space-y-6">
                   {/* Create / Edit Role Form */}
-                  <form onSubmit={handleRoleSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <form id="role-form-section" onSubmit={handleRoleSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
                     <div className="flex items-center justify-between border-b pb-3 text-[#e30613] font-bold">
                       <div className="flex items-center gap-2">
                         <Key size={18} />
@@ -5665,7 +5708,7 @@ export default function AdminPage({
               {roleSubTab === 'staff' && (
                 <div className="space-y-6">
                   {/* Add / Edit Staff Member Form */}
-                  <form onSubmit={handleStaffSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                  <form id="staff-form-section" onSubmit={handleStaffSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
                     <div className="flex items-center justify-between border-b pb-3 text-[#e30613] font-bold">
                       <div className="flex items-center gap-2">
                         <UserPlus size={18} />

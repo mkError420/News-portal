@@ -23,6 +23,25 @@ dist-ssr
 *.sln
 *.sw?
 
-# Live database credentials are entered on the hosting account only.
+# Environment & Database Credentials (NEVER push to GitHub)
+.env
+.env.*
+*.env
+!.env.example
+!backend/.env.example
+backend/.env
+cpanel-deploy/backend/.env
+
+# Live database configuration files
 backend/config.php
 cpanel-deploy/backend/config.php
+
+# Local SQLite databases and runtime data
+backend/data/
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-wal
+*.sqlite-shm
+*.dump
+*.bak

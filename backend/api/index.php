@@ -5,7 +5,37 @@
  * Resilient schema handling for both legacy and bilingual MySQL databases.
  */
 
-require_once __DIR__ . '/../config.php';
+if (file_exists(__DIR__ . '/../config.php')) {
+    require_once __DIR__ . '/../config.php';
+} else {
+    // Auto-load .env file if present in backend or root
+    $envFiles = [__DIR__ . '/../.env', dirname(__DIR__, 2) . '/.env'];
+    foreach ($envFiles as $envFile) {
+        if (file_exists($envFile)) {
+            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#')) continue;
+                if (strpos($line, '=') !== false) {
+                    [$k, $v] = explode('=', $line, 2);
+                    $k = trim($k);
+                    $v = trim(trim($v), "\"'");
+                    if (getenv($k) === false) {
+                        putenv("$k=$v");
+                        $_ENV[$k] = $v;
+                        $_SERVER[$k] = $v;
+                    }
+                }
+            }
+            break;
+        }
+    }
+}
+
+if (!defined('DB_HOST')) define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
+if (!defined('DB_NAME')) define('DB_NAME', getenv('DB_NAME') ?: 'news_portal');
+if (!defined('DB_USER')) define('DB_USER', getenv('DB_USER') ?: 'root');
+if (!defined('DB_PASS')) define('DB_PASS', getenv('DB_PASS') ?: '');
 
 // --- Response Headers ---
 header('Content-Type: application/json; charset=utf-8');
@@ -740,6 +770,21 @@ function auto_migrate_roles_and_staff(PDO $pdo): void
         }
         if (!in_array('phone', $cols, true)) {
             $pdo->exec("ALTER TABLE `admins` ADD COLUMN `phone` VARCHAR(50) NULL");
+        }
+
+        // Ensure default Super Admin exists if admins table is empty
+        $adminCount = (int) $pdo->query('SELECT COUNT(*) FROM `admins`')->fetchColumn();
+        if ($adminCount === 0) {
+            $defaultHash = password_hash('admin123', PASSWORD_BCRYPT);
+            $insAdmin = $pdo->prepare('INSERT INTO `admins` (`name`, `email`, `password_hash`, `role_key`, `status`, `phone`) VALUES (?, ?, ?, ?, ?, ?)');
+            $insAdmin->execute([
+                'প্রধান প্রশাসক',
+                'admin@prothomalo.com',
+                $defaultHash,
+                'admin',
+                'active',
+                '+৮৮০ ২ ৮১৮০০৭৮-৮১'
+            ]);
         }
     } catch (Throwable $e) {}
 }
@@ -1590,6 +1635,10 @@ if ($resource === 'login' && $method === 'POST') {
     }
 
     if ($adminUser && password_verify($password, $adminUser['password_hash'])) {
+        if (($adminUser['status'] ?? 'active') === 'inactive') {
+            json_response(['success' => false, 'message' => 'আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত রয়েছে। অনুগ্রহ করে প্রধান প্রশাসকের সাথে যোগাযোগ করুন। (Account suspended)'], 403);
+        }
+
         session_regenerate_id(true);
         $_SESSION['admin_authenticated'] = true;
         $_SESSION['admin_id'] = (int) $adminUser['id'];
@@ -3323,8 +3372,8 @@ if ($resource === 'staff') {
         $newPassword = (string) ($input['password'] ?? '');
 
         if (!empty($newPassword)) {
-            if (strlen($newPassword) < 6) {
-                json_response(['success' => false, 'message' => 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'], 400);
+            if (strlen($newPassword) < 4) {
+                json_response(['success' => false, 'message' => 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।'], 400);
             }
             $hash = password_hash($newPassword, PASSWORD_BCRYPT);
             $upd = $dbConn->prepare('UPDATE admins SET name = ?, email = ?, role_key = ?, status = ?, phone = ?, password_hash = ? WHERE id = ?');
