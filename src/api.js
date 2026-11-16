@@ -498,6 +498,51 @@ export const api = {
     return requireSuccess(res.data)
   },
 
+  async getAds() {
+    try {
+      const res = await client.get('/advertisements')
+      if (Array.isArray(res.data)) {
+        return res.data
+      }
+      return []
+    } catch (err) {
+      console.warn('Failed to fetch advertisements:', err)
+      return []
+    }
+  },
+
+  async saveAd(adData) {
+    const isEdit = Boolean(adData?.id)
+    const res = await client[isEdit ? 'put' : 'post']('/advertisements', adData)
+    return requireSuccess(res.data)
+  },
+
+  async toggleAd(id) {
+    const res = await client.post(`/advertisements?action=toggle&id=${encodeURIComponent(id)}`)
+    return requireSuccess(res.data)
+  },
+
+  async deleteAd(id) {
+    const res = await client.delete(`/advertisements?id=${encodeURIComponent(id)}`)
+    return requireSuccess(res.data)
+  },
+
+  async recordAdClick(slotKeyOrId) {
+    try {
+      await client.post(`/advertisements?action=click&slot=${encodeURIComponent(slotKeyOrId)}`)
+    } catch {
+      // non-blocking tracking
+    }
+  },
+
+  async recordAdView(slotKeyOrId) {
+    try {
+      await client.post(`/advertisements?action=view&slot=${encodeURIComponent(slotKeyOrId)}`)
+    } catch {
+      // non-blocking tracking
+    }
+  },
+
   async getStats() {
     const res = await client.get('/stats')
     return res.data

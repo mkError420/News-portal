@@ -6,7 +6,7 @@ import AdBanner from '../components/AdBanner.jsx'
 import SEO from '../components/SEO.jsx'
 import { formatBengaliDate, formatEnglishDate } from '../utils.js'
 
-export default function OpinionPage({ opinions = [], settings = null, lang = 'bn' }) {
+export default function OpinionPage({ opinions = [], ads = [], settings = null, lang = 'bn' }) {
   const [activeOpinion, setActiveOpinion] = useState(null)
   const currentOpinion = activeOpinion || opinions[0]
 
@@ -150,8 +150,8 @@ export default function OpinionPage({ opinions = [], settings = null, lang = 'bn
                   : `Views expressed in ${siteName} opinion pieces belong solely to the authors. We champion constructive diversity of perspectives and free expression.`}
               </p>
             </div>
-            <AdBanner size="rectangle" lang={lang} settings={settings} />
-            <AdBanner size="halfpage" lang={lang} settings={settings} />
+            <AdBanner slotKey="opinion_sidebar_1" ads={ads} size="rectangle" lang={lang} settings={settings} />
+            <AdBanner slotKey="opinion_sidebar_2" ads={ads} size="halfpage" lang={lang} settings={settings} />
           </aside>
         </div>
       )}

@@ -34,7 +34,7 @@ import {
   toBengaliNumber,
 } from '../utils.js'
 
-export default function ArticlePage({ articles = [], breakingNews = [], categories = [], settings = null, lang = 'bn' }) {
+export default function ArticlePage({ articles = [], breakingNews = [], categories = [], ads = [], settings = null, lang = 'bn' }) {
   const { slug } = useParams()
   const article = articles.find((a) => a.slug === slug || String(a.id) === String(slug)) ||
     articles.find((a) => a.slug === slug) ||
@@ -409,7 +409,7 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
 
           {/* Mid-Article In-feed Ad Banner */}
           <div className="my-8">
-            <AdBanner size="infeed" lang={lang} settings={settings} />
+            <AdBanner slotKey="article_infeed" ads={ads} size="infeed" lang={lang} settings={settings} />
           </div>
 
           {/* Comments Section */}
@@ -489,7 +489,7 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
           </div>
 
           {/* Ad 300x250 */}
-          <AdBanner size="rectangle" lang={lang} settings={settings} />
+          <AdBanner slotKey="article_sidebar_1" ads={ads} size="rectangle" lang={lang} settings={settings} />
 
           {/* Related Articles Box */}
           <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
@@ -506,7 +506,7 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
           </div>
 
           {/* Ad 300x600 Skyscraper */}
-          <AdBanner size="halfpage" lang={lang} settings={settings} />
+          <AdBanner slotKey="article_sidebar_2" ads={ads} size="halfpage" lang={lang} settings={settings} />
         </aside>
       </div>
     </div>

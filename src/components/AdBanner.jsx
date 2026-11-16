@@ -1,13 +1,18 @@
 import { useEffect, useRef } from 'react'
+import { api } from '../api.js'
 
 /**
- * Universal AdBanner component
+ * Universal Dynamic AdBanner component
  * Supports:
- * 1. Google AdSense Responsive Ad Units (with client & slot ID)
- * 2. Custom Sponsored Banner (with image & click URL)
- * 3. Fallback / Test Placement Placeholder
+ * 1. Dynamic advertisements from database / admin dashboard (Image / Code / AdSense)
+ * 2. Click & View analytics tracking
+ * 3. Google AdSense Responsive Units
+ * 4. Custom sponsored banners
+ * 5. Clean fallback placeholders
  */
 export default function AdBanner({
+  slotKey = null,     // Specific ad position identifier (e.g. 'home_header_top', 'home_sidebar_1')
+  ads = [],           // Advertisements array from database
   size = 'rectangle', // 'leaderboard' | 'rectangle' | 'halfpage' | 'infeed' | 'inarticle'
   lang = 'bn',
   className = '',
@@ -16,39 +21,134 @@ export default function AdBanner({
   customBanner = null, // { imageUrl, linkUrl, altText }
 }) {
   const adRef = useRef(null)
+  const viewTrackedRef = useRef(false)
   const label = lang === 'bn' ? 'বিজ্ঞাপন' : 'Advertisement'
 
   const DIMENSIONS = {
-    leaderboard: { width: 728, height: 90, label: '728 × 90 (Header / Top)' },
+    leaderboard: { width: 728, height: 90, label: '728 × 90 (Header / Top Leaderboard)' },
     rectangle:   { width: 300, height: 250, label: '300 × 250 (Medium Rectangle)' },
     halfpage:    { width: 300, height: 600, label: '300 × 600 (Half Page / Sidebar)' },
-    infeed:      { width: '100%', height: 100, label: 'In-feed Banner' },
-    inarticle:   { width: '100%', height: 120, label: 'In-Article Ad' },
+    infeed:      { width: '100%', height: 100, label: 'In-feed Banner (Responsive)' },
+    inarticle:   { width: '100%', height: 120, label: 'In-Article Ad (Responsive)' },
   }
 
   const config = DIMENSIONS[size] || DIMENSIONS.rectangle
 
+  // 1. Resolve dynamic ad from database
+  const dynamicAd = Array.isArray(ads) && ads.length > 0
+    ? (slotKey ? ads.find((a) => a.slot_key === slotKey) : ads.find((a) => a.size === size && a.status === 'active'))
+    : null
+
+  const isDynamicActive = dynamicAd && dynamicAd.status === 'active'
+
+  // View tracking for dynamic ad
+  useEffect(() => {
+    if (isDynamicActive && dynamicAd && !viewTrackedRef.current) {
+      viewTrackedRef.current = true
+      api.recordAdView(dynamicAd.slot_key || dynamicAd.id)
+    }
+  }, [isDynamicActive, dynamicAd])
+
   const adsenseEnabled = settings?.adsense_enabled === '1' || settings?.adsense_enabled === true || settings?.adsense_enabled === 'true'
   const adClient = settings?.adsense_client_id?.trim()
 
-  // Resolve specific slot ID from props or settings
-  const resolvedSlot = slotId || (
+  // Resolve specific slot ID from props, dynamic ad, or settings
+  const resolvedSlot = slotId || dynamicAd?.adsense_slot || (
     size === 'leaderboard' ? settings?.adsense_header_slot :
     size === 'inarticle' || size === 'infeed' ? settings?.adsense_article_slot :
     settings?.adsense_sidebar_slot
   )
 
   useEffect(() => {
-    if (adsenseEnabled && adClient && resolvedSlot && typeof window !== 'undefined') {
+    const isAdSense = (isDynamicActive && dynamicAd?.ad_type === 'adsense') || (adsenseEnabled && adClient && resolvedSlot)
+    if (isAdSense && adClient && resolvedSlot && typeof window !== 'undefined') {
       try {
         ;(window.adsbygoogle = window.adsbygoogle || []).push({})
       } catch (e) {
         // Suppress AdSense already loaded errors in SPA navigation
       }
     }
-  }, [adsenseEnabled, adClient, resolvedSlot])
+  }, [isDynamicActive, dynamicAd, adsenseEnabled, adClient, resolvedSlot])
 
-  // 1. Direct Sponsored Banner
+  // Handle ad click
+  const handleAdClick = () => {
+    if (dynamicAd) {
+      api.recordAdClick(dynamicAd.slot_key || dynamicAd.id)
+    }
+  }
+
+  // A. Dynamic Active Database Ad: Image banner
+  if (isDynamicActive && dynamicAd.ad_type === 'image' && dynamicAd.image_url) {
+    const titleText = (lang === 'bn' ? dynamicAd.title : dynamicAd.title_en) || dynamicAd.title || label
+    return (
+      <div className={`my-4 flex flex-col items-center justify-center ${className}`}>
+        <div className="w-full flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 px-1">
+          <span className="font-bengali flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            {label}
+          </span>
+          <span className="text-[9px] text-gray-300 font-sans">{config.label}</span>
+        </div>
+        <a
+          href={dynamicAd.target_url || '#'}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          onClick={handleAdClick}
+          className="group block w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-xs hover:shadow-md transition-all text-center"
+          style={{ maxWidth: config.width === '100%' ? '100%' : `${config.width}px` }}
+          title={titleText}
+        >
+          <img
+            src={dynamicAd.image_url}
+            alt={titleText}
+            className="w-full h-auto object-cover transition-transform duration-200 group-hover:scale-[1.01]"
+            style={{
+              maxHeight: size === 'leaderboard' ? '120px' : size === 'halfpage' ? '650px' : size === 'rectangle' ? '300px' : '200px'
+            }}
+          />
+        </a>
+      </div>
+    )
+  }
+
+  // B. Dynamic Active Database Ad: Custom HTML / JS snippet
+  if (isDynamicActive && dynamicAd.ad_type === 'code' && dynamicAd.code_snippet) {
+    return (
+      <div className={`my-4 flex flex-col items-center justify-center ${className}`}>
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali mb-1">
+          {label}
+        </span>
+        <div
+          className="w-full overflow-hidden text-center flex justify-center"
+          style={{ maxWidth: config.width === '100%' ? '100%' : `${config.width}px` }}
+          dangerouslySetInnerHTML={{ __html: dynamicAd.code_snippet }}
+        />
+      </div>
+    )
+  }
+
+  // C. Dynamic Active Database Ad: AdSense slot
+  if (isDynamicActive && dynamicAd.ad_type === 'adsense' && (dynamicAd.adsense_slot || resolvedSlot)) {
+    return (
+      <div className={`adsense-wrapper my-4 flex flex-col items-center justify-center overflow-hidden ${className}`}>
+        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block font-bengali mb-0.5">
+          {label}
+        </span>
+        <div ref={adRef} className="w-full flex justify-center text-center">
+          <ins
+            className="adsbygoogle"
+            style={{ display: 'block', minWidth: '250px', width: '100%' }}
+            data-ad-client={adClient}
+            data-ad-slot={dynamicAd.adsense_slot || resolvedSlot}
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // D. Direct Sponsored Banner prop (fallback)
   if (customBanner?.imageUrl) {
     return (
       <div className={`my-4 flex flex-col items-center justify-center ${className}`}>
@@ -71,7 +171,7 @@ export default function AdBanner({
     )
   }
 
-  // 2. Google AdSense Responsive Unit
+  // E. Global Google AdSense Responsive Unit from Settings
   if (adsenseEnabled && adClient && resolvedSlot) {
     return (
       <div className={`adsense-wrapper my-4 flex flex-col items-center justify-center overflow-hidden ${className}`}>
@@ -92,7 +192,7 @@ export default function AdBanner({
     )
   }
 
-  // 3. Fallback Placeholder (shows ad space & advertising notice)
+  // F. Fallback Placeholder (shows ad space & advertising notice)
   return (
     <div
       className={`ad-placeholder mx-auto flex flex-col items-center justify-center bg-gray-50/80 border border-dashed border-gray-300 rounded text-center p-3 select-none transition-colors hover:bg-gray-100/70 ${className}`}
@@ -114,8 +214,9 @@ export default function AdBanner({
         {config.label}
       </span>
       <span className="text-[11px] text-gray-500 mt-1 font-bengali">
-        {lang === 'bn' ? 'বিজ্ঞাপন দিতে বা Google AdSense যুক্ত করতে যোগাযোগ করুন' : 'Advertise here or configure Google AdSense'}
+        {lang === 'bn' ? 'বিজ্ঞাপন দিতে বা ড্যাশবোর্ড থেকে বিজ্ঞাপন সেট করতে যোগাযোগ করুন' : 'Advertise here or configure from admin dashboard'}
       </span>
     </div>
   )
 }
+

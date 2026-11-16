@@ -7,7 +7,7 @@ import AdBanner from '../components/AdBanner.jsx'
 import SEO from '../components/SEO.jsx'
 import { CATEGORIES_BN, CATEGORIES_EN } from '../utils.js'
 
-export default function CategoryPage({ articles = [], categories = [], settings = null, lang = 'bn' }) {
+export default function CategoryPage({ articles = [], categories = [], ads = [], settings = null, lang = 'bn' }) {
   const { slug } = useParams()
   const catKey = (slug || 'national').toLowerCase()
   const [selectedSubcat, setSelectedSubcat] = useState('all')
@@ -252,7 +252,7 @@ export default function CategoryPage({ articles = [], categories = [], settings 
           </div>
 
           {/* Ad Banner */}
-          <AdBanner size="rectangle" lang={lang} settings={settings} />
+          <AdBanner slotKey="category_sidebar" ads={ads} size="rectangle" lang={lang} settings={settings} />
 
           {/* Popular Category Tags */}
           <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">

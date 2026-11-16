@@ -409,6 +409,9 @@ function auto_migrate_all_tables(PDO $pdo): void
 
     // 6. Reader Polls (পাঠক জরিপ)
     auto_migrate_polls($pdo);
+
+    // 7. Advertisements (বিজ্ঞাপন ব্যবস্থাপনা)
+    auto_migrate_advertisements($pdo);
 }
 
 function auto_migrate_seo(PDO $pdo): void
@@ -816,6 +819,213 @@ function format_poll_item(array $row): array
         'options' => $formattedOptions,
         'total_votes' => $totalVotes,
         'status' => (string) ($row['status'] ?? 'active'),
+        'created_at' => (string) ($row['created_at'] ?? ''),
+        'updated_at' => (string) ($row['updated_at'] ?? ''),
+    ];
+}
+
+function auto_migrate_advertisements(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    try {
+        if ($driver === 'sqlite') {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS `advertisements` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                `slot_key` TEXT NOT NULL UNIQUE,
+                `title` TEXT NOT NULL,
+                `title_en` TEXT NULL,
+                `position_name_bn` TEXT NOT NULL,
+                `position_name_en` TEXT NULL,
+                `ad_type` TEXT NOT NULL DEFAULT 'image',
+                `image_url` TEXT NULL,
+                `target_url` TEXT NULL,
+                `code_snippet` TEXT NULL,
+                `adsense_slot` TEXT NULL,
+                `size` TEXT NOT NULL DEFAULT 'rectangle',
+                `status` TEXT NOT NULL DEFAULT 'active',
+                `clicks_count` INTEGER DEFAULT 0,
+                `views_count` INTEGER DEFAULT 0,
+                `created_at` TEXT DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TEXT DEFAULT CURRENT_TIMESTAMP
+            )");
+        } else {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS `advertisements` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `slot_key` VARCHAR(100) NOT NULL UNIQUE,
+                `title` VARCHAR(255) NOT NULL,
+                `title_en` VARCHAR(255) NULL,
+                `position_name_bn` VARCHAR(150) NOT NULL,
+                `position_name_en` VARCHAR(150) NULL,
+                `ad_type` VARCHAR(50) NOT NULL DEFAULT 'image',
+                `image_url` TEXT NULL,
+                `target_url` TEXT NULL,
+                `code_snippet` MEDIUMTEXT NULL,
+                `adsense_slot` VARCHAR(100) NULL,
+                `size` VARCHAR(50) NOT NULL DEFAULT 'rectangle',
+                `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+                `clicks_count` INT NOT NULL DEFAULT 0,
+                `views_count` INT NOT NULL DEFAULT 0,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        }
+
+        $count = (int) $pdo->query('SELECT COUNT(*) FROM advertisements')->fetchColumn();
+        if ($count === 0) {
+            $defaultSlots = [
+                [
+                    'slot_key' => 'home_header_top',
+                    'title' => 'হোমপেজ হেডার শীর্ষ ব্যানার (Leaderboard)',
+                    'title_en' => 'Homepage Header Top Banner',
+                    'position_name_bn' => 'হোমপেজ হেডার শীর্ষ (728×90 / Responsive)',
+                    'position_name_en' => 'Header Top Leaderboard',
+                    'size' => 'leaderboard',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'home_infeed',
+                    'title' => 'হোমপেজ মধ্যবর্তী ইন-ফিড ব্যানার',
+                    'title_en' => 'Homepage Middle In-Feed Banner',
+                    'position_name_bn' => 'হোমপেজ সংবাদ সেকশনের মাঝে (970×90 / Responsive)',
+                    'position_name_en' => 'Home Middle In-Feed',
+                    'size' => 'infeed',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'home_sidebar_1',
+                    'title' => 'হোমপেজ সাইডবার টপ ব্যানার',
+                    'title_en' => 'Homepage Sidebar Top Ad',
+                    'position_name_bn' => 'হোমপেজ ডান সাইডবার শীর্ষ (Medium Rectangle 300×250)',
+                    'position_name_en' => 'Home Sidebar Top Rectangle',
+                    'size' => 'rectangle',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'home_sidebar_2',
+                    'title' => 'হোমপেজ সাইডবার বটম হাফপেজ ব্যানার',
+                    'title_en' => 'Homepage Sidebar Bottom Halfpage',
+                    'position_name_bn' => 'হোমপেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)',
+                    'position_name_en' => 'Home Sidebar Halfpage',
+                    'size' => 'halfpage',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'article_infeed',
+                    'title' => 'সংবাদ বিস্তারিত লেখার নিচে ইন-আর্টিকেল ব্যানার',
+                    'title_en' => 'Article In-Article Banner',
+                    'position_name_bn' => 'সংবাদ বিস্তারিত লেখার নিচে (In-Article Responsive)',
+                    'position_name_en' => 'Article Details In-Feed',
+                    'size' => 'infeed',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'article_sidebar_1',
+                    'title' => 'সংবাদ বিস্তারিত সাইডবার টপ ব্যানার',
+                    'title_en' => 'Article Sidebar Top Ad',
+                    'position_name_bn' => 'সংবাদ পেজ ডান সাইডবার শীর্ষ (Rectangle 300×250)',
+                    'position_name_en' => 'Article Sidebar Top',
+                    'size' => 'rectangle',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'article_sidebar_2',
+                    'title' => 'সংবাদ বিস্তারিত সাইডবার বটম ব্যানার',
+                    'title_en' => 'Article Sidebar Bottom Halfpage',
+                    'position_name_bn' => 'সংবাদ পেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)',
+                    'position_name_en' => 'Article Sidebar Halfpage',
+                    'size' => 'halfpage',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'category_sidebar',
+                    'title' => 'ক্যাটাগরি পেজ সাইডবার ব্যানার',
+                    'title_en' => 'Category Page Sidebar Ad',
+                    'position_name_bn' => 'ক্যাটাগরি আর্কাইভ পেজ সাইডবার (Rectangle 300×250)',
+                    'position_name_en' => 'Category Page Sidebar',
+                    'size' => 'rectangle',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ],
+                [
+                    'slot_key' => 'opinion_sidebar_1',
+                    'title' => 'মতামত পেজ সাইডবার ব্যানার',
+                    'title_en' => 'Opinion Page Sidebar Ad',
+                    'position_name_bn' => 'কলাম ও মতামত পেজ সাইডবার (Rectangle 300×250)',
+                    'position_name_en' => 'Opinion Page Sidebar',
+                    'size' => 'rectangle',
+                    'ad_type' => 'image',
+                    'image_url' => '',
+                    'target_url' => 'https://alo.com.bd',
+                    'status' => 'active'
+                ]
+            ];
+
+            $stmt = $pdo->prepare("INSERT INTO `advertisements` 
+                (`slot_key`, `title`, `title_en`, `position_name_bn`, `position_name_en`, `size`, `ad_type`, `image_url`, `target_url`, `status`) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            foreach ($defaultSlots as $slot) {
+                $stmt->execute([
+                    $slot['slot_key'],
+                    $slot['title'],
+                    $slot['title_en'],
+                    $slot['position_name_bn'],
+                    $slot['position_name_en'],
+                    $slot['size'],
+                    $slot['ad_type'],
+                    $slot['image_url'],
+                    $slot['target_url'],
+                    $slot['status']
+                ]);
+            }
+        }
+    } catch (Throwable $e) {}
+}
+
+function format_advertisement_item(array $row): array
+{
+    return [
+        'id' => (int) $row['id'],
+        'slot_key' => (string) $row['slot_key'],
+        'title' => (string) ($row['title'] ?? ''),
+        'title_en' => (string) ($row['title_en'] ?? ''),
+        'position_name_bn' => (string) ($row['position_name_bn'] ?? ''),
+        'position_name_en' => (string) ($row['position_name_en'] ?? ''),
+        'ad_type' => (string) ($row['ad_type'] ?? 'image'),
+        'image_url' => (string) ($row['image_url'] ?? ''),
+        'target_url' => (string) ($row['target_url'] ?? ''),
+        'code_snippet' => (string) ($row['code_snippet'] ?? ''),
+        'adsense_slot' => (string) ($row['adsense_slot'] ?? ''),
+        'size' => (string) ($row['size'] ?? 'rectangle'),
+        'status' => (string) ($row['status'] ?? 'active'),
+        'clicks_count' => (int) ($row['clicks_count'] ?? 0),
+        'views_count' => (int) ($row['views_count'] ?? 0),
         'created_at' => (string) ($row['created_at'] ?? ''),
         'updated_at' => (string) ($row['updated_at'] ?? ''),
     ];
@@ -3604,6 +3814,251 @@ if ($resource === 'poll' || $resource === 'polls') {
 }
 
 // ----------------------------------------------------
+// ROUTE: /api/advertisements or /api/ads (Full CRUD & Click/View Tracking)
+// ----------------------------------------------------
+if ($resource === 'advertisements' || $resource === 'ads') {
+    $dbConn = require_db();
+    auto_migrate_advertisements($dbConn);
+
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true) ?: $_POST;
+    $action = $_GET['action'] ?? ($input['action'] ?? '');
+
+    // 1. Click Tracking (Public): POST /api/advertisements?action=click&slot=...
+    if ($action === 'click') {
+        $slot = trim((string) ($_GET['slot'] ?? ($input['slot'] ?? ($input['slot_key'] ?? ''))));
+        $id = (int) ($_GET['id'] ?? ($input['id'] ?? 0));
+        if ($id > 0) {
+            $stmt = $dbConn->prepare("UPDATE advertisements SET clicks_count = clicks_count + 1 WHERE id = ?");
+            $stmt->execute([$id]);
+        } elseif ($slot !== '') {
+            $stmt = $dbConn->prepare("UPDATE advertisements SET clicks_count = clicks_count + 1 WHERE slot_key = ?");
+            $stmt->execute([$slot]);
+        }
+        json_response(['success' => true, 'message' => 'Click tracked']);
+    }
+
+    // 2. View Tracking (Public): POST /api/advertisements?action=view&slot=...
+    if ($action === 'view') {
+        $slot = trim((string) ($_GET['slot'] ?? ($input['slot'] ?? ($input['slot_key'] ?? ''))));
+        $id = (int) ($_GET['id'] ?? ($input['id'] ?? 0));
+        if ($id > 0) {
+            $stmt = $dbConn->prepare("UPDATE advertisements SET views_count = views_count + 1 WHERE id = ?");
+            $stmt->execute([$id]);
+        } elseif ($slot !== '') {
+            $stmt = $dbConn->prepare("UPDATE advertisements SET views_count = views_count + 1 WHERE slot_key = ?");
+            $stmt->execute([$slot]);
+        }
+        json_response(['success' => true, 'message' => 'View tracked']);
+    }
+
+    // 3. Status Toggle (Admin): POST /api/advertisements?action=toggle&id=...
+    if ($action === 'toggle') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? ($input['id'] ?? 0));
+        $slot = trim((string) ($_GET['slot'] ?? ($input['slot'] ?? '')));
+        $target = null;
+        if ($id > 0) {
+            $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE id = ? LIMIT 1");
+            $stmt->execute([$id]);
+            $target = $stmt->fetch();
+        } elseif ($slot !== '') {
+            $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE slot_key = ? LIMIT 1");
+            $stmt->execute([$slot]);
+            $target = $stmt->fetch();
+        }
+        if (!$target) {
+            json_response(['success' => false, 'message' => 'বিজ্ঞাপন স্লট খুঁজে পাওয়া যায়নি।'], 404);
+        }
+        $newStatus = ($target['status'] === 'active') ? 'inactive' : 'active';
+        $upd = $dbConn->prepare("UPDATE advertisements SET status = ? WHERE id = ?");
+        $upd->execute([$newStatus, (int)$target['id']]);
+
+        $rows = $dbConn->query("SELECT * FROM advertisements ORDER BY id ASC")->fetchAll();
+        $formatted = array_map('format_advertisement_item', $rows);
+
+        json_response([
+            'success' => true,
+            'message' => $newStatus === 'active' ? 'বিজ্ঞাপন স্লটটি সক্রিয় (Active) করা হয়েছে।' : 'বিজ্ঞাপন স্লটটি স্থগিত (Inactive) করা হয়েছে।',
+            'status' => $newStatus,
+            'ads' => $formatted
+        ]);
+    }
+
+    // 4. GET: Fetch all advertisements (Public)
+    if ($method === 'GET') {
+        $rows = $dbConn->query("SELECT * FROM advertisements ORDER BY id ASC")->fetchAll();
+        $formatted = array_map('format_advertisement_item', $rows);
+        json_response($formatted);
+    }
+
+    // 5. POST: Create or Update an advertisement
+    if ($method === 'POST') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+
+        $id = (int) ($input['id'] ?? 0);
+        $rawSlotKey = strtolower(trim((string) ($input['slot_key'] ?? '')));
+        $slotKey = trim(preg_replace('/[^a-z0-9_]+/', '_', $rawSlotKey), '_');
+        if ($slotKey === '') {
+            $slotKey = 'ad_slot_' . dechex(time());
+        }
+
+        $title = trim((string) ($input['title'] ?? ''));
+        $titleEn = trim((string) ($input['title_en'] ?? ''));
+        $positionNameBn = trim((string) ($input['position_name_bn'] ?? ($input['position'] ?? 'কাস্টম বিজ্ঞাপন স্লট')));
+        $positionNameEn = trim((string) ($input['position_name_en'] ?? 'Custom Ad Slot'));
+        $adType = in_array($input['ad_type'] ?? 'image', ['image', 'code', 'adsense'], true) ? $input['ad_type'] : 'image';
+        $imageUrl = trim((string) ($input['image_url'] ?? ($input['image'] ?? '')));
+        $targetUrl = trim((string) ($input['target_url'] ?? ($input['link'] ?? '')));
+        $codeSnippet = (string) ($input['code_snippet'] ?? ($input['code'] ?? ''));
+        $adsenseSlot = trim((string) ($input['adsense_slot'] ?? ''));
+        $size = in_array($input['size'] ?? 'rectangle', ['leaderboard', 'rectangle', 'halfpage', 'infeed', 'inarticle'], true) ? $input['size'] : 'rectangle';
+        $status = in_array($input['status'] ?? 'active', ['active', 'inactive'], true) ? $input['status'] : 'active';
+
+        if ($title === '') {
+            $title = $positionNameBn ?: 'বিজ্ঞাপন ব্যানার';
+        }
+
+        // Check if slot already exists by ID or slot_key
+        $existing = null;
+        if ($id > 0) {
+            $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE id = ? LIMIT 1");
+            $stmt->execute([$id]);
+            $existing = $stmt->fetch();
+        }
+        if (!$existing && $slotKey !== '') {
+            $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE slot_key = ? LIMIT 1");
+            $stmt->execute([$slotKey]);
+            $existing = $stmt->fetch();
+        }
+
+        if ($existing) {
+            $upd = $dbConn->prepare("UPDATE advertisements SET 
+                title = ?, title_en = ?, position_name_bn = ?, position_name_en = ?,
+                ad_type = ?, image_url = ?, target_url = ?, code_snippet = ?,
+                adsense_slot = ?, size = ?, status = ? WHERE id = ?");
+            $upd->execute([
+                $title, $titleEn, $positionNameBn, $positionNameEn,
+                $adType, $imageUrl, $targetUrl, $codeSnippet,
+                $adsenseSlot, $size, $status, (int)$existing['id']
+            ]);
+            $savedId = (int)$existing['id'];
+            $msg = 'বিজ্ঞাপনের তথ্য সফলভাবে আপডেট করা হয়েছে।';
+        } else {
+            $ins = $dbConn->prepare("INSERT INTO advertisements 
+                (slot_key, title, title_en, position_name_bn, position_name_en, ad_type, image_url, target_url, code_snippet, adsense_slot, size, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([
+                $slotKey, $title, $titleEn, $positionNameBn, $positionNameEn,
+                $adType, $imageUrl, $targetUrl, $codeSnippet, $adsenseSlot, $size, $status
+            ]);
+            $savedId = (int)$dbConn->lastInsertId();
+            $msg = 'নতুন বিজ্ঞাপন স্লট সফলভাবে তৈরি ও সংরক্ষিত হয়েছে।';
+        }
+
+        $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE id = ? LIMIT 1");
+        $stmt->execute([$savedId]);
+        $savedRow = $stmt->fetch();
+        $formattedItem = $savedRow ? format_advertisement_item($savedRow) : null;
+
+        $rows = $dbConn->query("SELECT * FROM advertisements ORDER BY id ASC")->fetchAll();
+        $formattedAll = array_map('format_advertisement_item', $rows);
+
+        json_response([
+            'success' => true,
+            'message' => $msg,
+            'ad' => $formattedItem,
+            'item' => $formattedItem,
+            'ads' => $formattedAll,
+        ], 200);
+    }
+
+    // 6. PUT: Update ad slot
+    if ($method === 'PUT') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($input['id'] ?? 0);
+        $slotKey = trim((string) ($input['slot_key'] ?? ''));
+
+        $stmt = null;
+        if ($id > 0) {
+            $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE id = ? LIMIT 1");
+            $stmt->execute([$id]);
+        } elseif ($slotKey !== '') {
+            $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE slot_key = ? LIMIT 1");
+            $stmt->execute([$slotKey]);
+        }
+        $existing = $stmt ? $stmt->fetch() : null;
+        if (!$existing) {
+            json_response(['success' => false, 'message' => 'বিজ্ঞাপন স্লটটি খুঁজে পাওয়া যায়নি।'], 404);
+        }
+
+        $title = trim((string) ($input['title'] ?? $existing['title']));
+        $titleEn = trim((string) ($input['title_en'] ?? $existing['title_en']));
+        $positionNameBn = trim((string) ($input['position_name_bn'] ?? $existing['position_name_bn']));
+        $positionNameEn = trim((string) ($input['position_name_en'] ?? $existing['position_name_en']));
+        $adType = in_array($input['ad_type'] ?? $existing['ad_type'], ['image', 'code', 'adsense'], true) ? $input['ad_type'] : $existing['ad_type'];
+        $imageUrl = isset($input['image_url']) ? trim((string)$input['image_url']) : (string)$existing['image_url'];
+        $targetUrl = isset($input['target_url']) ? trim((string)$input['target_url']) : (string)$existing['target_url'];
+        $codeSnippet = isset($input['code_snippet']) ? (string)$input['code_snippet'] : (string)$existing['code_snippet'];
+        $adsenseSlot = isset($input['adsense_slot']) ? trim((string)$input['adsense_slot']) : (string)$existing['adsense_slot'];
+        $size = in_array($input['size'] ?? $existing['size'], ['leaderboard', 'rectangle', 'halfpage', 'infeed', 'inarticle'], true) ? $input['size'] : $existing['size'];
+        $status = in_array($input['status'] ?? $existing['status'], ['active', 'inactive'], true) ? $input['status'] : $existing['status'];
+
+        $upd = $dbConn->prepare("UPDATE advertisements SET 
+            title = ?, title_en = ?, position_name_bn = ?, position_name_en = ?,
+            ad_type = ?, image_url = ?, target_url = ?, code_snippet = ?,
+            adsense_slot = ?, size = ?, status = ? WHERE id = ?");
+        $upd->execute([
+            $title, $titleEn, $positionNameBn, $positionNameEn,
+            $adType, $imageUrl, $targetUrl, $codeSnippet,
+            $adsenseSlot, $size, $status, (int)$existing['id']
+        ]);
+
+        $stmt = $dbConn->prepare("SELECT * FROM advertisements WHERE id = ? LIMIT 1");
+        $stmt->execute([(int)$existing['id']]);
+        $savedRow = $stmt->fetch();
+        $formattedItem = $savedRow ? format_advertisement_item($savedRow) : null;
+
+        $rows = $dbConn->query("SELECT * FROM advertisements ORDER BY id ASC")->fetchAll();
+        $formattedAll = array_map('format_advertisement_item', $rows);
+
+        json_response([
+            'success' => true,
+            'message' => 'বিজ্ঞাপনের তথ্য সফলভাবে আপডেট করা হয়েছে।',
+            'ad' => $formattedItem,
+            'item' => $formattedItem,
+            'ads' => $formattedAll,
+        ]);
+    }
+
+    // 7. DELETE: Delete an advertisement slot
+    if ($method === 'DELETE') {
+        if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
+        $id = (int) ($_GET['id'] ?? ($input['id'] ?? 0));
+        $slotKey = trim((string) ($_GET['slot_key'] ?? ($input['slot_key'] ?? '')));
+
+        if ($id > 0) {
+            $stmt = $dbConn->prepare("DELETE FROM advertisements WHERE id = ?");
+            $stmt->execute([$id]);
+        } elseif ($slotKey !== '') {
+            $stmt = $dbConn->prepare("DELETE FROM advertisements WHERE slot_key = ?");
+            $stmt->execute([$slotKey]);
+        } else {
+            json_response(['success' => false, 'message' => 'সঠিক বিজ্ঞাপন স্লট আইডি প্রয়োজন।'], 400);
+        }
+
+        $rows = $dbConn->query("SELECT * FROM advertisements ORDER BY id ASC")->fetchAll();
+        $formattedAll = array_map('format_advertisement_item', $rows);
+
+        json_response([
+            'success' => true,
+            'message' => 'বিজ্ঞাপন স্লটটি সফলভাবে মুছে ফেলা হয়েছে।',
+            'ads' => $formattedAll
+        ]);
+    }
+}
+
+// ----------------------------------------------------
 // ROUTE: GET /api/stats
 // ----------------------------------------------------
 if ($resource === 'stats' && $method === 'GET') {
@@ -3612,6 +4067,7 @@ if ($resource === 'stats' && $method === 'GET') {
     auto_migrate_media_and_opinions($dbConn);
     auto_migrate_roles_and_staff($dbConn);
     auto_migrate_polls($dbConn);
+    auto_migrate_advertisements($dbConn);
 
     $totalArticles = (int) $dbConn->query('SELECT COUNT(*) FROM articles')->fetchColumn();
     $totalViews = (int) $dbConn->query('SELECT COALESCE(SUM(views), 0) FROM articles')->fetchColumn();
@@ -3626,6 +4082,9 @@ if ($resource === 'stats' && $method === 'GET') {
     $totalStaff = (int) $dbConn->query('SELECT COUNT(*) FROM admins')->fetchColumn();
     $totalPolls = (int) $dbConn->query('SELECT COUNT(*) FROM polls')->fetchColumn();
     $totalPollVotes = (int) $dbConn->query('SELECT COALESCE(SUM(total_votes), 0) FROM polls')->fetchColumn();
+    $totalAds = (int) $dbConn->query('SELECT COUNT(*) FROM advertisements')->fetchColumn();
+    $activeAds = (int) $dbConn->query("SELECT COUNT(*) FROM advertisements WHERE status = 'active'")->fetchColumn();
+    $totalAdClicks = (int) $dbConn->query("SELECT COALESCE(SUM(clicks_count), 0) FROM advertisements")->fetchColumn();
 
     json_response([
         'totalArticles' => $totalArticles,

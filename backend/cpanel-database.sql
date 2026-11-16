@@ -263,7 +263,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('instagram_url', 'https://instagram.com/prothomkalo'),
 ('linkedin_url', 'https://linkedin.com/company/prothom-kalo'),
 ('copyright_bn', 'স্বত্ব © ২০২৬ আলোর পথে | সর্বস্বত্ব সংরক্ষিত।'),
-('copyright_en', 'Copyright © 2026 Prothom kalo | All rights reserved.',
+('copyright_en', 'Copyright © 2026 Prothom kalo | All rights reserved.'),
 ('edition_bn', 'বাংলাদেশ'),
 ('edition_en', 'Bangladesh'),
 ('adsense_enabled', '0'),
@@ -396,4 +396,38 @@ CREATE TABLE polls (
 
 INSERT INTO polls (question_bn, question_en, options, total_votes, status) VALUES
 ('আপনি কি মনে করেন এআই নিয়ন্ত্রিত ট্র্যাফিক সিগন্যাল ঢাকায় যানজট নিরসনে ফলপ্রসূ হবে?', 'Do you believe AI-driven adaptive traffic signals will solve congestion in Dhaka?', '[{"id":"yes","label_bn":"হ্যাঁ","label_en":"Yes","votes":158},{"id":"no","label_bn":"না","label_en":"No","votes":37},{"id":"no_opinion","label_bn":"মন্তব্য নেই","label_en":"No Opinion","votes":13}]', 208, 'active');
+
+-- 11. Advertisements Table (বিজ্ঞাপন ব্যবস্থাপনা)
+DROP TABLE IF EXISTS advertisements;
+CREATE TABLE advertisements (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slot_key VARCHAR(100) NOT NULL UNIQUE,
+  title VARCHAR(255) NOT NULL,
+  title_en VARCHAR(255) DEFAULT '',
+  position_name_bn VARCHAR(255) DEFAULT '',
+  position_name_en VARCHAR(255) DEFAULT '',
+  ad_type VARCHAR(50) DEFAULT 'image',
+  image_url TEXT,
+  target_url TEXT,
+  code_snippet LONGTEXT,
+  adsense_slot VARCHAR(100) DEFAULT '',
+  size VARCHAR(50) DEFAULT 'rectangle',
+  status VARCHAR(20) DEFAULT 'active',
+  clicks_count INT DEFAULT 0,
+  views_count INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO advertisements (slot_key, title, title_en, position_name_bn, position_name_en, ad_type, image_url, target_url, code_snippet, adsense_slot, size, status, clicks_count, views_count) VALUES
+('home_header_top', 'হোমপেজ হেডার শীর্ষ ব্যানার (Leaderboard)', 'Homepage Header Top Banner', 'হোমপেজ হেডার শীর্ষ (728×90 / Responsive)', 'Header Top Leaderboard', 'image', '', 'https://alo.com.bd', '', '', 'leaderboard', 'active', 0, 0),
+('home_infeed', 'হোমপেজ মধ্যবর্তী ইন-ফিড ব্যানার', 'Homepage Middle In-Feed Banner', 'হোমপেজ সংবাদ সেকশনের মাঝে (970×90 / Responsive)', 'Home Middle In-Feed', 'image', '', 'https://alo.com.bd', '', '', 'infeed', 'active', 0, 0),
+('home_sidebar_1', 'হোমপেজ সাইডবার টপ ব্যানার', 'Homepage Sidebar Top Ad', 'হোমপেজ ডান সাইডবার শীর্ষ (Medium Rectangle 300×250)', 'Home Sidebar Top Rectangle', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0),
+('home_sidebar_2', 'হোমপেজ সাইডবার বটম হাফপেজ ব্যানার', 'Homepage Sidebar Bottom Halfpage', 'হোমপেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)', 'Home Sidebar Halfpage', 'image', '', 'https://alo.com.bd', '', '', 'halfpage', 'active', 0, 0),
+('article_infeed', 'সংবাদ বিস্তারিত লেখার নিচে ইন-আর্টিকেল ব্যানার', 'Article In-Article Banner', 'সংবাদ বিস্তারিত লেখার নিচে (In-Article Responsive)', 'Article Details In-Feed', 'image', '', 'https://alo.com.bd', '', '', 'infeed', 'active', 0, 0),
+('article_sidebar_1', 'সংবাদ বিস্তারিত সাইডবার টপ ব্যানার', 'Article Sidebar Top Ad', 'সংবাদ পেজ ডান সাইডবার শীর্ষ (Rectangle 300×250)', 'Article Sidebar Top', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0),
+('article_sidebar_2', 'সংবাদ বিস্তারিত সাইডবার বটম ব্যানার', 'Article Sidebar Bottom Halfpage', 'সংবাদ পেজ ডান সাইডবার স্কাইস্ক্র্যাপার (Halfpage 300×600)', 'Article Sidebar Halfpage', 'image', '', 'https://alo.com.bd', '', '', 'halfpage', 'active', 0, 0),
+('category_sidebar', 'ক্যাটাগরি পেজ সাইডবার ব্যানার', 'Category Page Sidebar Ad', 'ক্যাটাগরি আর্কাইভ পেজ সাইডবার (Rectangle 300×250)', 'Category Page Sidebar', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0),
+('opinion_sidebar_1', 'মতামত পেজ সাইডবার ব্যানার', 'Opinion Page Sidebar Ad', 'কলাম ও মতামত পেজ সাইডবার (Rectangle 300×250)', 'Opinion Page Sidebar', 'image', '', 'https://alo.com.bd', '', '', 'rectangle', 'active', 0, 0)
+ON DUPLICATE KEY UPDATE title = VALUES(title);
 

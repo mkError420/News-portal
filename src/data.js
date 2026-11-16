@@ -81,4 +81,5 @@ export const defaultData = {
   settings: defaultSiteSettings,
   poll: null,
   polls: [],
+  ads: [],
 }

@@ -83,6 +83,7 @@ export default function App() {
         api.getStaff(),
         api.getPoll(),
         api.getPolls(),
+        api.getAds(),
       ])
 
       const updates = {}
@@ -122,6 +123,9 @@ export default function App() {
       }
       if (results[10].status === 'fulfilled' && Array.isArray(results[10].value)) {
         updates.polls = results[10].value
+      }
+      if (results[11].status === 'fulfilled' && Array.isArray(results[11].value)) {
+        updates.ads = results[11].value
       }
 
       setNewsData((prev) => {
@@ -465,6 +469,55 @@ export default function App() {
     persistData(updated)
   }
 
+  // --- Advertisement Handlers ---
+  const handleUpdateAd = async (adData) => {
+    try {
+      await api.saveAd(adData)
+      const freshAds = await api.getAds()
+      const updated = {
+        ...newsData,
+        ads: freshAds,
+      }
+      persistData(updated)
+      return true
+    } catch (err) {
+      console.error('Failed to update advertisement:', err)
+      throw err
+    }
+  }
+
+  const handleToggleAd = async (id) => {
+    try {
+      await api.toggleAd(id)
+      const freshAds = await api.getAds()
+      const updated = {
+        ...newsData,
+        ads: freshAds,
+      }
+      persistData(updated)
+      return true
+    } catch (err) {
+      console.error('Failed to toggle advertisement:', err)
+      throw err
+    }
+  }
+
+  const handleDeleteAd = async (id) => {
+    try {
+      await api.deleteAd(id)
+      const freshAds = await api.getAds()
+      const updated = {
+        ...newsData,
+        ads: freshAds,
+      }
+      persistData(updated)
+      return true
+    } catch (err) {
+      console.error('Failed to delete advertisement:', err)
+      throw err
+    }
+  }
+
   const handleResetData = () => {
     localStorage.removeItem(STORAGE_KEY)
     window.location.reload()
@@ -518,6 +571,7 @@ export default function App() {
                 photos={newsData.photos}
                 videos={newsData.videos}
                 categories={newsData.categories}
+                ads={newsData.ads || []}
                 settings={newsData.settings}
                 poll={newsData.poll}
                 onVote={handleUpdatePoll}
@@ -544,6 +598,7 @@ export default function App() {
               <CategoryPage
                 articles={newsData.articles}
                 categories={newsData.categories}
+                ads={newsData.ads || []}
                 settings={newsData.settings}
                 lang={lang}
               />
@@ -558,6 +613,7 @@ export default function App() {
                 articles={newsData.articles}
                 breakingNews={newsData.breakingNews}
                 categories={newsData.categories}
+                ads={newsData.ads || []}
                 settings={newsData.settings}
                 lang={lang}
               />
@@ -570,6 +626,7 @@ export default function App() {
             element={
               <OpinionPage
                 opinions={newsData.opinions}
+                ads={newsData.ads || []}
                 settings={newsData.settings}
                 lang={lang}
               />
@@ -658,6 +715,10 @@ export default function App() {
                 onUpdateStaff={handleUpdateStaff}
                 onDeleteStaff={handleDeleteStaff}
                 onUpdatePoll={handleUpdatePoll}
+                ads={newsData.ads || []}
+                onUpdateAd={handleUpdateAd}
+                onToggleAd={handleToggleAd}
+                onDeleteAd={handleDeleteAd}
                 onResetData={handleResetData}
                 onRefreshAll={syncData}
                 settings={newsData.settings}

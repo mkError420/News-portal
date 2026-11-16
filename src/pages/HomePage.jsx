@@ -28,6 +28,7 @@ export default function HomePage({
   photos = [],
   videos = [],
   categories = [],
+  ads = [],
   settings = null,
   poll = null,
   onVote = null,
@@ -212,7 +213,7 @@ export default function HomePage({
                 ))}
                 {/* Quick in-feed banner */}
                 <div className="mt-1">
-                  <AdBanner size="infeed" lang={lang} settings={settings} />
+                  <AdBanner slotKey="home_infeed" ads={ads} size="infeed" lang={lang} settings={settings} />
                 </div>
               </div>
             </div>
@@ -238,7 +239,7 @@ export default function HomePage({
 
       {/* Leaderboard Mid Ad */}
       <div className="my-8">
-        <AdBanner size="leaderboard" lang={lang} settings={settings} />
+        <AdBanner slotKey="home_header_top" ads={ads} size="leaderboard" lang={lang} settings={settings} />
       </div>
 
       {/* ================= 3. MAIN CONTENT (8 cols) + SIDEBAR (4 cols) ================= */}
@@ -557,7 +558,7 @@ export default function HomePage({
           </div>
 
           {/* Widget 2: Medium Rectangle Ad (300x250) */}
-          <AdBanner size="rectangle" lang={lang} settings={settings} />
+          <AdBanner slotKey="home_sidebar_1" ads={ads} size="rectangle" lang={lang} settings={settings} />
 
           {/* Widget 3: আজকের ই-পেপার (Today's e-Paper Front Page Preview) */}
           <div className="bg-gradient-to-br from-[#1a3a5c] to-[#0f2540] text-white p-4 rounded-lg shadow-md">
@@ -587,7 +588,7 @@ export default function HomePage({
           <ReaderPollWidget lang={lang} initialPoll={poll} onVote={onVote} />
 
           {/* Widget 6: Half Page Ad (300x600) */}
-          <AdBanner size="halfpage" lang={lang} settings={settings} />
+          <AdBanner slotKey="home_sidebar_2" ads={ads} size="halfpage" lang={lang} settings={settings} />
         </aside>
       </div>
 

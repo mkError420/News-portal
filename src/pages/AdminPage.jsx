@@ -536,6 +536,10 @@ export default function AdminPage({
   settings = null,
   poll = null,
   polls: pollsProp = [],
+  ads: adsProp = [],
+  onUpdateAd,
+  onToggleAd,
+  onDeleteAd,
   onAddArticle,
   onUpdateArticle,
   onDeleteArticle,
@@ -2189,6 +2193,180 @@ export default function AdminPage({
     }
   }
 
+  // --- Advertisement Management State & Handlers ---
+  const emptyAdForm = {
+    id: null,
+    slot_key: '',
+    title: '',
+    title_en: '',
+    position_name_bn: '',
+    position_name_en: '',
+    ad_type: 'image', // 'image' | 'code' | 'adsense'
+    image_url: '',
+    target_url: '',
+    code_snippet: '',
+    adsense_slot: '',
+    size: 'rectangle', // 'leaderboard' | 'rectangle' | 'halfpage' | 'infeed'
+    status: 'active',
+  }
+  const [adsList, setAdsList] = useState(() => (Array.isArray(adsProp) && adsProp.length > 0 ? adsProp : []))
+  const [adForm, setAdForm] = useState(emptyAdForm)
+  const [isAdModalOpen, setIsAdModalOpen] = useState(false)
+  const [adSaving, setAdSaving] = useState(false)
+  const [adLoading, setAdLoading] = useState(false)
+  const [adFilter, setAdFilter] = useState('all') // 'all' | 'active' | 'inactive' | 'home' | 'article' | 'sidebar'
+  const [adSearch, setAdSearch] = useState('')
+  const [adUploadingImage, setAdUploadingImage] = useState(false)
+  const adFileInputRef = useRef(null)
+
+  useEffect(() => {
+    if (Array.isArray(adsProp) && adsProp.length > 0) {
+      setAdsList(adsProp)
+    }
+  }, [adsProp])
+
+  const refreshAds = async () => {
+    setAdLoading(true)
+    try {
+      const data = await api.getAds()
+      if (Array.isArray(data)) {
+        setAdsList(data)
+      }
+    } catch (err) {
+      console.warn('Failed to refresh ads:', err)
+    } finally {
+      setAdLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshAds()
+  }, [])
+
+  const handleOpenEditAd = (ad) => {
+    setAdForm({
+      id: ad.id || null,
+      slot_key: ad.slot_key || '',
+      title: ad.title || '',
+      title_en: ad.title_en || '',
+      position_name_bn: ad.position_name_bn || '',
+      position_name_en: ad.position_name_en || '',
+      ad_type: ad.ad_type || 'image',
+      image_url: ad.image_url || '',
+      target_url: ad.target_url || '',
+      code_snippet: ad.code_snippet || '',
+      adsense_slot: ad.adsense_slot || '',
+      size: ad.size || 'rectangle',
+      status: ad.status || 'active',
+    })
+    setIsAdModalOpen(true)
+  }
+
+  const handleOpenCreateAd = () => {
+    setAdForm({
+      ...emptyAdForm,
+      slot_key: `custom_slot_${Date.now()}`,
+      title: 'নতুন কাস্টম বিজ্ঞাপন',
+      title_en: 'New Custom Advertisement',
+      position_name_bn: 'কাস্টম নতুন বিজ্ঞাপন স্লট',
+      position_name_en: 'Custom New Ad Placement',
+    })
+    setIsAdModalOpen(true)
+  }
+
+  const handleSaveAdModal = async (e) => {
+    e?.preventDefault()
+    if (!adForm.title.trim()) {
+      alert(lang === 'bn' ? 'বিজ্ঞাপনের একটি শিরোনাম দিন' : 'Please provide an ad title')
+      return
+    }
+    setAdSaving(true)
+    try {
+      if (onUpdateAd) {
+        await onUpdateAd(adForm)
+      } else {
+        await api.saveAd(adForm)
+      }
+      await refreshAds()
+      setIsAdModalOpen(false)
+      triggerToast(lang === 'bn' ? 'বিজ্ঞাপন সফলভাবে সংরক্ষিত ও ওয়েবসাইটে কার্যকর হয়েছে!' : 'Advertisement saved and activated successfully!')
+    } catch (err) {
+      console.error('Save ad error:', err)
+      triggerToast(lang === 'bn' ? 'বিজ্ঞাপন সংরক্ষণ ব্যর্থ হয়েছে: ' + (err.message || 'Error') : 'Failed to save ad', 'error')
+    } finally {
+      setAdSaving(false)
+    }
+  }
+
+  const handleToggleAdStatus = async (ad) => {
+    try {
+      if (onToggleAd) {
+        await onToggleAd(ad.id)
+      } else {
+        await api.toggleAd(ad.id)
+      }
+      await refreshAds()
+      triggerToast(lang === 'bn' ? `বিজ্ঞাপনটি ${ad.status === 'active' ? 'নিষ্ক্রিয়' : 'সক্রিয়'} করা হয়েছে!` : `Ad status toggled!`)
+    } catch (err) {
+      console.error('Toggle ad status error:', err)
+      triggerToast(lang === 'bn' ? 'স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে' : 'Failed to toggle status', 'error')
+    }
+  }
+
+  const handleDeleteCustomAd = async (ad) => {
+    if (!window.confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে "${ad.title}" বিজ্ঞাপন স্লটটি মুছে ফেলতে চান?` : `Are you sure you want to delete this ad?`)) {
+      return
+    }
+    try {
+      if (onDeleteAd) {
+        await onDeleteAd(ad.id)
+      } else {
+        await api.deleteAd(ad.id)
+      }
+      await refreshAds()
+      triggerToast(lang === 'bn' ? 'বিজ্ঞাপন স্লট সফলভাবে মুছে ফেলা হয়েছে' : 'Ad slot deleted successfully')
+    } catch (err) {
+      triggerToast(lang === 'bn' ? 'মুছে ফেলতে ব্যর্থ হয়েছে' : 'Failed to delete ad', 'error')
+    }
+  }
+
+  const handleAdImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAdUploadingImage(true)
+    try {
+      const uploadedUrl = await api.uploadImage(file)
+      setAdForm((prev) => ({ ...prev, image_url: uploadedUrl }))
+      triggerToast(lang === 'bn' ? 'বিজ্ঞাপন ব্যানার সফলভাবে আপলোড হয়েছে!' : 'Ad banner uploaded successfully!')
+    } catch (err) {
+      alert(lang === 'bn' ? 'ছবি আপলোড করতে ব্যর্থ হয়েছে: ' + (err.message || 'Error') : 'Upload failed')
+    } finally {
+      setAdUploadingImage(false)
+      if (adFileInputRef.current) adFileInputRef.current.value = ''
+    }
+  }
+
+  const filteredAds = useMemo(() => {
+    return adsList.filter((item) => {
+      if (adFilter === 'active' && item.status !== 'active') return false
+      if (adFilter === 'inactive' && item.status !== 'inactive') return false
+      if (adFilter === 'home' && !item.slot_key?.startsWith('home_')) return false
+      if (adFilter === 'article' && !item.slot_key?.startsWith('article_')) return false
+      if (adFilter === 'sidebar' && !item.slot_key?.includes('sidebar')) return false
+
+      if (adSearch.trim()) {
+        const q = adSearch.toLowerCase()
+        const matchTitle = (item.title || '').toLowerCase().includes(q)
+        const matchTitleEn = (item.title_en || '').toLowerCase().includes(q)
+        const matchPos = (item.position_name_bn || '').toLowerCase().includes(q)
+        const matchPosEn = (item.position_name_en || '').toLowerCase().includes(q)
+        const matchKey = (item.slot_key || '').toLowerCase().includes(q)
+        if (!matchTitle && !matchTitleEn && !matchPos && !matchPosEn && !matchKey) return false
+      }
+      return true
+    })
+  }, [adsList, adFilter, adSearch])
+
   // Download Database SQL
   const handleDownloadSQL = () => {
     const element = document.createElement('a')
@@ -2364,6 +2542,7 @@ export default function AdminPage({
               { id: 'media', icon: <Camera size={16} />, bn: 'ছবি ও ভিডিও গ্যালারি', en: 'Photos & Videos', count: photos.length + videos.length },
               { id: 'roles', icon: <ShieldCheck size={16} />, bn: 'রোল ও পারমিশন (Role)', en: 'Role & Staff', count: localRoles.length },
               { id: 'polls', icon: <Vote size={16} />, bn: 'পাঠক জরিপ (Reader Poll)', en: 'Reader Poll', count: polls.length },
+              { id: 'ads', icon: <Megaphone size={16} />, bn: 'বিজ্ঞাপন ব্যবস্থাপনা (Advertise)', en: 'Advertisement', count: adsList.filter(a => a.status === 'active').length },
               { id: 'settings', icon: <Globe size={16} />, bn: 'ওয়েবসাইট সেটিংস ও বিবরণ', en: 'Website Settings & Details', count: null },
             ].map((tab) => (
               <button
@@ -2520,7 +2699,7 @@ export default function AdminPage({
               </div>
 
               {/* Secondary Media, Opinion, Roles, Polls & Settings Quick Metrics */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
                 <div
                   onClick={() => setActiveTab('opinions')}
                   className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-purple-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
@@ -2579,6 +2758,18 @@ export default function AdminPage({
                   <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'পাঠক জরিপ' : 'Reader Poll'}</span>
                   <span className="text-base font-black text-gray-900 mt-0.5">{toBengaliNumber(polls.length)} টি</span>
                   <span className="text-[10px] text-amber-600 font-bold mt-1">জরিপ →</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab('ads')}
+                  className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-rose-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <Megaphone size={16} />
+                  </div>
+                  <span className="text-[11px] text-gray-500 font-semibold">{lang === 'bn' ? 'বিজ্ঞাপন স্লট' : 'Ad Slots'}</span>
+                  <span className="text-base font-black text-gray-900 mt-0.5">{toBengaliNumber(adsList.length)} টি</span>
+                  <span className="text-[10px] text-rose-600 font-bold mt-1">বিজ্ঞাপন সেট →</span>
                 </div>
 
                 <div
@@ -6012,6 +6203,651 @@ export default function AdminPage({
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ================= TAB: ADVERTISEMENT MANAGEMENT (বিজ্ঞাপন ব্যবস্থাপনা) ================= */}
+          {activeTab === 'ads' && (
+            <div className="space-y-6">
+              {/* 1. Header Card */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-lg bg-red-50 text-[#e30613] flex items-center justify-center">
+                    <Megaphone size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">
+                      {lang === 'bn' ? 'বিজ্ঞাপন ব্যবস্থাপনা (Advertisement Management)' : 'Advertisement Management'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {lang === 'bn'
+                        ? 'ওয়েবসাইটের বিভিন্ন সেকশনের বিজ্ঞাপন স্লট নিয়ন্ত্রণ, ব্যানার ছবি আপলোড, লিংক সেট ও ক্লিক ট্র্যাকিং পরিচালনা করুন।'
+                        : 'Control ad slots across all website sections, upload image banners, configure click links, and track performance.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={refreshAds}
+                    disabled={adLoading}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-all"
+                    title={lang === 'bn' ? 'রিফ্রেশ করুন' : 'Refresh'}
+                  >
+                    <RefreshCw size={14} className={adLoading ? 'animate-spin text-[#e30613]' : ''} />
+                    <span>{adLoading ? (lang === 'bn' ? 'লোড হচ্ছে...' : 'Loading...') : (lang === 'bn' ? 'রিফ্রেশ' : 'Refresh')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateAd}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-[#e30613] hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  >
+                    <PlusCircle size={15} />
+                    <span>{lang === 'bn' ? 'নতুন বিজ্ঞাপন স্লট তৈরি করুন' : 'Add Custom Ad Slot'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Top Stats Counter Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
+                  <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'মোট বিজ্ঞাপন স্লট' : 'Total Ad Slots'}</span>
+                  <span className="text-2xl font-black text-gray-900 mt-1 block">
+                    {toBengaliNumber(adsList.length)} <span className="text-xs font-normal text-gray-400">টি</span>
+                  </span>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs border-t-2 border-t-emerald-500">
+                  <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'চলমান বিজ্ঞাপন' : 'Active Ads'}</span>
+                  <span className="text-2xl font-black text-emerald-600 mt-1 block">
+                    {toBengaliNumber(adsList.filter((a) => a.status === 'active').length)} <span className="text-xs font-normal text-gray-400">টি</span>
+                  </span>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs border-t-2 border-t-gray-400">
+                  <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'নিষ্ক্রিয় বিজ্ঞাপন' : 'Inactive Ads'}</span>
+                  <span className="text-2xl font-black text-gray-600 mt-1 block">
+                    {toBengaliNumber(adsList.filter((a) => a.status !== 'active').length)} <span className="text-xs font-normal text-gray-400">টি</span>
+                  </span>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs border-t-2 border-t-[#e30613]">
+                  <span className="text-xs text-gray-500 font-semibold block">{lang === 'bn' ? 'সর্বমোট ক্লিক সংখ্যা' : 'Total Ad Clicks'}</span>
+                  <span className="text-2xl font-black text-[#e30613] mt-1 block">
+                    {toBengaliNumber(adsList.reduce((sum, a) => sum + (Number(a.clicks_count) || 0), 0))} <span className="text-xs font-normal text-gray-400">বার</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* 3. Filter & Search Controls */}
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+                  {[
+                    { id: 'all', bn: 'সকল স্লট', en: 'All Slots' },
+                    { id: 'home', bn: 'হোমপেজ', en: 'Homepage' },
+                    { id: 'article', bn: 'সংবাদ পেজ', en: 'Article Details' },
+                    { id: 'sidebar', bn: 'সাইডবার বিজ্ঞাপন', en: 'Sidebar' },
+                    { id: 'active', bn: 'সক্রিয় (Active)', en: 'Active' },
+                    { id: 'inactive', bn: 'নিষ্ক্রিয় (Inactive)', en: 'Inactive' },
+                  ].map((filterItem) => (
+                    <button
+                      key={filterItem.id}
+                      type="button"
+                      onClick={() => setAdFilter(filterItem.id)}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        adFilter === filterItem.id
+                          ? 'bg-[#e30613] text-white shadow-xs'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {lang === 'bn' ? filterItem.bn : filterItem.en}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={adSearch}
+                    onChange={(e) => setAdSearch(e.target.value)}
+                    placeholder={lang === 'bn' ? 'বিজ্ঞাপন স্লট খুঁজুন...' : 'Search ad slots...'}
+                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613] focus:bg-white transition-all"
+                  />
+                  {adSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAdSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Advertisement Slots Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {filteredAds.map((ad) => {
+                  const isActive = ad.status === 'active'
+                  const isImageBanner = ad.ad_type === 'image' && Boolean(ad.image_url)
+                  const isCustomSnippet = ad.ad_type === 'code' && Boolean(ad.code_snippet)
+                  const isAdSense = ad.ad_type === 'adsense' && Boolean(ad.adsense_slot)
+                  const isConfigured = isImageBanner || isCustomSnippet || isAdSense
+
+                  return (
+                    <div
+                      key={ad.id || ad.slot_key}
+                      className={`bg-white rounded-xl border transition-all duration-200 shadow-xs flex flex-col justify-between overflow-hidden ${
+                        isActive ? 'border-gray-200 hover:shadow-md' : 'border-gray-200 bg-gray-50/50 opacity-90'
+                      }`}
+                    >
+                      {/* Slot Header */}
+                      <div className="p-4 border-b border-gray-100">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                {ad.slot_key}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                {ad.size === 'leaderboard'
+                                  ? '728×90 Leaderboard'
+                                  : ad.size === 'halfpage'
+                                  ? '300×600 Skyscraper'
+                                  : ad.size === 'rectangle'
+                                  ? '300×250 Rectangle'
+                                  : 'ইন-ফিড ব্যানার'}
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-bold text-gray-900 leading-snug">
+                              {lang === 'bn' ? ad.title : (ad.title_en || ad.title)}
+                            </h4>
+                            <p className="text-[11px] text-gray-500 font-medium">
+                              {lang === 'bn' ? ad.position_name_bn : (ad.position_name_en || ad.position_name_bn)}
+                            </p>
+                          </div>
+
+                          {/* Quick Active/Inactive Toggle Switch */}
+                          <div className="flex flex-col items-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAdStatus(ad)}
+                              className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                                isActive ? 'bg-emerald-500' : 'bg-gray-300'
+                              }`}
+                              title={lang === 'bn' ? (isActive ? 'বিজ্ঞাপন নিষ্ক্রিয় করতে ক্লিক করুন' : 'বিজ্ঞাপন সক্রিয় করতে ক্লিক করুন') : 'Toggle active status'}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                                  isActive ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className={`text-[10px] font-bold ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>
+                              {isActive ? (lang === 'bn' ? 'সক্রিয়' : 'Active') : (lang === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live Preview Box */}
+                      <div className="p-4 flex-1 flex flex-col justify-center">
+                        {isImageBanner ? (
+                          <div className="space-y-2">
+                            <div className="relative group overflow-hidden rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center p-2 max-h-48">
+                              <img
+                                src={ad.image_url}
+                                alt={ad.title}
+                                className="w-full h-auto object-contain max-h-40 rounded"
+                              />
+                              <a
+                                href={ad.image_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
+                              >
+                                <ExternalLink size={14} />
+                                <span>{lang === 'bn' ? 'ছবিটি বড় করে দেখুন' : 'View Full Image'}</span>
+                              </a>
+                            </div>
+
+                            {ad.target_url && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-500 truncate bg-gray-50 px-2.5 py-1.5 rounded-md border border-gray-200">
+                                <LinkIcon size={12} className="text-gray-400 flex-shrink-0" />
+                                <span className="font-semibold text-gray-700 flex-shrink-0">{lang === 'bn' ? 'টার্গেট লিংক:' : 'Target:'}</span>
+                                <a
+                                  href={ad.target_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate"
+                                >
+                                  {ad.target_url}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        ) : isCustomSnippet ? (
+                          <div className="rounded-lg border border-gray-200 bg-gray-900 text-gray-200 p-3 font-mono text-[11px] space-y-1">
+                            <div className="flex items-center gap-1 text-emerald-400 font-bold text-[10px]">
+                              <Code size={12} />
+                              <span>{lang === 'bn' ? 'কাস্টম HTML/Script কোড ব্যানার সক্রিয়' : 'Custom HTML/Script banner active'}</span>
+                            </div>
+                            <div className="line-clamp-3 text-gray-400 break-all">
+                              {ad.code_snippet}
+                            </div>
+                          </div>
+                        ) : isAdSense ? (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-center space-y-1">
+                            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                              Google AdSense Unit
+                            </span>
+                            <span className="text-xs font-mono font-bold text-amber-900 block">
+                              Slot ID: {ad.adsense_slot}
+                            </span>
+                            <span className="text-[11px] text-amber-700 block">
+                              {lang === 'bn' ? 'ওয়েবসাইটে AdSense স্বয়ংক্রিয় বিজ্ঞাপন প্রদর্শিত হবে।' : 'AdSense auto-responsive unit active.'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-4 text-center space-y-1.5">
+                            <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-500 mx-auto flex items-center justify-center">
+                              <ImageIcon size={16} />
+                            </div>
+                            <p className="text-xs font-bold text-gray-600">
+                              {lang === 'bn' ? 'কোনো ব্যানার ছবি বা কোড সেট করা নেই' : 'No ad banner or snippet set yet'}
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              {lang === 'bn'
+                                ? 'বর্তমানে ওয়েবসাইটে ডিফল্ট বিজ্ঞাপন প্লেসহোল্ডার প্রদর্শিত হচ্ছে।'
+                                : 'Default placeholder is displayed on the website.'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Footer with Analytics & Edit Button */}
+                      <div className="p-3 bg-gray-50/90 border-t border-gray-100 flex items-center justify-between gap-2">
+                        {/* Clicks & Views Counter */}
+                        <div className="flex items-center gap-3 text-[11px] text-gray-600 font-medium">
+                          <span className="flex items-center gap-1">
+                            <TrendingUp size={13} className="text-[#e30613]" />
+                            <span>{lang === 'bn' ? 'ক্লিক:' : 'Clicks:'}</span>
+                            <strong className="text-gray-900 font-bold">{toBengaliNumber(ad.clicks_count || 0)}</strong>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Eye size={13} className="text-blue-600" />
+                            <span>{lang === 'bn' ? 'ভিউ:' : 'Views:'}</span>
+                            <strong className="text-gray-900 font-bold">{toBengaliNumber(ad.views_count || 0)}</strong>
+                          </span>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1.5">
+                          {ad.slot_key?.startsWith('custom_') && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCustomAd(ad)}
+                              className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                              title={lang === 'bn' ? 'স্লট মুছে ফেলুন' : 'Delete slot'}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditAd(ad)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 rounded-lg text-xs font-bold transition-all shadow-2xs hover:border-gray-400 cursor-pointer"
+                          >
+                            <Edit size={13} className="text-[#e30613]" />
+                            <span>{isConfigured ? (lang === 'bn' ? 'বিজ্ঞাপন পরিবর্তন করুন' : 'Edit Ad') : (lang === 'bn' ? 'বিজ্ঞাপন সেট করুন' : 'Set Ad')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {filteredAds.length === 0 && (
+                <div className="bg-white p-12 rounded-xl border border-gray-200 text-center space-y-3">
+                  <Megaphone size={36} className="mx-auto text-gray-300" />
+                  <p className="text-sm font-bold text-gray-700">
+                    {lang === 'bn' ? 'কোনো বিজ্ঞাপন স্লট পাওয়া যায়নি।' : 'No advertisement slots found matching criteria.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdFilter('all')
+                      setAdSearch('')
+                    }}
+                    className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition-all cursor-pointer"
+                  >
+                    {lang === 'bn' ? 'ফিল্টার রিসেট করুন' : 'Reset Filter'}
+                  </button>
+                </div>
+              )}
+
+              {/* ================= EDIT / CREATE ADVERTISEMENT MODAL ================= */}
+              {isAdModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+                  <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden my-8 animate-in fade-in duration-200">
+                    {/* Modal Header */}
+                    <div className="p-5 bg-gradient-to-r from-gray-900 to-gray-800 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-lg bg-red-600 flex items-center justify-center">
+                          <Megaphone size={18} />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold">
+                            {adForm.id
+                              ? (lang === 'bn' ? 'বিজ্ঞাপন স্লট কনফিগার করুন' : 'Configure Ad Slot')
+                              : (lang === 'bn' ? 'নতুন কাস্টম বিজ্ঞাপন স্লট যোগ করুন' : 'Create Custom Ad Slot')}
+                          </h3>
+                          <p className="text-xs text-gray-300">
+                            {adForm.position_name_bn || adForm.slot_key}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAdModalOpen(false)}
+                        className="text-gray-400 hover:text-white text-lg p-1 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Modal Form */}
+                    <form onSubmit={handleSaveAdModal} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                      {/* Slot Key & Position */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            {lang === 'bn' ? 'বিজ্ঞাপন স্লট আইডি (Slot Key)' : 'Slot Key (Identifier)'} *
+                          </label>
+                          <input
+                            type="text"
+                            value={adForm.slot_key}
+                            onChange={(e) => setAdForm({ ...adForm, slot_key: e.target.value })}
+                            readOnly={Boolean(adForm.id && !adForm.slot_key.startsWith('custom_'))}
+                            className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-300 rounded-lg font-mono focus:outline-hidden focus:border-[#e30613]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            {lang === 'bn' ? 'বিজ্ঞাপনের সাইজ (Ad Dimension)' : 'Ad Dimension'}
+                          </label>
+                          <select
+                            value={adForm.size}
+                            onChange={(e) => setAdForm({ ...adForm, size: e.target.value })}
+                            className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613]"
+                          >
+                            <option value="leaderboard">728 × 90 (Header / Top Leaderboard)</option>
+                            <option value="rectangle">300 × 250 (Medium Rectangle / Sidebar)</option>
+                            <option value="halfpage">300 × 600 (Half Page / Skyscraper)</option>
+                            <option value="infeed">ইন-ফিড ব্যানার (In-feed / Responsive)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Ad Title */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            {lang === 'bn' ? 'বিজ্ঞাপনের শিরোনাম (বাংলা)' : 'Ad Title (Bengali)'} *
+                          </label>
+                          <input
+                            type="text"
+                            value={adForm.title}
+                            onChange={(e) => setAdForm({ ...adForm, title: e.target.value })}
+                            placeholder="যেমন: গ্রামীণফোন অফার ব্যানার"
+                            className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            {lang === 'bn' ? 'বিজ্ঞাপনের শিরোনাম (English)' : 'Ad Title (English)'}
+                          </label>
+                          <input
+                            type="text"
+                            value={adForm.title_en}
+                            onChange={(e) => setAdForm({ ...adForm, title_en: e.target.value })}
+                            placeholder="e.g. Grameenphone Special Offer"
+                            className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Ad Type Selector */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-2">
+                          {lang === 'bn' ? 'বিজ্ঞাপনের ধরন নির্বাচন করুন (Ad Type)' : 'Select Advertisement Type'}
+                        </label>
+                        <div className="grid grid-cols-3 gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setAdForm({ ...adForm, ad_type: 'image' })}
+                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                              adForm.ad_type === 'image'
+                                ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
+                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <ImageIcon size={20} className="mx-auto mb-1 text-inherit" />
+                            <span className="text-xs block">{lang === 'bn' ? 'ব্যানার ছবি ও লিংক' : 'Image Banner & Link'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setAdForm({ ...adForm, ad_type: 'code' })}
+                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                              adForm.ad_type === 'code'
+                                ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
+                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Code size={20} className="mx-auto mb-1 text-inherit" />
+                            <span className="text-xs block">{lang === 'bn' ? 'HTML / Script কোড' : 'Custom Code'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setAdForm({ ...adForm, ad_type: 'adsense' })}
+                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                              adForm.ad_type === 'adsense'
+                                ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
+                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Globe size={20} className="mx-auto mb-1 text-inherit" />
+                            <span className="text-xs block">Google AdSense</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* --- A. Image Banner Configuration --- */}
+                      {adForm.ad_type === 'image' && (
+                        <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                          {/* File Upload from Device */}
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">
+                              {lang === 'bn' ? 'ডিভাইস থেকে বিজ্ঞাপন ব্যানার ছবি আপলোড করুন' : 'Upload Banner from Device'}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                ref={adFileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAdImageUpload}
+                                className="hidden"
+                                id="ad-banner-file-input"
+                              />
+                              <label
+                                htmlFor="ad-banner-file-input"
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold cursor-pointer transition-all ${
+                                  adUploadingImage ? 'opacity-50 pointer-events-none' : 'text-gray-700 hover:border-gray-400'
+                                }`}
+                              >
+                                <Upload size={15} className="text-[#e30613]" />
+                                <span>{adUploadingImage ? (lang === 'bn' ? 'আপলোড হচ্ছে...' : 'Uploading...') : (lang === 'bn' ? 'কম্পিউটার/মোবাইল থেকে ছবি নির্বাচন করুন' : 'Browse image from device')}</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Direct Image URL */}
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">
+                              {lang === 'bn' ? 'অথবা ছবির সরাসরি ওয়েব লিংক (Image URL)' : 'Or Banner Image URL'}
+                            </label>
+                            <input
+                              type="url"
+                              value={adForm.image_url}
+                              onChange={(e) => setAdForm({ ...adForm, image_url: e.target.value })}
+                              placeholder="https://example.com/banner.jpg"
+                              className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613]"
+                            />
+                          </div>
+
+                          {/* Live Image Thumbnail Preview */}
+                          {adForm.image_url && (
+                            <div className="p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={adForm.image_url}
+                                  alt="Preview"
+                                  className="w-16 h-12 object-cover rounded border border-gray-200"
+                                />
+                                <div className="text-xs">
+                                  <span className="font-bold text-emerald-600 block">{lang === 'bn' ? 'ছবি সংযুক্ত হয়েছে' : 'Image attached'}</span>
+                                  <span className="text-[11px] text-gray-400 truncate max-w-xs block">{adForm.image_url}</span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setAdForm({ ...adForm, image_url: '' })}
+                                className="text-xs text-red-600 hover:underline font-bold cursor-pointer"
+                              >
+                                {lang === 'bn' ? 'ছবি সরান' : 'Remove'}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Target / Destination Click URL */}
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">
+                              {lang === 'bn' ? 'বিজ্ঞাপনে ক্লিক করলে যে ওয়েবসাইটে যাবে (Target Click URL)' : 'Target Click URL'}
+                            </label>
+                            <div className="relative">
+                              <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                              <input
+                                type="url"
+                                value={adForm.target_url}
+                                onChange={(e) => setAdForm({ ...adForm, target_url: e.target.value })}
+                                placeholder="https://advertiser-website.com"
+                                className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613]"
+                              />
+                            </div>
+                            <span className="text-[10px] text-gray-400 mt-1 block">
+                              {lang === 'bn' ? 'পাঠক বিজ্ঞাপনে ক্লিক করলে স্বয়ংক্রিয়ভাবে নতুন ট্যাবে এই পেজটি খুলবে।' : 'Visitors will be redirected to this URL in a new tab upon clicking.'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* --- B. Custom HTML / Script Snippet --- */}
+                      {adForm.ad_type === 'code' && (
+                        <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                          <label className="block text-xs font-bold text-gray-700">
+                            {lang === 'bn' ? 'কাস্টম HTML / JavaScript কোড স্নিপেট' : 'Custom HTML / JavaScript Code'}
+                          </label>
+                          <textarea
+                            rows={5}
+                            value={adForm.code_snippet}
+                            onChange={(e) => setAdForm({ ...adForm, code_snippet: e.target.value })}
+                            placeholder="<!-- Paste your ad network script or banner HTML here -->"
+                            className="w-full p-3 font-mono text-xs bg-gray-900 text-gray-100 rounded-lg border border-gray-300 focus:outline-hidden focus:border-[#e30613]"
+                          />
+                        </div>
+                      )}
+
+                      {/* --- C. Google AdSense Slot ID --- */}
+                      {adForm.ad_type === 'adsense' && (
+                        <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                          <label className="block text-xs font-bold text-gray-700">
+                            {lang === 'bn' ? 'Google AdSense Ad Slot ID' : 'Google AdSense Slot ID'}
+                          </label>
+                          <input
+                            type="text"
+                            value={adForm.adsense_slot}
+                            onChange={(e) => setAdForm({ ...adForm, adsense_slot: e.target.value })}
+                            placeholder="যেমন: 1234567890"
+                            className="w-full px-3 py-2 text-xs bg-white border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#e30613]"
+                          />
+                          <span className="text-[11px] text-gray-500 block">
+                            {lang === 'bn'
+                              ? 'ওয়েবসাইট সেটিংস ট্যাবে আপনার AdSense Client ID কনফিগার করা থাকলে এই স্লটে গুগল বিজ্ঞাপন কার্যকর হবে।'
+                              : 'Requires Google AdSense Client ID configured under Website Settings.'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Status Active / Inactive */}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                        <div>
+                          <span className="text-xs font-bold text-gray-900 block">
+                            {lang === 'bn' ? 'বিজ্ঞাপনের স্ট্যাটাস' : 'Advertisement Status'}
+                          </span>
+                          <span className="text-[11px] text-gray-500 block">
+                            {adForm.status === 'active'
+                              ? (lang === 'bn' ? 'সক্রিয়: ওয়েবসাইটে লাইভ প্রদর্শিত হবে' : 'Active: Displayed live on website')
+                              : (lang === 'bn' ? 'নিষ্ক্রিয়: ওয়েবসাইটে বন্ধ থাকবে' : 'Inactive: Hidden on website')}
+                          </span>
+                        </div>
+
+                        <select
+                          value={adForm.status}
+                          onChange={(e) => setAdForm({ ...adForm, status: e.target.value })}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg border focus:outline-hidden ${
+                            adForm.status === 'active'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                              : 'bg-gray-100 text-gray-600 border-gray-300'
+                          }`}
+                        >
+                          <option value="active">{lang === 'bn' ? '✓ সক্রিয় (Active)' : 'Active'}</option>
+                          <option value="inactive">{lang === 'bn' ? '✕ নিষ্ক্রিয় (Inactive)' : 'Inactive'}</option>
+                        </select>
+                      </div>
+
+                      {/* Modal Footer Buttons */}
+                      <div className="pt-3 border-t border-gray-200 flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsAdModalOpen(false)}
+                          className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                        >
+                          {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={adSaving || adUploadingImage}
+                          className="flex items-center gap-1.5 px-5 py-2 bg-[#e30613] hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                        >
+                          <Save size={14} className={adSaving ? 'animate-spin' : ''} />
+                          <span>{adSaving ? (lang === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...') : (lang === 'bn' ? 'সংরক্ষণ ও কার্যকর করুন' : 'Save & Apply')}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
