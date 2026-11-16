@@ -922,6 +922,47 @@ function is_admin(): bool
     return false;
 }
 
+function get_current_admin_user(): ?array
+{
+    $token = get_auth_token();
+    if (!empty($token)) {
+        if (strpos($token, 'local_offline_token') === 0) {
+            return [
+                'id' => 1,
+                'email' => 'admin@prothomalo.com',
+                'name' => 'প্রধান প্রশাসক',
+                'role_key' => 'admin',
+                'status' => 'active',
+            ];
+        }
+        $verified = verify_admin_token($token);
+        if ($verified) {
+            try {
+                $db = require_db();
+                $stmt = $db->prepare('SELECT id, email, name, role_key, status FROM admins WHERE id = ? LIMIT 1');
+                $stmt->execute([(int)$verified['id']]);
+                $u = $stmt->fetch();
+                if ($u) return $u;
+            } catch (Throwable $e) {}
+            return [
+                'id' => (int)$verified['id'],
+                'email' => $verified['email'],
+                'role_key' => 'admin',
+            ];
+        }
+    }
+    if (!empty($_SESSION['admin_id'])) {
+        try {
+            $db = require_db();
+            $stmt = $db->prepare('SELECT id, email, name, role_key, status FROM admins WHERE id = ? LIMIT 1');
+            $stmt->execute([(int)$_SESSION['admin_id']]);
+            $u = $stmt->fetch();
+            if ($u) return $u;
+        } catch (Throwable $e) {}
+    }
+    return null;
+}
+
 function normalize_tags($tags): array
 {
     if (is_array($tags)) {
@@ -2695,6 +2736,13 @@ if ($resource === 'roles') {
         $id = (int) ($_GET['id'] ?? 0);
         $roleKey = trim((string) ($_GET['role_key'] ?? ''));
 
+        // Identify current user: only Super Admin can delete roles
+        $currentAdmin = get_current_admin_user();
+        $callerRole = $currentAdmin['role_key'] ?? 'admin';
+        if ($callerRole !== 'admin') {
+            json_response(['success' => false, 'message' => 'শুধুমাত্র প্রধান প্রশাসক (Super Admin) রোল মুছে ফেলতে পারেন। অন্য কোনো রোল ডিলিট করতে পারবে না।'], 403);
+        }
+
         $stmt = null;
         if ($id > 0) {
             $stmt = $dbConn->prepare('SELECT * FROM roles WHERE id = ? LIMIT 1');
@@ -2709,9 +2757,16 @@ if ($resource === 'roles') {
             json_response(['success' => false, 'message' => 'রোলটি খুঁজে পাওয়া যায়নি।'], 404);
         }
 
-        if (!empty($existing['is_system']) || $existing['role_key'] === 'admin') {
-            json_response(['success' => false, 'message' => 'সিস্টেম অ্যাডমিন বা ডিফল্ট রোল মুছে ফেলা সম্ভব নয়।'], 400);
+        // Neither other roles nor anyone can delete the 'admin' (Super Admin) role
+        if ($existing['role_key'] === 'admin') {
+            json_response(['success' => false, 'message' => 'প্রধান প্রশাসক (Super Admin) রোল মুছে ফেলা যাবে না।'], 400);
         }
+
+        // Super Admin can delete any other role! Reassign staff with this role to 'editor'
+        try {
+            $reassign = $dbConn->prepare("UPDATE admins SET role_key = 'editor' WHERE role_key = ?");
+            $reassign->execute([$existing['role_key']]);
+        } catch (Throwable $e) {}
 
         $del = $dbConn->prepare('DELETE FROM roles WHERE id = ?');
         $del->execute([(int)$existing['id']]);
@@ -2972,14 +3027,32 @@ if ($resource === 'staff') {
             json_response(['success' => false, 'message' => 'সঠিক সদস্য আইডি প্রয়োজন।'], 400);
         }
 
-        // Check total admin count to prevent locking out
-        $totalAdmins = (int) $dbConn->query('SELECT COUNT(*) FROM admins')->fetchColumn();
-        if ($totalAdmins <= 1) {
-            json_response(['success' => false, 'message' => 'একমাত্র প্রশাসককে মুছে ফেলা সম্ভব নয়।'], 400);
+        $currentAdmin = get_current_admin_user();
+        $callerRole = $currentAdmin['role_key'] ?? 'admin';
+
+        $stmt = $dbConn->prepare('SELECT * FROM admins WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $target = $stmt->fetch();
+        if (!$target) {
+            json_response(['success' => false, 'message' => 'সদস্য খুঁজে পাওয়া যায়নি।'], 404);
         }
 
-        // Prevent self deletion if same id in session
-        if (!empty($_SESSION['admin_id']) && (int)$_SESSION['admin_id'] === $id) {
+        // Other roles CANNOT delete Super Admin
+        if ($target['role_key'] === 'admin' && $callerRole !== 'admin') {
+            json_response(['success' => false, 'message' => 'অন্য কোনো রোল প্রধান প্রশাসককে (Super Admin) মুছে ফেলতে পারবে না।'], 403);
+        }
+
+        // Check total admin count to prevent locking out
+        if ($target['role_key'] === 'admin') {
+            $totalAdmins = (int) $dbConn->query("SELECT COUNT(*) FROM admins WHERE role_key = 'admin'")->fetchColumn();
+            if ($totalAdmins <= 1) {
+                json_response(['success' => false, 'message' => 'একমাত্র প্রধান প্রশাসককে মুছে ফেলা সম্ভব নয়।'], 400);
+            }
+        }
+
+        // Prevent self deletion if same id in session or token
+        $currentId = $currentAdmin['id'] ?? ($_SESSION['admin_id'] ?? 0);
+        if ($currentId > 0 && (int)$currentId === $id) {
             json_response(['success' => false, 'message' => 'আপনি নিজের অ্যাকাউন্টটি এখান থেকে মুছে ফেলতে পারবেন না।'], 400);
         }
 

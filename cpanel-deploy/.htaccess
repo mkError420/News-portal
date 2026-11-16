@@ -1,63 +1,21 @@
-# ----------------------------------------------------------------------
-# 1. MIME Types (Required for strict MIME checking in modern browsers)
-# ----------------------------------------------------------------------
-<IfModule mod_mime.c>
-  AddType text/css .css
-  AddType application/javascript .js .mjs
-  AddType image/svg+xml .svg
-  AddType image/x-icon .ico
-  AddType application/json .json
-  AddType image/webp .webp
-  AddType font/woff2 .woff2
-</IfModule>
-
-DirectoryIndex index.php index.html
-
-# ----------------------------------------------------------------------
-# 2. URL Rewriting & SPA Routing
-# ----------------------------------------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On
-
-  # Pass Authorization header to PHP in Apache FastCGI/CGI environments
-  RewriteCond %{HTTP:Authorization} ^(.*)
-  RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+  RewriteBase /
 
   # Block sensitive config file
   RewriteRule ^backend/config\.php$ - [F,L,NC]
 
-  # Dynamic SEO Feeds & Ads.txt
-  RewriteRule ^sitemap\.xml$ backend/api/index.php?endpoint=sitemap [L]
-  RewriteRule ^rss\.xml$ backend/api/index.php?endpoint=rss [L]
-  RewriteRule ^feed$ backend/api/index.php?endpoint=rss [L]
-  RewriteRule ^ads\.txt$ backend/api/index.php?endpoint=ads-txt [L]
-
-  # Route API requests to PHP backend
+  # Route API requests to PHP backend if present
+  RewriteCond %{DOCUMENT_ROOT}/backend/api/index.php -f
   RewriteRule ^api(?:/.*)?$ backend/api/index.php [QSA,L]
 
-  # Serve existing physical files or directories directly
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
-
-  # Do NOT rewrite missing static assets (.js, .css, images) to HTML!
-  # This prevents strict MIME type check errors (text/html instead of text/css/js)
-  RewriteCond %{REQUEST_URI} \.(css|js|mjs|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$ [NC]
-  RewriteRule ^ - [R=404,L]
-
-  # Handle React SPA Routing (prefer index.php for server-side meta injection, fallback to index.html)
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ index.php [QSA,L]
-
+  # Handle SPA Routing (React Router): if not a physical file or folder, route to index.html
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ index.html [L]
 </IfModule>
 
-# ----------------------------------------------------------------------
-# 3. Browser Caching for static assets
-# ----------------------------------------------------------------------
+# Browser Caching for static assets
 <IfModule mod_expires.c>
   ExpiresActive On
   ExpiresByType image/jpg "access plus 1 year"
@@ -71,9 +29,7 @@ DirectoryIndex index.php index.html
   ExpiresByType application/json "access plus 0 seconds"
 </IfModule>
 
-# ----------------------------------------------------------------------
-# 4. Security Headers
-# ----------------------------------------------------------------------
+# Security Headers
 <IfModule mod_headers.c>
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"

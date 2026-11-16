@@ -1849,20 +1849,26 @@ export default function AdminPage({
   }
 
   const handleDeleteRoleClick = async (r) => {
-    if (r.is_system || r.role_key === 'admin') {
+    const isCurrentSuperAdmin = currentUser?.role === 'admin' || currentUser?.role_key === 'admin' || currentUser?.permissions?.includes('all')
+    if (!isCurrentSuperAdmin) {
+      alert(lang === 'bn' ? 'শুধুমাত্র প্রধান প্রশাসক (Super Admin) রোল মুছে ফেলতে পারেন।' : 'Only Super Administrator can delete roles.')
+      return
+    }
+    if (r.role_key === 'admin') {
       alert(lang === 'bn' ? 'প্রধান প্রশাসক (Super Admin) রোল মুছে ফেলা যাবে না।' : 'System administrator role cannot be deleted.')
       return
     }
     if (confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে "${r.name_bn}" রোলটি মুছে ফেলতে চান?` : `Are you sure you want to delete role "${r.name_bn}"?`)) {
       try {
         await api.deleteRole(r.id || r.role_key)
+        onDeleteRole?.(r.id || r.role_key)
+        setLocalRoles((prev) => prev.filter((item) => String(item.id) !== String(r.id) && item.role_key !== r.role_key))
+        refreshStats()
+        triggerToast(lang === 'bn' ? 'রোল সফলভাবে মুছে ফেলা হয়েছে।' : 'Role deleted.', 'info')
       } catch (err) {
-        console.warn('Backend deleteRole error:', err)
+        console.error('Backend deleteRole error:', err)
+        alert(err.response?.data?.message || err.message || (lang === 'bn' ? 'রোল মুছে ফেলতে ব্যর্থ হয়েছে।' : 'Failed to delete role.'))
       }
-      onDeleteRole?.(r.id || r.role_key)
-      setLocalRoles((prev) => prev.filter((item) => String(item.id) !== String(r.id) && item.role_key !== r.role_key))
-      refreshStats()
-      triggerToast(lang === 'bn' ? 'রোল মুছে ফেলা হয়েছে।' : 'Role deleted.', 'info')
     }
   }
 
@@ -1982,6 +1988,11 @@ export default function AdminPage({
   }
 
   const handleDeleteStaffClick = async (m) => {
+    const isCurrentSuperAdmin = currentUser?.role === 'admin' || currentUser?.role_key === 'admin' || currentUser?.permissions?.includes('all')
+    if (m.role_key === 'admin' && !isCurrentSuperAdmin) {
+      alert(lang === 'bn' ? 'অন্য কোনো রোল প্রধান প্রশাসককে (Super Admin) মুছে ফেলতে পারবে না।' : 'Other roles cannot delete Super Admin.')
+      return
+    }
     if (localStaff.length <= 1) {
       alert(lang === 'bn' ? 'একমাত্র প্রশাসককে মুছে ফেলা সম্ভব নয়।' : 'Cannot delete the only administrator.')
       return
@@ -1989,13 +2000,14 @@ export default function AdminPage({
     if (confirm(lang === 'bn' ? `আপনি কি নিশ্চিতভাবে "${m.name}" (${m.email}) কে মুছে ফেলতে চান?` : `Are you sure you want to remove "${m.name}"?`)) {
       try {
         await api.deleteStaff(m.id)
+        onDeleteStaff?.(m.id)
+        setLocalStaff((prev) => prev.filter((item) => String(item.id) !== String(m.id)))
+        refreshStats()
+        triggerToast(lang === 'bn' ? 'টিম সদস্য অপসারিত হয়েছে।' : 'Staff member removed.', 'info')
       } catch (err) {
-        console.warn('Backend deleteStaff error:', err)
+        console.error('Backend deleteStaff error:', err)
+        alert(err.response?.data?.message || err.message || (lang === 'bn' ? 'টিম সদস্য অপসারিত করতে ব্যর্থ হয়েছে।' : 'Failed to remove staff member.'))
       }
-      onDeleteStaff?.(m.id)
-      setLocalStaff((prev) => prev.filter((item) => item.id !== m.id))
-      refreshStats()
-      triggerToast(lang === 'bn' ? 'টিম সদস্য অপসারিত হয়েছে।' : 'Staff member removed.', 'info')
     }
   }
 
@@ -5245,12 +5257,15 @@ export default function AdminPage({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {localRoles.map((r) => {
-                        const isSuperAdmin = r.role_key === 'admin' || r.is_system
+                        const isSuperAdminRole = r.role_key === 'admin'
+                        const isCurrentSuperAdmin = currentUser?.role === 'admin' || currentUser?.role_key === 'admin' || currentUser?.permissions?.includes('all')
+                        // Any other role does not delete Super Admin, but Super Admin can delete others' role!
+                        const canDeleteRole = isCurrentSuperAdmin && !isSuperAdminRole
                         const permsList = Array.isArray(r.permissions) ? r.permissions : []
                         return (
                           <div
                             key={r.id || r.role_key}
-                            className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${isSuperAdmin
+                            className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${isSuperAdminRole
                               ? 'bg-gradient-to-br from-red-50/40 to-white border-red-200 shadow-xs'
                               : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xs'
                               }`}
@@ -5258,7 +5273,7 @@ export default function AdminPage({
                             <div className="space-y-3">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${isSuperAdmin ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-700'
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${isSuperAdminRole ? 'bg-[#e30613] text-white' : 'bg-gray-100 text-gray-700'
                                     }`}>
                                     <Shield size={16} />
                                   </div>
@@ -5310,7 +5325,7 @@ export default function AdminPage({
                                 >
                                   <Edit size={14} />
                                 </button>
-                                {!isSuperAdmin && (
+                                {canDeleteRole && (
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteRoleClick(r)}
@@ -5475,6 +5490,10 @@ export default function AdminPage({
                         <tbody className="divide-y divide-gray-100">
                           {localStaff.map((m) => {
                             const isCurrent = currentUser?.email === m.email
+                            const isTargetSuperAdmin = m.role_key === 'admin'
+                            const isCurrentSuperAdmin = currentUser?.role === 'admin' || currentUser?.role_key === 'admin' || currentUser?.permissions?.includes('all')
+                            // Other roles CANNOT delete Super Admin!
+                            const canDeleteStaff = !isCurrent && (isCurrentSuperAdmin ? true : !isTargetSuperAdmin)
                             return (
                               <tr key={m.id || m.email} className="hover:bg-gray-50 transition-colors">
                                 <td className="p-3 font-bold text-gray-900 flex items-center gap-2.5">
@@ -5512,7 +5531,7 @@ export default function AdminPage({
                                     >
                                       <Edit size={14} />
                                     </button>
-                                    {!isCurrent && (
+                                    {canDeleteStaff && (
                                       <button
                                         type="button"
                                         onClick={() => handleDeleteStaffClick(m)}
