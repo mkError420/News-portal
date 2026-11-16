@@ -19,6 +19,7 @@ export default function AdBanner({
   settings = null,
   slotId = null,
   customBanner = null, // { imageUrl, linkUrl, altText }
+  compact = false,     // Compact mode for Navbar Header Leaderboard
 }) {
   const adRef = useRef(null)
   const viewTrackedRef = useRef(false)
@@ -80,6 +81,31 @@ export default function AdBanner({
   // A. Dynamic Active Database Ad: Image banner
   if (isDynamicActive && dynamicAd.ad_type === 'image' && dynamicAd.image_url) {
     const titleText = (lang === 'bn' ? dynamicAd.title : dynamicAd.title_en) || dynamicAd.title || label
+
+    if (compact) {
+      return (
+        <div className={`flex items-center justify-center w-full max-w-[728px] ${className}`}>
+          <a
+            href={dynamicAd.target_url || '#'}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            onClick={handleAdClick}
+            className="group relative block w-full overflow-hidden rounded border border-gray-200 bg-white shadow-2xs hover:shadow-xs transition-all text-center flex items-center justify-center max-h-[75px]"
+            title={titleText}
+          >
+            <img
+              src={dynamicAd.image_url}
+              alt={titleText}
+              className="w-full h-[75px] object-contain transition-transform duration-200 group-hover:scale-[1.01]"
+            />
+            <span className="absolute bottom-1 right-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-black/60 text-white font-bengali">
+              {label}
+            </span>
+          </a>
+        </div>
+      )
+    }
+
     return (
       <div className={`my-4 flex flex-col items-center justify-center ${className}`}>
         <div className="w-full flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 px-1">
@@ -114,10 +140,12 @@ export default function AdBanner({
   // B. Dynamic Active Database Ad: Custom HTML / JS snippet
   if (isDynamicActive && dynamicAd.ad_type === 'code' && dynamicAd.code_snippet) {
     return (
-      <div className={`my-4 flex flex-col items-center justify-center ${className}`}>
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali mb-1">
-          {label}
-        </span>
+      <div className={`${compact ? 'my-0' : 'my-4'} flex flex-col items-center justify-center ${className}`}>
+        {!compact && (
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali mb-1">
+            {label}
+          </span>
+        )}
         <div
           className="w-full overflow-hidden text-center flex justify-center"
           style={{ maxWidth: config.width === '100%' ? '100%' : `${config.width}px` }}
@@ -130,14 +158,16 @@ export default function AdBanner({
   // C. Dynamic Active Database Ad: AdSense slot
   if (isDynamicActive && dynamicAd.ad_type === 'adsense' && (dynamicAd.adsense_slot || resolvedSlot)) {
     return (
-      <div className={`adsense-wrapper my-4 flex flex-col items-center justify-center overflow-hidden ${className}`}>
-        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block font-bengali mb-0.5">
-          {label}
-        </span>
+      <div className={`adsense-wrapper ${compact ? 'my-0' : 'my-4'} flex flex-col items-center justify-center overflow-hidden ${className}`}>
+        {!compact && (
+          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block font-bengali mb-0.5">
+            {label}
+          </span>
+        )}
         <div ref={adRef} className="w-full flex justify-center text-center">
           <ins
             className="adsbygoogle"
-            style={{ display: 'block', minWidth: '250px', width: '100%' }}
+            style={{ display: 'block', minWidth: '250px', width: '100%', height: compact ? '75px' : 'auto' }}
             data-ad-client={adClient}
             data-ad-slot={dynamicAd.adsense_slot || resolvedSlot}
             data-ad-format="auto"
@@ -193,6 +223,27 @@ export default function AdBanner({
   }
 
   // F. Fallback Placeholder (shows ad space & advertising notice)
+  if (compact) {
+    return (
+      <div
+        className={`flex items-center justify-center flex-1 max-w-[728px] h-[75px] bg-[#f8f9fa] border border-dashed border-gray-300 rounded text-center px-4 ${className}`}
+        aria-label={label}
+        role="complementary"
+      >
+        <div>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali">
+            {label}
+          </span>
+          <span className="text-xs text-gray-500 font-medium font-bengali">
+            {lang === 'bn'
+              ? `বিজ্ঞাপনের জন্য যোগাযোগ করুন: ${settings?.ad_email || 'ads@prothomalo.com'}`
+              : `For advertisement queries: ${settings?.ad_email || 'ads@prothomalo.com'}`}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={`ad-placeholder mx-auto flex flex-col items-center justify-center bg-gray-50/80 border border-dashed border-gray-300 rounded text-center p-3 select-none transition-colors hover:bg-gray-100/70 ${className}`}

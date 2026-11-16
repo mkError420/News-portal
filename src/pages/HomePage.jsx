@@ -239,7 +239,7 @@ export default function HomePage({
 
       {/* Leaderboard Mid Ad */}
       <div className="my-8">
-        <AdBanner slotKey="home_header_top" ads={ads} size="leaderboard" lang={lang} settings={settings} />
+        <AdBanner slotKey="home_infeed" ads={ads} size="infeed" lang={lang} settings={settings} />
       </div>
 
       {/* ================= 3. MAIN CONTENT (8 cols) + SIDEBAR (4 cols) ================= */}

@@ -545,6 +545,7 @@ export default function App() {
             settings={newsData.settings}
             categories={newsData.categories}
             articles={newsData.articles}
+            ads={newsData.ads || []}
           />
 
           {/* Breaking News Ticker (Hide on login page) */}

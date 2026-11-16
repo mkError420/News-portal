@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { Menu, X, Search, Globe, User, Bell, LogOut, Flame, ChevronDown } from 'lucide-react'
 import ProthomAloLogo from './ProthomAloLogo.jsx'
+import AdBanner from './AdBanner.jsx'
 import {
   NAV_ITEMS,
   CATEGORIES_BN,
@@ -21,6 +22,7 @@ export default function Header({
   settings = null,
   categories = [],
   articles = [],
+  ads = [],
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -281,18 +283,17 @@ export default function Header({
             <ProthomAloLogo lang={lang} settings={settings} />
           </div>
 
-          {/* Leaderboard Ad Placeholder (Desktop 728x90) */}
-          <div className="hidden lg:flex items-center justify-center flex-1 max-w-[728px] h-[75px] bg-[#f8f9fa] border border-dashed border-gray-300 rounded text-center px-4">
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
-                {lang === 'bn' ? 'বিজ্ঞাপন' : 'Advertisement'}
-              </span>
-              <span className="text-xs text-gray-500 font-medium">
-                {lang === 'bn'
-                  ? `বিজ্ঞাপনের জন্য যোগাযোগ করুন: ${settings?.ad_email || 'ads@prothomalo.com'}`
-                  : `For advertisement queries: ${settings?.ad_email || 'ads@prothomalo.com'}`}
-              </span>
-            </div>
+          {/* Leaderboard Ad (Desktop 728x90) */}
+          <div className="hidden lg:flex items-center justify-center flex-1 max-w-[728px] overflow-hidden">
+            <AdBanner
+              slotKey="home_header_top"
+              ads={ads}
+              size="leaderboard"
+              lang={lang}
+              settings={settings}
+              compact={true}
+              className="w-full my-0"
+            />
           </div>
 
           {/* Right Action Icons: Search + Mobile Menu Toggle */}
