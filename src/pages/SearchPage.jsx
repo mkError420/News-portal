@@ -31,8 +31,11 @@ export default function SearchPage({ articles = [], settings = null, lang = 'bn'
 
         const matchesQuery = !q || matchTitleBn || matchTitleEn || matchSummaryBn || matchSummaryEn || matchContentBn || matchContentEn || matchTags
 
-        // Category match
-        const matchesCategory = selectedCategory === 'all' || (art.category || '').toLowerCase() === selectedCategory.toLowerCase()
+        // Category match (supports multiple categories per article)
+        const matchesCategory =
+          selectedCategory === 'all' ||
+          (art.category || '').toLowerCase() === selectedCategory.toLowerCase() ||
+          (Array.isArray(art.categories) && art.categories.some((c) => String(c).toLowerCase().trim() === selectedCategory.toLowerCase()))
 
         return matchesQuery && matchesCategory
       })

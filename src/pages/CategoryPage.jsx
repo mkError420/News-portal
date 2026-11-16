@@ -21,10 +21,10 @@ export default function CategoryPage({ articles = [], categories = [], settings 
   const catTitleEn = matchedCat?.name_en || CATEGORIES_EN[catKey] || matchedCat?.name || slug
   const categoryTitle = lang === 'bn' ? catTitleBn : catTitleEn
 
-  // Filter articles by category (slug, en name, or bn name)
+  // Filter articles by category (supports multiple categories per article)
   const filtered = articles.filter((a) => {
     const artCat = (a.category || '').toLowerCase().trim()
-    return (
+    const matchesPrimary = (
       artCat === catKey ||
       (matchedCat && (
         artCat === (matchedCat.slug || '').toLowerCase() ||
@@ -32,6 +32,33 @@ export default function CategoryPage({ articles = [], categories = [], settings 
         artCat === (matchedCat.name_bn || '').toLowerCase()
       ))
     )
+    if (matchesPrimary) return true
+
+    // Check multiple categories list
+    const cats = Array.isArray(a.categories)
+      ? a.categories
+      : (typeof a.categories === 'string' && a.categories.trim()
+          ? (() => {
+              try {
+                const parsed = JSON.parse(a.categories)
+                return Array.isArray(parsed) ? parsed : [a.categories]
+              } catch {
+                return a.categories.split(',').map((x) => x.trim())
+              }
+            })()
+          : [])
+
+    return cats.some((c) => {
+      const low = String(c).toLowerCase().trim()
+      return (
+        low === catKey ||
+        (matchedCat && (
+          low === (matchedCat.slug || '').toLowerCase() ||
+          low === (matchedCat.name_en || '').toLowerCase() ||
+          low === (matchedCat.name_bn || '').toLowerCase()
+        ))
+      )
+    })
   })
 
   const hasArticles = filtered.length > 0

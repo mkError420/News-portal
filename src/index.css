@@ -319,6 +319,42 @@ nav .overflow-x-auto::-webkit-scrollbar {
 }
 
 /* =========================================================
+   Visual WYSIWYG Article Editor (Direct Image Rendering)
+   ========================================================= */
+.news-visual-editor {
+  outline: none;
+  min-height: 280px;
+}
+
+.news-visual-editor:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  font-style: italic;
+}
+
+.news-visual-editor figure {
+  position: relative;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.news-visual-editor figure:hover {
+  outline: 2px dashed #e30613;
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.news-visual-editor figure button[data-action="remove-figure"] {
+  display: inline-flex !important;
+}
+
+/* Hide editor-only delete button on public news reader view */
+.news-prose:not(.news-visual-editor) figure button[data-action="remove-figure"] {
+  display: none !important;
+}
+
+/* =========================================================
    Section Header
    ========================================================= */
 .section-header {

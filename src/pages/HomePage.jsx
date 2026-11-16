@@ -56,12 +56,24 @@ export default function HomePage({
     ? availableAfterHero.slice(0, 20)
     : sortedArticles.filter((a) => a.id !== leadArticle?.id).slice(0, 20)
 
-  // Categorized articles helper
+  // Categorized articles helper (supports multiple categories per article)
   const getCatArticles = (slug) => {
     const s = (slug || '').toLowerCase().trim()
     return articles.filter((a) => {
       const c = (a.category || '').toLowerCase().trim()
-      return c === s
+      if (c === s) return true
+      if (Array.isArray(a.categories)) {
+        return a.categories.some((cat) => String(cat).toLowerCase().trim() === s)
+      }
+      if (typeof a.categories === 'string' && a.categories.trim()) {
+        try {
+          const parsed = JSON.parse(a.categories)
+          if (Array.isArray(parsed)) return parsed.some((cat) => String(cat).toLowerCase().trim() === s)
+        } catch {
+          return a.categories.split(',').map((x) => x.trim().toLowerCase()).includes(s)
+        }
+      }
+      return false
     })
   }
 
@@ -94,7 +106,14 @@ export default function HomePage({
   ])
   const customCategorySections = (categories || []).filter((cat) => {
     const s = (cat.slug || '').toLowerCase().trim()
-    return !standardSlugs.has(s) && articles.some((a) => (a.category || '').toLowerCase().trim() === s)
+    return !standardSlugs.has(s) && articles.some((a) => {
+      const c = (a.category || '').toLowerCase().trim()
+      if (c === s) return true
+      if (Array.isArray(a.categories)) {
+        return a.categories.some((cat) => String(cat).toLowerCase().trim() === s)
+      }
+      return false
+    })
   })
 
   // Latest articles (sorted by date descending)

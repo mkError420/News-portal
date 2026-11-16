@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -200,6 +200,333 @@ function ImageUploadInput({
     </div>
   )
 }
+
+// --- Visual WYSIWYG Article Body Editor with Direct Image Display ---
+const VisualRichTextEditor = forwardRef(function VisualRichTextEditor(
+  {
+    value = '',
+    onChange,
+    placeholder = 'এখানে বিস্তারিত সংবাদ লিখুন...',
+    onOpenImageModal,
+    onCopyFromBn,
+    canCopyFromBn = false,
+    accentColor = 'red', // 'red' | 'blue'
+    label,
+    charCount = 0,
+    wordCount = 0,
+  },
+  ref
+) {
+  const editorRef = useRef(null)
+  const textareaRef = useRef(null)
+  const [isCodeMode, setIsCodeMode] = useState(false)
+  const isUpdatingFromPropRef = useRef(false)
+
+  // Expose imperative methods for inserting in-text images & formatting directly
+  useImperativeHandle(
+    ref,
+    () => ({
+      isCodeMode,
+      insertHtml(htmlSnippet) {
+        if (isCodeMode) {
+          const ta = textareaRef.current
+          if (ta) {
+            const start = ta.selectionStart ?? 0
+            const end = ta.selectionEnd ?? 0
+            const current = ta.value || ''
+            const updated = current.substring(0, start) + htmlSnippet + current.substring(end)
+            onChange?.(updated)
+            setTimeout(() => {
+              ta.focus()
+              ta.setSelectionRange(start + htmlSnippet.length, start + htmlSnippet.length)
+            }, 30)
+          } else {
+            onChange?.((value ? value + '\n\n' : '') + htmlSnippet)
+          }
+        } else {
+          const div = editorRef.current
+          if (div) {
+            div.focus()
+            const sel = window.getSelection()
+            if (sel && sel.rangeCount > 0 && div.contains(sel.anchorNode)) {
+              const range = sel.getRangeAt(0)
+              range.deleteContents()
+              const temp = document.createElement('div')
+              temp.innerHTML = htmlSnippet
+              const frag = document.createDocumentFragment()
+              let child
+              let lastChild
+              while ((child = temp.firstChild)) {
+                lastChild = frag.appendChild(child)
+              }
+              range.insertNode(frag)
+              if (lastChild) {
+                range.setStartAfter(lastChild)
+                range.collapse(true)
+                sel.removeAllRanges()
+                sel.addRange(range)
+              }
+            } else {
+              div.innerHTML = (div.innerHTML || '') + htmlSnippet
+            }
+            const updatedHtml = div.innerHTML
+            onChange?.(updatedHtml)
+          }
+        }
+      },
+      focus() {
+        if (isCodeMode) {
+          textareaRef.current?.focus()
+        } else {
+          editorRef.current?.focus()
+        }
+      },
+    }),
+    [isCodeMode, onChange, value]
+  )
+
+  // Sync external value to visual editor when not focused or when prop changed externally
+  useEffect(() => {
+    if (!isCodeMode && editorRef.current) {
+      if (editorRef.current.innerHTML !== (value || '')) {
+        if (document.activeElement !== editorRef.current) {
+          isUpdatingFromPropRef.current = true
+          editorRef.current.innerHTML = value || ''
+          isUpdatingFromPropRef.current = false
+        }
+      }
+    }
+  }, [value, isCodeMode])
+
+  const handleVisualInput = () => {
+    if (editorRef.current && !isCodeMode && !isUpdatingFromPropRef.current) {
+      onChange?.(editorRef.current.innerHTML)
+    }
+  }
+
+  const handleCommand = (cmd, arg = null) => {
+    if (isCodeMode) {
+      const ta = textareaRef.current
+      if (!ta) return
+      const start = ta.selectionStart ?? 0
+      const end = ta.selectionEnd ?? 0
+      const current = ta.value || ''
+      const selectedText = current.substring(start, end)
+      let wrapped = ''
+      if (cmd === 'bold') wrapped = `<strong>${selectedText || 'বোল্ড টেক্সট'}</strong>`
+      else if (cmd === 'italic') wrapped = `<em>${selectedText || 'ইতালিক'}</em>`
+      else if (cmd === 'p') wrapped = `\n<p>${selectedText || 'নতুন অনুচ্ছেদ...'}</p>\n`
+      else if (cmd === 'h3') wrapped = `\n<h3>${selectedText || 'উপ-শিরোনাম'}</h3>\n`
+      else if (cmd === 'blockquote') wrapped = `\n<blockquote class="my-4 pl-4 border-l-4 border-red-500 italic text-gray-700 font-serif">\n  "${selectedText || 'উদ্ধৃতি...'}"\n</blockquote>\n`
+      else wrapped = selectedText
+
+      const updated = current.substring(0, start) + wrapped + current.substring(end)
+      onChange?.(updated)
+      setTimeout(() => {
+        ta.focus()
+        ta.setSelectionRange(start + wrapped.length, start + wrapped.length)
+      }, 30)
+      return
+    }
+
+    if (editorRef.current) {
+      editorRef.current.focus()
+      if (cmd === 'p') {
+        const sel = window.getSelection()
+        const selectedText = sel?.toString() || ''
+        const pSnippet = `<p>${selectedText || 'নতুন অনুচ্ছেদের লেখা এখানে লিখুন...'}</p>`
+        document.execCommand('insertHTML', false, pSnippet)
+      } else if (cmd === 'h3') {
+        const sel = window.getSelection()
+        const selectedText = sel?.toString() || ''
+        const hSnippet = `<h3>${selectedText || 'উপ-শিরোনাম'}</h3>`
+        document.execCommand('insertHTML', false, hSnippet)
+      } else if (cmd === 'blockquote') {
+        const sel = window.getSelection()
+        const selectedText = sel?.toString() || 'এখানে বিশিষ্ট ব্যক্তির উদ্ধৃতি লিখুন...'
+        const bqSnippet = `\n<blockquote class="my-4 pl-4 border-l-4 ${accentColor === 'blue' ? 'border-blue-500' : 'border-red-500'} italic text-gray-700 font-serif">\n  "${selectedText}"\n</blockquote>\n<p><br></p>`
+        document.execCommand('insertHTML', false, bqSnippet)
+      } else {
+        document.execCommand(cmd, false, arg)
+      }
+      handleVisualInput()
+    }
+  }
+
+  // Handle clicking remove button on figure
+  const handleEditorClick = (e) => {
+    const removeBtn = e.target.closest('[data-action="remove-figure"]')
+    if (removeBtn) {
+      const figure = removeBtn.closest('figure')
+      if (figure) {
+        figure.remove()
+        handleVisualInput()
+      }
+    }
+  }
+
+  const isBlue = accentColor === 'blue'
+  const accentBadgeBg = isBlue ? 'bg-blue-600' : 'bg-[#e30613]'
+  const accentBtnBorder = isBlue ? 'border-blue-200' : 'border-red-200'
+  const accentBtnText = isBlue ? 'text-blue-600' : 'text-[#e30613]'
+  const accentBtnBg = isBlue ? 'bg-blue-50 hover:bg-blue-100' : 'bg-red-50 hover:bg-red-100'
+  const accentRing = isBlue ? 'focus-within:ring-blue-500' : 'focus-within:ring-red-500'
+
+  return (
+    <div className={`space-y-2.5 bg-white rounded-xl border border-gray-200 p-3.5 sm:p-4 shadow-2xs transition-all ${accentRing} focus-within:ring-2`}>
+      {/* Editor Header Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${accentBadgeBg}`}></span>
+          <span className="font-bold text-xs text-gray-900">{label}</span>
+          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>{isCodeMode ? 'কোড মোড (HTML Source)' : 'সরাসরি ছবি ও টেক্সট মোড (Visual WYSIWYG)'}</span>
+          </span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Add Image Button */}
+          <button
+            type="button"
+            onClick={onOpenImageModal}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs ${accentBtnBg} ${accentBtnText} border ${accentBtnBorder}`}
+            title="লেখার মাঝে সরাসরি দৃশ্যমান ছবি যুক্ত করুন (Insert Image Directly)"
+          >
+            <ImagePlus size={14} />
+            <span>ছবি যোগ করুন</span>
+          </button>
+
+          {/* Quick Paragraph */}
+          <button
+            type="button"
+            onClick={() => handleCommand('p')}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+            title="নতুন অনুচ্ছেদ (Paragraph)"
+          >
+            <span className="font-bold">¶</span> প্যারাগ্রাফ
+          </button>
+
+          {/* Heading */}
+          <button
+            type="button"
+            onClick={() => handleCommand('h3')}
+            className="px-2 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+            title="উপ-শিরোনাম (Sub-heading)"
+          >
+            H৩
+          </button>
+
+          {/* Bold */}
+          <button
+            type="button"
+            onClick={() => handleCommand('bold')}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+            title="বোল্ড (Bold)"
+          >
+            <span className="font-bold">B</span>
+          </button>
+
+          {/* Italic */}
+          <button
+            type="button"
+            onClick={() => handleCommand('italic')}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-serif italic bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+            title="ইতালিক (Italic)"
+          >
+            <span className="font-bold">I</span>
+          </button>
+
+          {/* Blockquote */}
+          <button
+            type="button"
+            onClick={() => handleCommand('blockquote')}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
+            title="উদ্ধৃতি (Blockquote)"
+          >
+            ❝ উক্তি
+          </button>
+
+          {/* Copy from Bangla button if applicable */}
+          {canCopyFromBn && onCopyFromBn && (
+            <button
+              type="button"
+              onClick={onCopyFromBn}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 transition-colors flex items-center gap-1"
+              title="বাংলা কনটেন্টের ছবি ও ফরম্যাটিং এখানে কপি করুন"
+            >
+              📋 বাংলা থেকে কপি
+            </button>
+          )}
+
+          {/* Code vs Visual Mode Switcher */}
+          <button
+            type="button"
+            onClick={() => setIsCodeMode(!isCodeMode)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+              isCodeMode
+                ? 'bg-gray-900 text-white border-gray-900 shadow-xs'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-200'
+            }`}
+            title={isCodeMode ? 'ভিজ্যুয়াল এডিটরে ফিরে ছবি সরাসরি দেখুন' : 'এইচটিএমএল সোর্স কোড দেখুন'}
+          >
+            {isCodeMode ? <Eye size={13} /> : <Code size={13} />}
+            <span>{isCodeMode ? 'ছবি সরাসরি দেখুন' : 'কোড মোড'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Editor Body */}
+      {isCodeMode ? (
+        <div>
+          <textarea
+            ref={textareaRef}
+            rows={11}
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
+            placeholder="<p>HTML কোড এখানে সম্পাদনা করুন...</p>"
+            className="w-full text-xs font-mono p-3.5 border rounded-xl outline-none focus:ring-2 focus:ring-gray-600 bg-gray-900 text-gray-100 leading-relaxed shadow-inner"
+          />
+          <div className="flex items-center justify-between text-[11px] text-gray-500 mt-1.5 px-1">
+            <span>💻 এইচটিএমএল কোড এডিটর মোড সক্রিয়</span>
+            <button
+              type="button"
+              onClick={() => setIsCodeMode(false)}
+              className="text-blue-600 font-bold hover:underline"
+            >
+              সরাসরি ছবি দেখতে ভিজ্যুয়াল মোডে যান →
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* Visual ContentEditable Container */}
+          <div
+            ref={editorRef}
+            contentEditable={true}
+            suppressContentEditableWarning={true}
+            onInput={handleVisualInput}
+            onClick={handleEditorClick}
+            data-placeholder={placeholder}
+            className="news-prose news-visual-editor w-full min-h-[300px] max-h-[600px] overflow-y-auto p-4 border rounded-xl outline-none bg-white shadow-2xs leading-relaxed text-gray-900 text-sm"
+          />
+          <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-500 mt-1.5 px-1">
+            <span className="flex items-center gap-1.5 text-emerald-700 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+              <span>
+                <strong>সরাসরি ভিজ্যুয়াল মোড:</strong> আপলোডকৃত ছবি কোড ছাড়া সরাসরি এখানে দৃশ্যমান হবে। লেখার মাঝে ছবি রাখতে উপরের <strong>"ছবি যোগ করুন"</strong> বাটনে ক্লিক করুন।
+              </span>
+            </span>
+            <span className="font-mono text-gray-400">
+              {charCount} অক্ষর • {wordCount} শব্দ
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+})
 
 export default function AdminPage({
   articles = [],
@@ -544,6 +871,7 @@ export default function AdminPage({
     summary_bn: '',
     summary_en: '',
     category: formattedCategories[0]?.slug || 'national',
+    categories: [formattedCategories[0]?.slug || 'national'],
     author_bn: siteForm.site_name_bn ? `${siteForm.site_name_bn} ডেস্ক` : 'ডেস্ক',
     author_en: siteForm.site_name_en ? `${siteForm.site_name_en} Desk` : 'Desk',
     author_role_bn: 'প্রতিবেদক',
@@ -683,29 +1011,42 @@ export default function AdminPage({
 
   // --- In-Article Text Image Inserter State ---
   const [showInTextImageModal, setShowInTextImageModal] = useState(false)
-  const [contentPreviewMode, setContentPreviewMode] = useState(false)
+  const [inTextImageTarget, setInTextImageTarget] = useState('bn') // 'bn' | 'en'
+  const [contentTab, setContentTab] = useState('both') // 'bn' | 'en' | 'both'
+  const bnEditorRef = useRef(null)
+  const enEditorRef = useRef(null)
   const [inTextImageForm, setInTextImageForm] = useState({
     imageUrl: '',
     caption: '',
+    caption_en: '',
     credit: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
+    credit_en: siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Collected',
     alignment: 'full', // 'full' | 'left' | 'right' | 'center'
   })
 
-  const insertHtmlIntoContent = (htmlToInsert) => {
-    const textarea = document.getElementById('articleContentTextarea')
+  const insertHtmlIntoContent = (htmlToInsert, targetLang = 'bn') => {
+    const isEn = targetLang === 'en'
+    const targetRef = isEn ? enEditorRef.current : bnEditorRef.current
+    if (targetRef && typeof targetRef.insertHtml === 'function') {
+      targetRef.insertHtml(htmlToInsert)
+      return
+    }
+    const fieldName = isEn ? 'content_en' : 'content_bn'
+    const textareaId = isEn ? 'articleContentEnTextarea' : 'articleContentTextarea'
+    const textarea = document.getElementById(textareaId)
     if (textarea) {
       const start = textarea.selectionStart ?? 0
       const end = textarea.selectionEnd ?? 0
-      const current = formData.content_bn || ''
+      const current = formData[fieldName] || ''
       const updated = current.substring(0, start) + htmlToInsert + current.substring(end)
-      setFormData((prev) => ({ ...prev, content_bn: updated }))
+      setFormData((prev) => ({ ...prev, [fieldName]: updated }))
       setTimeout(() => {
         textarea.focus()
         textarea.setSelectionRange(start + htmlToInsert.length, start + htmlToInsert.length)
       }, 50)
     } else {
-      const current = formData.content_bn || ''
-      setFormData((prev) => ({ ...prev, content_bn: (current ? current + '\n\n' : '') + htmlToInsert }))
+      const current = formData[fieldName] || ''
+      setFormData((prev) => ({ ...prev, [fieldName]: (current ? current + '\n\n' : '') + htmlToInsert }))
     }
   }
 
@@ -717,8 +1058,13 @@ export default function AdminPage({
     }
 
     const imgUrl = inTextImageForm.imageUrl.trim()
-    const cap = inTextImageForm.caption.trim()
-    const cred = inTextImageForm.credit.trim()
+    const isEn = inTextImageTarget === 'en'
+    const cap = isEn
+      ? (inTextImageForm.caption_en.trim() || inTextImageForm.caption.trim())
+      : inTextImageForm.caption.trim()
+    const cred = isEn
+      ? (inTextImageForm.credit_en.trim() || inTextImageForm.credit.trim())
+      : inTextImageForm.credit.trim()
     const align = inTextImageForm.alignment || 'full'
 
     let figureClass = 'my-6 block clear-both'
@@ -745,17 +1091,19 @@ export default function AdminPage({
       captionHtml += `</figcaption>`
     }
 
-    const figureSnippet = `\n<figure class="${figureClass}">\n  <img src="${imgUrl}" alt="${cap || 'সংবাদ ছবি'}" class="${imgClass}" />${captionHtml}\n</figure>\n`
+    const figureSnippet = `\n<figure class="${figureClass}" contenteditable="false">\n  <img src="${imgUrl}" alt="${cap || (isEn ? 'News image' : 'সংবাদ ছবি')}" class="${imgClass}" />${captionHtml}\n  <button type="button" data-action="remove-figure" class="absolute top-2 right-2 bg-red-600/90 hover:bg-red-700 text-white text-[11px] font-bold px-2 py-1 rounded-md shadow-md items-center gap-1 cursor-pointer transition-colors" title="ছবিটি মুছুন">✕ ${isEn ? 'Remove Image' : 'ছবি মুছুন'}</button>\n</figure>\n<p><br></p>`
 
-    insertHtmlIntoContent(figureSnippet)
+    insertHtmlIntoContent(figureSnippet, inTextImageTarget)
     setShowInTextImageModal(false)
     setInTextImageForm({
       imageUrl: '',
       caption: '',
+      caption_en: '',
       credit: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
+      credit_en: siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Collected',
       alignment: 'full',
     })
-    triggerToast(lang === 'bn' ? 'সংবাদের লেখার মাঝে ছবি যুক্ত হয়েছে!' : 'Image inserted into news text!')
+    triggerToast(lang === 'bn' ? 'সংবাদের লেখার মাঝে সরাসরি দৃশ্যমান ছবি যুক্ত হয়েছে!' : 'Visual image inserted into news content!')
   }
 
   // Handle Logout
@@ -840,11 +1188,58 @@ export default function AdminPage({
     }
   }
 
+  // --- Multi-Category Handlers (One news can set various categories) ---
+  const handleToggleCategory = (slug) => {
+    const s = String(slug).toLowerCase().trim()
+    const currentCats = Array.isArray(formData.categories) && formData.categories.length > 0
+      ? [...formData.categories]
+      : [formData.category || 'national']
+
+    const exists = currentCats.some((c) => String(c).toLowerCase().trim() === s)
+    let updated = []
+    if (exists) {
+      if (currentCats.length === 1) {
+        triggerToast('সংবাদের জন্য অন্তত একটি ক্যাটাগরি নির্বাচিত থাকতে হবে।', 'warning')
+        return
+      }
+      updated = currentCats.filter((c) => String(c).toLowerCase().trim() !== s)
+    } else {
+      updated = [...currentCats, s]
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      category: updated[0] || 'national',
+      categories: updated,
+    }))
+  }
+
+  const handleSetPrimaryCategory = (slug) => {
+    const s = String(slug).toLowerCase().trim()
+    const currentCats = Array.isArray(formData.categories) && formData.categories.length > 0
+      ? [...formData.categories]
+      : [formData.category || 'national']
+
+    const filtered = currentCats.filter((c) => String(c).toLowerCase().trim() !== s)
+    const updated = [s, ...filtered]
+
+    setFormData((prev) => ({
+      ...prev,
+      category: s,
+      categories: updated,
+    }))
+    triggerToast(`"${CATEGORIES_BN[s] || s}" মূল বিভাগ হিসেবে নির্ধারণ করা হয়েছে।`, 'info')
+  }
+
   // --- Submit Article (Add or Update) ---
   const handleSubmitArticle = async (e) => {
     e.preventDefault()
     if (!formData.title_bn.trim() && !formData.title_en.trim()) {
       alert(lang === 'bn' ? 'দয়া করে অন্তত একটি শিরোনাম লিখুন।' : 'Please enter at least one headline.')
+      return
+    }
+    if (!formData.content_bn.trim() && !formData.content_en.trim()) {
+      alert(lang === 'bn' ? 'দয়া করে সংবাদের বিস্তারিত বিবরণ লিখুন (বাংলা অথবা ইংরেজি)।' : 'Please enter article content (Bangla or English).')
       return
     }
 
@@ -855,8 +1250,15 @@ export default function AdminPage({
       ? formData.tags_en.split(',').map((t) => t.trim()).filter(Boolean)
       : formData.tags_en
 
+    const selectedCats = Array.isArray(formData.categories) && formData.categories.length > 0
+      ? Array.from(new Set(formData.categories.filter(Boolean)))
+      : [formData.category || 'national']
+    const primaryCat = selectedCats[0] || formData.category || 'national'
+
     const articlePayload = {
       ...formData,
+      category: primaryCat,
+      categories: selectedCats,
       tags_bn: tagsArrayBn,
       tags_en: tagsArrayEn,
     }
@@ -907,8 +1309,28 @@ export default function AdminPage({
 
   // Handle Edit Article Action
   const handleEditClick = (article) => {
+    let articleCats = []
+    if (Array.isArray(article.categories) && article.categories.length > 0) {
+      articleCats = [...article.categories]
+    } else if (typeof article.categories === 'string' && article.categories.trim()) {
+      try {
+        const parsed = JSON.parse(article.categories)
+        articleCats = Array.isArray(parsed) ? parsed : [article.categories]
+      } catch {
+        articleCats = article.categories.split(',').map((c) => c.trim()).filter(Boolean)
+      }
+    }
+    if (articleCats.length === 0 && article.category) {
+      articleCats = [article.category]
+    }
+    if (articleCats.length === 0 && formattedCategories[0]?.slug) {
+      articleCats = [formattedCategories[0].slug]
+    }
+
     setFormData({
       ...article,
+      category: articleCats[0] || article.category || 'national',
+      categories: articleCats,
       seo_title: article.seo_title || '',
       seo_description: article.seo_description || '',
       focus_keyword: article.focus_keyword || '',
@@ -1707,7 +2129,8 @@ export default function AdminPage({
 
       const matchCat =
         articleCategoryFilter === 'all' ||
-        (art.category || '').toLowerCase() === articleCategoryFilter.toLowerCase()
+        (art.category || '').toLowerCase() === articleCategoryFilter.toLowerCase() ||
+        (Array.isArray(art.categories) && art.categories.some((c) => String(c).toLowerCase().trim() === articleCategoryFilter.toLowerCase()))
 
       const matchFeat = !filterFeaturedOnly || art.featured
 
@@ -1720,12 +2143,17 @@ export default function AdminPage({
     return articles.reduce((sum, a) => sum + (Number(a.views) || 0), 0)
   }, [articles])
 
-  // Category Distribution Counts
+  // Category Distribution Counts (supports multiple categories per news)
   const categoryCounts = useMemo(() => {
     const map = {}
     articles.forEach((a) => {
-      const cat = (a.category || 'national').toLowerCase()
-      map[cat] = (map[cat] || 0) + 1
+      const cats = Array.isArray(a.categories) && a.categories.length > 0
+        ? a.categories
+        : [a.category || 'national']
+      cats.forEach((c) => {
+        const catKey = String(c).toLowerCase().trim()
+        map[catKey] = (map[catKey] || 0) + 1
+      })
     })
     return map
   }, [articles])
@@ -2569,9 +2997,19 @@ export default function AdminPage({
                           {art.title_en && <p className="text-[11px] text-gray-400 font-sans line-clamp-1">{art.title_en}</p>}
                         </td>
                         <td className="p-3">
-                          <span className="bg-red-50 text-[#e30613] px-2 py-0.5 rounded font-bold">
-                            {CATEGORIES_BN[art.category] || art.category}
-                          </span>
+                          <div className="flex flex-wrap gap-1 max-w-[170px]">
+                            <span className="bg-red-50 text-[#e30613] px-2 py-0.5 rounded font-bold text-xs" title="মূল বিভাগ">
+                              {CATEGORIES_BN[art.category] || art.category}
+                            </span>
+                            {Array.isArray(art.categories) &&
+                              art.categories
+                                .filter((c) => String(c).toLowerCase().trim() !== String(art.category || '').toLowerCase().trim())
+                                .map((c) => (
+                                  <span key={c} className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-gray-200">
+                                    {CATEGORIES_BN[c] || c}
+                                  </span>
+                                ))}
+                          </div>
                         </td>
                         <td className="p-3 text-gray-600 font-medium">
                           {art.author_bn || (siteForm.site_name_bn ? `${siteForm.site_name_bn} ডেস্ক` : 'ডেস্ক')}
@@ -2874,59 +3312,181 @@ export default function AdminPage({
                 </div>
               </div>
 
-              {/* ================= CATEGORY SELECTION OPTION (HIGHLY REQUESTED) ================= */}
-              <div className="p-4 bg-red-50/50 rounded-xl border border-red-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                    <Layers size={16} className="text-[#e30613]" />
-                    <span>সংবাদের বিভাগ নির্বাচন করুন (Select Category) *</span>
-                  </label>
+              {/* ================= MULTI-CATEGORY SELECTION (VARIOUS CATEGORIES PER NEWS) ================= */}
+              <div className="p-4 sm:p-5 bg-gradient-to-br from-red-50/40 via-white to-gray-50 rounded-xl border border-red-200/80 shadow-2xs space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-100 pb-2.5">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <Layers size={17} className="text-[#e30613]" />
+                      <span>সংবাদের ক্যাটাগরি / বিভাগসমূহ (Multiple Categories Selection) *</span>
+                    </label>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      একটি সংবাদ এক বা একাধিক ক্যাটাগরিতে (যেমন: জাতীয়, রাজনীতি, অর্থনীতি) একযোগে প্রকাশ করতে পারেন।
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setActiveTab('categories')}
                     className="text-xs font-bold text-[#e30613] hover:underline flex items-center gap-1"
                   >
-                    <span>+ ক্যাটাগরি পরিচালনা ও নতুন বিভাগ তৈরি</span>
+                    <span>+ নতুন ক্যাটাগরি তৈরি ও পরিচালনা</span>
                   </button>
                 </div>
 
-                {/* Primary Category Dropdown */}
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full text-sm p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white font-bengali font-bold text-gray-900 shadow-2xs"
-                >
-                  {formattedCategories.map((cat) => (
-                    <option key={cat.slug} value={cat.slug}>
-                      {cat.name_bn} ({cat.name_en})
-                    </option>
-                  ))}
-                </select>
-
-                {/* Quick Interactive Category Pills */}
+                {/* 1. Selected Categories Active Tags Display */}
                 <div>
-                  <span className="block text-[11px] font-semibold text-gray-500 mb-1.5">
-                    অথবা দ্রুত নির্বাচন করতে নিচের যেকোনো বিভাগে ক্লিক করুন:
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-gray-700 flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <span>বর্তমানে নির্বাচিত বিভাগ ({((formData.categories || [formData.category]).length)}টি):</span>
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      ★ তারা চিহ্নে ক্লিক করে মূল বা প্রধান বিভাগ পরিবর্তন করুন
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 p-2.5 bg-white rounded-lg border border-gray-200 min-h-[44px] items-center">
+                    {(formData.categories && formData.categories.length > 0
+                      ? formData.categories
+                      : [formData.category || formattedCategories[0]?.slug || 'national']
+                    ).map((catSlug, idx) => {
+                      const matched = formattedCategories.find(
+                        (c) => c.slug.toLowerCase() === String(catSlug).toLowerCase()
+                      )
+                      const isPrimary = (formData.category || '').toLowerCase() === String(catSlug).toLowerCase() || idx === 0
+                      const labelBn = matched?.name_bn || CATEGORIES_BN[catSlug] || catSlug
+
+                      return (
+                        <div
+                          key={catSlug}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all shadow-2xs ${
+                            isPrimary
+                              ? 'bg-[#e30613] text-white ring-2 ring-red-300'
+                              : 'bg-red-50 text-[#e30613] border border-red-200 hover:bg-red-100'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrimaryCategory(catSlug)}
+                            title={isPrimary ? 'এটি মূল বা প্রধান বিভাগ' : 'ক্লিক করে একে মূল বিভাগ বানান'}
+                            className="flex items-center gap-0.5 hover:scale-105 transition-transform"
+                          >
+                            <Star size={11} className={isPrimary ? 'fill-yellow-300 text-yellow-300' : 'text-red-400 hover:text-red-600'} />
+                            <span>{labelBn}</span>
+                            {isPrimary && (
+                              <span className="text-[9px] bg-white/20 px-1 py-0.2 rounded font-normal ml-0.5">
+                                প্রধান
+                              </span>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCategory(catSlug)}
+                            className={`rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ml-0.5 ${
+                              isPrimary
+                                ? 'bg-black/20 hover:bg-black/40 text-white'
+                                : 'bg-red-200 hover:bg-red-300 text-red-800'
+                            }`}
+                            title="এই ক্যাটাগরি বাদ দিন"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Interactive Quick Multi-Select Pills (Click to toggle) */}
+                <div>
+                  <span className="block text-[11px] font-semibold text-gray-600 mb-1.5">
+                    বিভাগ যোগ বা বাদ দিতে নিচের যেকোনো বাটনে ক্লিক করুন (Click to Select / Deselect):
                   </span>
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1 p-1 bg-white/60 rounded-lg border border-gray-100">
                     {formattedCategories.map((cat) => {
-                      const isSelected = (formData.category || '').toLowerCase() === cat.slug.toLowerCase()
+                      const currentCats = Array.isArray(formData.categories) && formData.categories.length > 0
+                        ? formData.categories
+                        : [formData.category || 'national']
+                      const isSelected = currentCats.some((c) => String(c).toLowerCase().trim() === cat.slug.toLowerCase().trim())
+                      const isPrimary = (formData.category || '').toLowerCase().trim() === cat.slug.toLowerCase().trim()
+
                       return (
                         <button
                           key={cat.slug}
                           type="button"
-                          onClick={() => setFormData({ ...formData, category: cat.slug })}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${isSelected
-                            ? 'bg-[#e30613] text-white shadow-xs scale-102 ring-2 ring-red-400'
-                            : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-gray-50'
-                            }`}
+                          onClick={() => handleToggleCategory(cat.slug)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            isSelected
+                              ? isPrimary
+                                ? 'bg-[#e30613] text-white shadow-xs ring-2 ring-red-400 scale-102'
+                                : 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400 scale-101'
+                              : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-red-50/50'
+                          }`}
+                          title={
+                            isSelected
+                              ? isPrimary
+                                ? `${cat.name_bn} (প্রধান বিভাগ হিসেবে নির্বাচিত - বাদ দিতে ক্লিক করুন)`
+                                : `${cat.name_bn} (নির্বাচিত - বাদ দিতে ক্লিক করুন)`
+                              : `${cat.name_bn} যুক্ত করতে ক্লিক করুন`
+                          }
                         >
-                          {isSelected && <Check size={12} className="stroke-[3]" />}
+                          <span
+                            className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
+                              isSelected
+                                ? 'bg-white/30 text-white font-bold'
+                                : 'border border-gray-300 text-transparent'
+                            }`}
+                          >
+                            ✓
+                          </span>
                           <span>{cat.name_bn}</span>
+                          <span className="text-[10px] opacity-75 font-sans">({cat.name_en})</span>
+                          {isPrimary && (
+                            <Star size={11} className="fill-yellow-300 text-yellow-300" />
+                          )}
                         </button>
                       )
                     })}
                   </div>
+                </div>
+
+                {/* 3. Quick Dropdown Add */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                  <span className="text-[11px] font-bold text-gray-600 whitespace-nowrap">
+                    ড্রপডাউন থেকে দ্রুত বিভাগ যুক্ত করুন:
+                  </span>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const s = e.target.value
+                        const currentCats = Array.isArray(formData.categories) && formData.categories.length > 0
+                          ? formData.categories
+                          : [formData.category || 'national']
+                        if (!currentCats.includes(s)) {
+                          handleToggleCategory(s)
+                        } else {
+                          triggerToast(`"${CATEGORIES_BN[s] || s}" ইতোমধ্যে নির্বাচিত আছে।`, 'info')
+                        }
+                      }
+                    }}
+                    className="flex-1 text-xs p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white font-bengali text-gray-800"
+                  >
+                    <option value="">-- ড্রপডাউন থেকে ক্যাটাগরি বাছাই করুন --</option>
+                    {formattedCategories.map((cat) => (
+                      <option key={cat.slug} value={cat.slug}>
+                        {cat.name_bn} ({cat.name_en})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="text-[11px] text-gray-500 bg-white/70 p-2 rounded-lg border border-gray-200/80 flex items-center gap-2">
+                  <Sparkles size={14} className="text-amber-500 flex-shrink-0" />
+                  <span>
+                    <strong>টিপস:</strong> সংবাদটি যে যে ক্যাটাগরিতে যুক্ত থাকবে, হোমপেইজের সেসব ক্যাটাগরি সেকশনে এবং সংশ্লিষ্ট প্রতিটি ক্যাটাগরি পেইজে পাঠকরা এই সংবাদ দেখতে পারবেন।
+                  </span>
                 </div>
               </div>
 
@@ -2999,76 +3559,63 @@ export default function AdminPage({
                 </div>
               </div>
 
-              {/* Full Content BN with In-Text Image Inserter Toolbar */}
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
-                  <label className="block text-xs font-bold text-gray-800">
-                    মূল সংবাদ বিস্তারিত বিবরণ (বাংলা) *
-                  </label>
+              {/* Full Content (Bilingual: Bangla & English) with Full Functionality */}
+              <div className="space-y-4">
+                {/* Header & Tab Selector for Content Editing */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                      <FileText size={16} className="text-[#e30613]" />
+                      <span>মূল সংবাদ বিস্তারিত বিবরণ (Detailed Article Body) *</span>
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      বাংলা এবং আন্তর্জাতিক ইংরেজি সংস্করণের জন্য পূর্ণাঙ্গ টেক্সট, প্যারাগ্রাফ ও ছবি ফরম্যাটিং টুল।
+                    </p>
+                  </div>
 
-                  {/* Toolbar Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {/* 1. Insert In-Text Image Button */}
+                  {/* Language Tab Switcher */}
+                  <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg border border-gray-200 text-xs font-bold">
                     <button
                       type="button"
-                      onClick={() => setShowInTextImageModal(!showInTextImageModal)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showInTextImageModal
+                      onClick={() => setContentTab('both')}
+                      className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${contentTab === 'both'
+                        ? 'bg-white text-gray-900 shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      title="উভয় ভাষা একসাথে দেখুন ও সম্পাদনা করুন"
+                    >
+                      <span>↔️ উভয় ভাষা (Both)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContentTab('bn')}
+                      className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${contentTab === 'bn'
                         ? 'bg-red-600 text-white shadow-xs'
-                        : 'bg-red-50 text-[#e30613] hover:bg-red-100 border border-red-200'
+                        : 'text-gray-600 hover:text-gray-900'
                         }`}
-                      title="লেখার যেকোনো স্থানে ছবি ও ক্যাপশন প্রবেশ করান"
                     >
-                      <ImagePlus size={14} />
-                      <span>লেখার মাঝে ছবি যোগ করুন (Add Image)</span>
+                      <span>🇧🇩 বাংলা</span>
+                      <span className="text-[10px] opacity-80 font-mono">
+                        ({(formData.content_bn || '').length})
+                      </span>
                     </button>
-
-                    {/* 2. Quick Paragraph Button */}
                     <button
                       type="button"
-                      onClick={() => insertHtmlIntoContent('<p>নতুন অনুচ্ছেদের লেখা এখানে লিখুন...</p>\n')}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
-                      title="নতুন অনুচ্ছেদ যোগ করুন"
-                    >
-                      <span className="font-bold">¶</span> অনুচ্ছেদ
-                    </button>
-
-                    {/* 3. Bold Text Button */}
-                    <button
-                      type="button"
-                      onClick={() => insertHtmlIntoContent('<strong>গুরুত্বপূর্ণ অংশ</strong>')}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
-                      title="বোল্ড টেক্সট"
-                    >
-                      <span className="font-bold">B</span>
-                    </button>
-
-                    {/* 4. Blockquote Button */}
-                    <button
-                      type="button"
-                      onClick={() => insertHtmlIntoContent('\n<blockquote class="my-4 pl-4 border-l-4 border-red-500 italic text-gray-700 font-serif">\n  "এখানে বিশিষ্ট ব্যক্তির উদ্ধৃতি বা উক্তি লিখুন..."\n</blockquote>\n')}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-colors"
-                      title="উদ্ধৃতি (Blockquote) যোগ করুন"
-                    >
-                      ❝ উক্তি
-                    </button>
-
-                    {/* 5. Live Preview Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setContentPreviewMode(!contentPreviewMode)}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${contentPreviewMode
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                      onClick={() => setContentTab('en')}
+                      className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${contentTab === 'en'
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
                         }`}
-                      title="পাঠকরা যেভাবে দেখবেন লাইভ প্রিভিউ দেখুন"
                     >
-                      {contentPreviewMode ? <Code size={13} /> : <Eye size={13} />}
-                      <span>{contentPreviewMode ? 'কোড মোড (Editor)' : 'লাইভ প্রিভিউ (Preview)'}</span>
+                      <span>🌐 English</span>
+                      <span className="text-[10px] opacity-80 font-mono">
+                        ({(formData.content_en || '').length})
+                      </span>
                     </button>
                   </div>
                 </div>
 
-                {/* IN-ARTICLE IMAGE INSERTION DRAWER */}
+                {/* IN-ARTICLE IMAGE INSERTION DRAWER (Shared Full Functionality) */}
                 {showInTextImageModal && (
                   <div className="bg-gradient-to-br from-red-50/50 via-white to-gray-50 p-5 rounded-xl border-2 border-red-200 shadow-md space-y-4 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between border-b border-red-100 pb-2.5">
@@ -3117,10 +3664,39 @@ export default function AdminPage({
                           helperText="ডিভাইস থেকে ছবি আপলোড করুন অথবা ওয়েব লিঙ্ক ব্যবহার করুন।"
                         />
 
+                        {/* Target Language Selection for Image */}
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            ছবিটি কোন বিবরণে প্রবেশ করাবেন? (Insert target)
+                          </label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setInTextImageTarget('bn')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${inTextImageTarget === 'bn'
+                                ? 'bg-red-50 border-red-500 text-[#e30613]'
+                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                }`}
+                            >
+                              🇧🇩 বাংলা বিবরণীতে (Bangla Content)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setInTextImageTarget('en')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${inTextImageTarget === 'en'
+                                ? 'bg-red-50 border-red-500 text-[#e30613]'
+                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                }`}
+                            >
+                              🌐 ইংরেজি বিবরণীতে (English Content)
+                            </button>
+                          </div>
+                        </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-bold text-gray-700 mb-1">
-                              ছবির ক্যাপশন / বিবরণ (বাংলা)
+                              ছবির ক্যাপশন (বাংলা)
                             </label>
                             <input
                               type="text"
@@ -3133,7 +3709,20 @@ export default function AdminPage({
 
                           <div>
                             <label className="block text-xs font-bold text-gray-700 mb-1">
-                              ছবির ক্রেডিট (Credit)
+                              Image Caption (English)
+                            </label>
+                            <input
+                              type="text"
+                              value={inTextImageForm.caption_en}
+                              onChange={(e) => setInTextImageForm({ ...inTextImageForm, caption_en: e.target.value })}
+                              placeholder="Rescue operations underway at the scene..."
+                              className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white font-sans"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">
+                              ছবির ক্রেডিট (বাংলা)
                             </label>
                             <input
                               type="text"
@@ -3141,6 +3730,19 @@ export default function AdminPage({
                               onChange={(e) => setInTextImageForm({ ...inTextImageForm, credit: e.target.value })}
                               placeholder={siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত'}
                               className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">
+                              Photo Credit (English)
+                            </label>
+                            <input
+                              type="text"
+                              value={inTextImageForm.credit_en}
+                              onChange={(e) => setInTextImageForm({ ...inTextImageForm, credit_en: e.target.value })}
+                              placeholder={siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Collected'}
+                              className="w-full text-xs p-2.5 border rounded-lg outline-none focus:border-red-500 bg-white font-sans"
                             />
                           </div>
                         </div>
@@ -3188,7 +3790,9 @@ export default function AdminPage({
                                     ...inTextImageForm,
                                     imageUrl: ph.image,
                                     caption: ph.title_bn || '',
+                                    caption_en: ph.title_en || '',
                                     credit: ph.credit_bn || (siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত'),
+                                    credit_en: ph.credit_en || (siteForm.site_name_en ? `Photo: ${siteForm.site_name_en}` : 'Photo: Collected'),
                                   })}
                                   className="flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border border-gray-200 hover:border-red-500 hover:scale-105 transition-all relative group"
                                   title={ph.title_bn}
@@ -3225,78 +3829,97 @@ export default function AdminPage({
                   </div>
                 )}
 
-                {/* TEXTAREA OR LIVE HTML PREVIEW */}
-                {contentPreviewMode ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-                      <span className="flex items-center gap-1.5 font-bold">
-                        <Eye size={13} />
-                        <span>লাইভ প্রিভিউ: সংবাদ প্রকাশ হওয়ার পর পাঠকরা ছবিটি যেভাবে দেখতে পাবেন</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setContentPreviewMode(false)}
-                        className="text-xs text-blue-600 underline font-bold"
-                      >
-                        এডিটর মোডে ফিরুন →
-                      </button>
-                    </div>
-                    <div
-                      className="news-prose text-gray-900 font-bengali p-6 border rounded-xl bg-white shadow-xs min-h-[250px] leading-relaxed"
-                      dangerouslySetInnerHTML={{
-                        __html: formData.content_bn || '<p class="text-gray-400 italic">এখনো কোনো বিবরণ লেখা হয়নি। এডিটর মোডে টেক্সট ও ছবি যুক্ত করুন...</p>',
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <textarea
-                      id="articleContentTextarea"
-                      rows="9"
-                      required
+                {/* Content Editors Grid (Visual WYSIWYG with direct image display) */}
+                <div className={`grid gap-6 ${contentTab === 'both' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                  {/* ================= 1. BANGLA CONTENT VISUAL EDITOR ================= */}
+                  {(contentTab === 'both' || contentTab === 'bn') && (
+                    <VisualRichTextEditor
+                      ref={bnEditorRef}
                       value={formData.content_bn}
-                      onChange={(e) => setFormData({ ...formData, content_bn: e.target.value })}
-                      placeholder="<p>এখানে অনুচ্ছেদ ও বিস্তারিত বিবরণ লিখুন...</p>"
-                      className="w-full text-sm p-4 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-bengali leading-relaxed shadow-xs"
+                      onChange={(val) => setFormData((prev) => ({ ...prev, content_bn: val }))}
+                      placeholder="এখানে বাংলা সংবাদ বিস্তারিত অনুচ্ছেদ আকারে লিখুন... লেখার মাঝে ছবি দিতে উপরের 'ছবি যোগ করুন' বাটনে ক্লিক করুন।"
+                      onOpenImageModal={() => {
+                        setInTextImageTarget('bn')
+                        setShowInTextImageModal(true)
+                      }}
+                      accentColor="red"
+                      label="মূল সংবাদ বিস্তারিত বিবরণ (বাংলা) *"
+                      charCount={(formData.content_bn || '').length}
+                      wordCount={((formData.content_bn || '').trim() ? (formData.content_bn || '').trim().split(/\s+/).length : 0)}
                     />
-                    <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-500 mt-1.5 px-1">
-                      <span>
-                        💡 <strong>টিপস:</strong> লেখার যেকোনো অনুচ্ছেদের মাঝে ছবি যুক্ত করতে কার্সার রেখে উপরের <strong>"লেখার মাঝে ছবি যোগ করুন"</strong> বাটনে ক্লিক করুন।
-                      </span>
-                      <span className="font-mono text-gray-400">
-                        {formData.content_bn.length} অক্ষর
-                      </span>
-                    </div>
-                  </div>
-                )}
+                  )}
+
+                  {/* ================= 2. ENGLISH CONTENT VISUAL EDITOR ================= */}
+                  {(contentTab === 'both' || contentTab === 'en') && (
+                    <VisualRichTextEditor
+                      ref={enEditorRef}
+                      value={formData.content_en}
+                      onChange={(val) => setFormData((prev) => ({ ...prev, content_en: val }))}
+                      placeholder="Write detailed English article content here... Click 'Photo' to insert images visually."
+                      onOpenImageModal={() => {
+                        setInTextImageTarget('en')
+                        setShowInTextImageModal(true)
+                      }}
+                      canCopyFromBn={Boolean(formData.content_bn)}
+                      onCopyFromBn={() => {
+                        setFormData((prev) => ({ ...prev, content_en: prev.content_bn }))
+                        triggerToast('বাংলা কনটেন্ট ইংরেজিতে কপি করা হয়েছে।', 'info')
+                      }}
+                      accentColor="blue"
+                      label="মূল সংবাদ বিস্তারিত বিবরণ (English)"
+                      charCount={(formData.content_en || '').length}
+                      wordCount={((formData.content_en || '').trim() ? (formData.content_en || '').trim().split(/\s+/).length : 0)}
+                    />
+                  )}
+                </div>
               </div>
 
-              {/* Tags & Featured Lead Toggle */}
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1 min-w-[260px]">
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    ট্যাগসমূহ (কমা দিয়ে পৃথক করুন)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tags_bn}
-                    onChange={(e) => setFormData({ ...formData, tags_bn: e.target.value })}
-                    placeholder="বন্যা, ত্রাণ, জাতীয়"
-                    className="w-full text-xs p-2.5 border rounded bg-white outline-none"
-                  />
+              {/* Tags & Featured Lead Toggle (Bilingual Tags) */}
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      ট্যাগসমূহ (বাংলা - কমা দিয়ে পৃথক করুন)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.tags_bn}
+                      onChange={(e) => setFormData({ ...formData, tags_bn: e.target.value })}
+                      placeholder="যেমন: বন্যা, ত্রাণ, জাতীয়"
+                      className="w-full text-xs p-2.5 border rounded-lg bg-white outline-none focus:border-red-500 font-bengali"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 font-sans">
+                      Tags (English - comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.tags_en}
+                      onChange={(e) => setFormData({ ...formData, tags_en: e.target.value })}
+                      placeholder="e.g. Flood, Relief, National"
+                      className="w-full text-xs p-2.5 border rounded-lg bg-white outline-none focus:border-red-500 font-sans"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-3 sm:pt-0">
-                  <input
-                    type="checkbox"
-                    id="featLeadCheck"
-                    checked={formData.featured}
-                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500 cursor-pointer"
-                  />
-                  <label htmlFor="featLeadCheck" className="text-xs font-bold text-gray-800 cursor-pointer select-none">
-                    ⭐ প্রধান সংবাদ (Lead Story) হিসেবে ফ্রন্টপেজে দেখান
-                  </label>
+                <div className="pt-2 border-t border-gray-200 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="featLeadCheck"
+                      checked={formData.featured}
+                      onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500 cursor-pointer accent-[#e30613]"
+                    />
+                    <label htmlFor="featLeadCheck" className="text-xs font-bold text-gray-800 cursor-pointer select-none">
+                      ⭐ প্রধান শীর্ষ সংবাদ (Lead Story) হিসেবে হোমপেজে দেখান
+                    </label>
+                  </div>
+                  <span className="text-[11px] text-gray-500">
+                    টিক দিলে সংবাদটি হোমপেজের প্রধান বড় লিড হিসেবে প্রদর্শিত হবে
+                  </span>
                 </div>
               </div>
 

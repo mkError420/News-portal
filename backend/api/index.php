@@ -165,6 +165,7 @@ function auto_migrate_all_tables(PDO $pdo): void
             `title_bn` TEXT NOT NULL DEFAULT '',
             `title_en` TEXT NOT NULL DEFAULT '',
             `category` TEXT NOT NULL DEFAULT 'national',
+            `categories` TEXT NULL,
             `subheadline` TEXT DEFAULT '',
             `subheadline_bn` TEXT DEFAULT '',
             `subheadline_en` TEXT DEFAULT '',
@@ -240,6 +241,7 @@ function auto_migrate_all_tables(PDO $pdo): void
             `title_bn` VARCHAR(500) NOT NULL DEFAULT '',
             `title_en` VARCHAR(500) NOT NULL DEFAULT '',
             `category` VARCHAR(100) NOT NULL DEFAULT 'national',
+            `categories` TEXT NULL,
             `subheadline` VARCHAR(500) NULL DEFAULT '',
             `subheadline_bn` VARCHAR(500) NULL DEFAULT '',
             `subheadline_en` VARCHAR(500) NULL DEFAULT '',
@@ -320,6 +322,7 @@ function auto_migrate_all_tables(PDO $pdo): void
     $articleCols = [
         'title_bn' => "VARCHAR(500) NOT NULL DEFAULT ''",
         'title_en' => "VARCHAR(500) NOT NULL DEFAULT ''",
+        'categories' => "TEXT NULL",
         'subheadline_bn' => "VARCHAR(500) NULL DEFAULT ''",
         'subheadline_en' => "VARCHAR(500) NULL DEFAULT ''",
         'summary_bn' => "TEXT NULL",
@@ -878,12 +881,29 @@ function serialize_article(array $row): array
     $tagsBn = json_decode($row['tags_bn'] ?? ($row['tags'] ?? '[]'), true) ?: [];
     $tagsEn = json_decode($row['tags_en'] ?? ($row['tags'] ?? '[]'), true) ?: [];
 
+    $catsList = [];
+    if (!empty($row['categories'])) {
+        $decodedCats = json_decode($row['categories'], true);
+        if (is_array($decodedCats)) {
+            $catsList = array_values(array_filter(array_map('trim', $decodedCats)));
+        } else {
+            $catsList = array_values(array_filter(array_map('trim', explode(',', (string) $row['categories']))));
+        }
+    }
+    if (empty($catsList) && !empty($row['category'])) {
+        $catsList = [trim((string) $row['category'])];
+    }
+    if (empty($catsList)) {
+        $catsList = ['national'];
+    }
+
     return [
         'id' => (int) $row['id'],
         'slug' => $row['slug'] ?? ('news-' . $row['id']),
         'title_bn' => $row['title_bn'] ?? ($row['title'] ?? ''),
         'title_en' => $row['title_en'] ?? ($row['title'] ?? ''),
-        'category' => $row['category'] ?? 'national',
+        'category' => $row['category'] ?? ($catsList[0] ?? 'national'),
+        'categories' => $catsList,
         'subheadline_bn' => $row['subheadline_bn'] ?? ($row['subheadline'] ?? ''),
         'subheadline_en' => $row['subheadline_en'] ?? ($row['subheadline'] ?? ''),
         'summary_bn' => $row['summary_bn'] ?? ($row['summary'] ?? ''),
@@ -1816,8 +1836,28 @@ if ($resource === 'articles') {
             json_response(['message' => 'Title is required'], 400);
         }
 
-        $category = trim((string) ($input['category'] ?? 'national'));
-        if ($category === '') $category = 'national';
+        // Multi-categories normalization
+        $rawCategories = $input['categories'] ?? [];
+        $categoriesList = [];
+        if (is_array($rawCategories)) {
+            $categoriesList = array_values(array_filter(array_map('trim', $rawCategories)));
+        } elseif (is_string($rawCategories) && trim($rawCategories) !== '') {
+            $decoded = json_decode($rawCategories, true);
+            if (is_array($decoded)) {
+                $categoriesList = array_values(array_filter(array_map('trim', $decoded)));
+            } else {
+                $categoriesList = array_values(array_filter(array_map('trim', explode(',', $rawCategories))));
+            }
+        }
+        $primaryCategory = trim((string) ($input['category'] ?? ''));
+        if ($primaryCategory !== '' && !in_array($primaryCategory, $categoriesList, true)) {
+            array_unshift($categoriesList, $primaryCategory);
+        }
+        if (empty($categoriesList)) {
+            $categoriesList = [$primaryCategory !== '' ? $primaryCategory : 'national'];
+        }
+        $category = $categoriesList[0] ?? 'national';
+        $categoriesJson = json_encode(array_values(array_unique($categoriesList)), JSON_UNESCAPED_UNICODE);
 
         $content = (string) ($input['content_bn'] ?? ($input['content_en'] ?? ($input['content'] ?? '')));
         $contentBn = (string) ($input['content_bn'] ?? $content);
@@ -1934,6 +1974,19 @@ if ($resource === 'articles') {
                 ]);
             }
 
+            // Update multi-categories column
+            try {
+                $hasCatCol = has_column($dbConn, 'articles', 'categories');
+                if (!$hasCatCol) {
+                    $dbConn->exec("ALTER TABLE `articles` ADD COLUMN `categories` TEXT NULL");
+                    $hasCatCol = true;
+                }
+                if ($hasCatCol && $id > 0) {
+                    $upCat = $dbConn->prepare('UPDATE articles SET categories = ? WHERE id = ?');
+                    $upCat->execute([$categoriesJson, $id]);
+                }
+            } catch (Throwable $e) {}
+
             $fetchStmt = $dbConn->prepare('SELECT * FROM articles WHERE id = ?');
             $fetchStmt->execute([$id]);
             $savedRow = $fetchStmt->fetch();
@@ -1996,6 +2049,20 @@ if ($resource === 'articles') {
                 ]);
             }
             $id = (int) $dbConn->lastInsertId();
+
+            // Update multi-categories column
+            try {
+                $hasCatCol = has_column($dbConn, 'articles', 'categories');
+                if (!$hasCatCol) {
+                    $dbConn->exec("ALTER TABLE `articles` ADD COLUMN `categories` TEXT NULL");
+                    $hasCatCol = true;
+                }
+                if ($hasCatCol && $id > 0) {
+                    $upCat = $dbConn->prepare('UPDATE articles SET categories = ? WHERE id = ?');
+                    $upCat->execute([$categoriesJson, $id]);
+                }
+            } catch (Throwable $e) {}
+
             $fetchStmt = $dbConn->prepare('SELECT * FROM articles WHERE id = ?');
             $fetchStmt->execute([$id]);
             $savedRow = $fetchStmt->fetch();
