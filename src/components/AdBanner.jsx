@@ -26,11 +26,11 @@ export default function AdBanner({
   const label = lang === 'bn' ? 'বিজ্ঞাপন' : 'Advertisement'
 
   const DIMENSIONS = {
-    leaderboard: { width: 728, height: 90, label: '728 × 90 (Header / Top Leaderboard)' },
-    rectangle:   { width: 300, height: 250, label: '300 × 250 (Medium Rectangle)' },
-    halfpage:    { width: 300, height: 600, label: '300 × 600 (Half Page / Sidebar)' },
-    infeed:      { width: '100%', height: 100, label: 'In-feed Banner (Responsive)' },
-    inarticle:   { width: '100%', height: 120, label: 'In-Article Ad (Responsive)' },
+    leaderboard: { width: 728, height: 90, label: '' },
+    rectangle:   { width: 300, height: 250, label: '' },
+    halfpage:    { width: 300, height: 600, label: '' },
+    infeed:      { width: '100%', height: 100, label: '' },
+    inarticle:   { width: '100%', height: 120, label: '' },
   }
 
   const config = DIMENSIONS[size] || DIMENSIONS.rectangle
@@ -90,15 +90,16 @@ export default function AdBanner({
             target="_blank"
             rel="noopener noreferrer sponsored"
             onClick={handleAdClick}
-            className="group relative block w-full overflow-hidden rounded border border-gray-200 bg-white shadow-2xs hover:shadow-xs transition-all text-center flex items-center justify-center max-h-[75px]"
+            className="group ad-gleam-effect ad-animated-card relative block w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-2xs hover:shadow-md transition-all text-center flex items-center justify-center max-h-[75px]"
             title={titleText}
           >
             <img
               src={dynamicAd.image_url}
               alt={titleText}
-              className="w-full h-[75px] object-contain transition-transform duration-200 group-hover:scale-[1.01]"
+              className="w-full h-[75px] object-contain transition-transform duration-500 ease-out group-hover:scale-[1.02]"
             />
-            <span className="absolute bottom-1 right-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-black/60 text-white font-bengali">
+            <span className="absolute bottom-1 right-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-black/70 text-white font-bengali flex items-center gap-1 backdrop-blur-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               {label}
             </span>
           </a>
@@ -109,25 +110,27 @@ export default function AdBanner({
     return (
       <div className={`my-4 flex flex-col items-center justify-center ${className}`}>
         <div className="w-full flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 px-1">
-          <span className="font-bengali flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            {label}
+          <span className="font-bengali flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>{label}</span>
           </span>
-          <span className="text-[9px] text-gray-300 font-sans">{config.label}</span>
         </div>
         <a
           href={dynamicAd.target_url || '#'}
           target="_blank"
           rel="noopener noreferrer sponsored"
           onClick={handleAdClick}
-          className="group block w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-xs hover:shadow-md transition-all text-center"
+          className="group ad-gleam-effect ad-animated-card block w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs hover:shadow-xl transition-all text-center"
           style={{ maxWidth: config.width === '100%' ? '100%' : `${config.width}px` }}
           title={titleText}
         >
           <img
             src={dynamicAd.image_url}
             alt={titleText}
-            className="w-full h-auto object-cover transition-transform duration-200 group-hover:scale-[1.01]"
+            className="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-[1.025]"
             style={{
               maxHeight: size === 'leaderboard' ? '120px' : size === 'halfpage' ? '650px' : size === 'rectangle' ? '300px' : '200px'
             }}
@@ -182,19 +185,25 @@ export default function AdBanner({
   if (customBanner?.imageUrl) {
     return (
       <div className={`my-4 flex flex-col items-center justify-center ${className}`}>
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali mb-1">
-          {label}
-        </span>
+        <div className="w-full flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 px-1">
+          <span className="font-bengali flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>{label}</span>
+          </span>
+        </div>
         <a
           href={customBanner.linkUrl || '#'}
           target="_blank"
           rel="noopener noreferrer sponsored"
-          className="block overflow-hidden rounded shadow-xs hover:opacity-95 transition-opacity"
+          className="group ad-gleam-effect ad-animated-card block overflow-hidden rounded-lg shadow-xs hover:shadow-xl transition-all"
         >
           <img
             src={customBanner.imageUrl}
             alt={customBanner.altText || label}
-            className="w-full h-auto object-cover max-h-[250px]"
+            className="w-full h-auto object-cover max-h-[250px] transition-transform duration-700 ease-out group-hover:scale-[1.025]"
           />
         </a>
       </div>
@@ -226,19 +235,25 @@ export default function AdBanner({
   if (compact) {
     return (
       <div
-        className={`flex items-center justify-center flex-1 max-w-[728px] h-[75px] bg-[#f8f9fa] border border-dashed border-gray-300 rounded text-center px-4 ${className}`}
+        className={`ad-placeholder-animated flex items-center justify-center flex-1 max-w-[728px] h-[75px] border border-dashed rounded-lg text-center px-4 transition-all duration-300 hover:border-red-400 ${className}`}
         aria-label={label}
         role="complementary"
       >
-        <div>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali">
-            {label}
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
           </span>
-          <span className="text-xs text-gray-500 font-medium font-bengali">
-            {lang === 'bn'
-              ? `বিজ্ঞাপনের জন্য যোগাযোগ করুন: ${settings?.ad_email || 'ads@prothomalo.com'}`
-              : `For advertisement queries: ${settings?.ad_email || 'ads@prothomalo.com'}`}
-          </span>
+          <div className="text-left">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali">
+              {label}
+            </span>
+            <span className="text-xs text-gray-600 font-medium font-bengali hover:text-[#e30613] transition-colors">
+              {lang === 'bn'
+                ? `বিজ্ঞাপনের জন্য যোগাযোগ করুন: ${settings?.ad_email || 'ads@prothomalo.com'}`
+                : `For advertisement queries: ${settings?.ad_email || 'ads@prothomalo.com'}`}
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -246,7 +261,7 @@ export default function AdBanner({
 
   return (
     <div
-      className={`ad-placeholder mx-auto flex flex-col items-center justify-center bg-gray-50/80 border border-dashed border-gray-300 rounded text-center p-3 select-none transition-colors hover:bg-gray-100/70 ${className}`}
+      className={`ad-placeholder ad-placeholder-animated ad-animated-card mx-auto flex flex-col items-center justify-center border border-dashed rounded-xl text-center p-4 select-none transition-all hover:border-red-400 ${className}`}
       style={{
         maxWidth: config.width === '100%' ? '100%' : `${config.width}px`,
         minHeight: `${config.height}px`,
@@ -255,16 +270,16 @@ export default function AdBanner({
       aria-label={label}
       role="complementary"
     >
-      <div className="flex items-center gap-1.5 mb-1">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-bengali">
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+        </span>
+        <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block font-bengali">
           {label}
         </span>
       </div>
-      <span className="text-xs text-gray-400 font-medium">
-        {config.label}
-      </span>
-      <span className="text-[11px] text-gray-500 mt-1 font-bengali">
+      <span className="text-[11px] text-gray-600 mt-1.5 font-bengali font-semibold hover:text-[#e30613] transition-colors">
         {lang === 'bn' ? 'বিজ্ঞাপন দিতে বা ড্যাশবোর্ড থেকে বিজ্ঞাপন সেট করতে যোগাযোগ করুন' : 'Advertise here or configure from admin dashboard'}
       </span>
     </div>
