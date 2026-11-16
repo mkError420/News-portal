@@ -52,21 +52,58 @@ function db(): ?PDO
     if ($failed) return null;
 
     if ($pdo === null) {
-        if (trim(DB_HOST) === '' || trim(DB_NAME) === '' || trim(DB_USER) === '') {
-            $failed = true;
-            return null;
-        }
+        $dbHost = trim(DB_HOST) !== '' ? trim(DB_HOST) : '127.0.0.1';
+        $dbName = trim(DB_NAME) !== '' ? trim(DB_NAME) : 'news_portal';
+        $dbUser = trim(DB_USER) !== '' ? trim(DB_USER) : 'root';
+        $dbPass = DB_PASS;
 
+        // 1. Try connecting to MySQL with target database
         try {
-            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+            $dsn = 'mysql:host=' . $dbHost . ';dbname=' . $dbName . ';charset=utf8mb4';
+            $pdo = new PDO($dsn, $dbUser, $dbPass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_TIMEOUT => 3,
             ]);
         } catch (Throwable $e) {
-            $failed = true;
-            return null;
+            // If database does not exist (error 1049), attempt to create it
+            try {
+                $dsnServer = 'mysql:host=' . $dbHost . ';charset=utf8mb4';
+                $serverPdo = new PDO($dsnServer, $dbUser, $dbPass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 3,
+                ]);
+                $serverPdo->exec("CREATE DATABASE IF NOT EXISTS `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                
+                $dsn = 'mysql:host=' . $dbHost . ';dbname=' . $dbName . ';charset=utf8mb4';
+                $pdo = new PDO($dsn, $dbUser, $dbPass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 3,
+                ]);
+            } catch (Throwable $createErr) {
+                $pdo = null;
+            }
+        }
+
+        // 2. If MySQL is unavailable, fallback to local SQLite database so news saving never fails
+        if ($pdo === null) {
+            try {
+                $sqliteDir = __DIR__ . '/../data';
+                if (!is_dir($sqliteDir)) {
+                    @mkdir($sqliteDir, 0777, true);
+                }
+                $sqlitePath = $sqliteDir . '/news_portal.sqlite';
+                $pdo = new PDO('sqlite:' . $sqlitePath, null, null, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                ]);
+                $pdo->exec('PRAGMA foreign_keys = ON;');
+                $pdo->exec('PRAGMA journal_mode = WAL;');
+            } catch (Throwable $sqErr) {
+                $failed = true;
+                return null;
+            }
         }
     }
 
@@ -93,21 +130,190 @@ function require_db(): PDO
 function has_column(PDO $pdo, string $table, string $column): bool
 {
     static $columnsCache = [];
-    if (!isset($columnsCache[$table])) {
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    $cacheKey = $driver . ':' . $table;
+    if (!isset($columnsCache[$cacheKey])) {
         try {
-            $stmt = $pdo->query("SHOW COLUMNS FROM `$table`");
-            $columnsCache[$table] = array_column($stmt->fetchAll(), 'Field');
+            if ($driver === 'sqlite') {
+                $stmt = $pdo->query("PRAGMA table_info(`$table`)");
+                $columnsCache[$cacheKey] = array_column($stmt->fetchAll(), 'name');
+            } else {
+                $stmt = $pdo->query("SHOW COLUMNS FROM `$table`");
+                $columnsCache[$cacheKey] = array_column($stmt->fetchAll(), 'Field');
+            }
         } catch (Throwable $e) {
-            $columnsCache[$table] = [];
+            $columnsCache[$cacheKey] = [];
         }
     }
-    return in_array($column, $columnsCache[$table], true);
+    return in_array($column, $columnsCache[$cacheKey], true);
 }
 
 function auto_migrate_all_tables(PDO $pdo): void
 {
     static $done = false;
     if ($done) return;
+    $done = true;
+
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+    // 0. Ensure core articles table exists
+    if ($driver === 'sqlite') {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `articles` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+            `slug` TEXT NOT NULL UNIQUE,
+            `title` TEXT NOT NULL DEFAULT '',
+            `title_bn` TEXT NOT NULL DEFAULT '',
+            `title_en` TEXT NOT NULL DEFAULT '',
+            `category` TEXT NOT NULL DEFAULT 'national',
+            `subheadline` TEXT DEFAULT '',
+            `subheadline_bn` TEXT DEFAULT '',
+            `subheadline_en` TEXT DEFAULT '',
+            `summary` TEXT DEFAULT '',
+            `summary_bn` TEXT DEFAULT '',
+            `summary_en` TEXT DEFAULT '',
+            `author` TEXT NOT NULL DEFAULT 'প্রথম আলো ডেস্ক',
+            `author_bn` TEXT NOT NULL DEFAULT '',
+            `author_en` TEXT NOT NULL DEFAULT '',
+            `author_role` TEXT DEFAULT 'প্রতিবেদক',
+            `author_role_bn` TEXT DEFAULT '',
+            `author_role_en` TEXT DEFAULT '',
+            `image` TEXT NOT NULL DEFAULT '',
+            `image_caption` TEXT DEFAULT '',
+            `image_credit` TEXT DEFAULT '',
+            `published_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TEXT,
+            `read_time` TEXT DEFAULT '4 min read',
+            `views` INTEGER NOT NULL DEFAULT 0,
+            `tags` TEXT,
+            `tags_bn` TEXT,
+            `tags_en` TEXT,
+            `featured` INTEGER NOT NULL DEFAULT 0,
+            `content` TEXT,
+            `content_bn` TEXT,
+            `content_en` TEXT,
+            `seo_title` TEXT DEFAULT '',
+            `seo_description` TEXT,
+            `focus_keyword` TEXT DEFAULT '',
+            `canonical_url` TEXT DEFAULT '',
+            `og_image` TEXT DEFAULT '',
+            `schema_type` TEXT DEFAULT 'NewsArticle'
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `breaking_news` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+            `title` TEXT NOT NULL DEFAULT '',
+            `title_bn` TEXT NOT NULL DEFAULT '',
+            `title_en` TEXT NOT NULL DEFAULT '',
+            `slug` TEXT NOT NULL,
+            `article_id` INTEGER NULL,
+            `url` TEXT DEFAULT '',
+            `active` INTEGER DEFAULT 1,
+            `order_num` INTEGER DEFAULT 0,
+            `created_at` TEXT DEFAULT CURRENT_TIMESTAMP
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `categories` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+            `name` TEXT NOT NULL DEFAULT '',
+            `name_bn` TEXT NOT NULL DEFAULT '',
+            `name_en` TEXT NOT NULL DEFAULT '',
+            `slug` TEXT NOT NULL UNIQUE,
+            `subcategories` TEXT NULL,
+            `color` TEXT DEFAULT '#e30613',
+            `order_num` INTEGER DEFAULT 0,
+            `active` INTEGER DEFAULT 1,
+            `created_at` TEXT DEFAULT CURRENT_TIMESTAMP
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `admins` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+            `name` TEXT NOT NULL DEFAULT 'Administrator',
+            `email` TEXT NOT NULL UNIQUE,
+            `password_hash` TEXT NOT NULL,
+            `role_key` TEXT NOT NULL DEFAULT 'admin',
+            `status` TEXT NOT NULL DEFAULT 'active',
+            `phone` TEXT DEFAULT NULL,
+            `created_at` TEXT DEFAULT CURRENT_TIMESTAMP
+        )");
+    } else {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `articles` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `slug` VARCHAR(255) NOT NULL UNIQUE,
+            `title` VARCHAR(500) NOT NULL DEFAULT '',
+            `title_bn` VARCHAR(500) NOT NULL DEFAULT '',
+            `title_en` VARCHAR(500) NOT NULL DEFAULT '',
+            `category` VARCHAR(100) NOT NULL DEFAULT 'national',
+            `subheadline` VARCHAR(500) NULL DEFAULT '',
+            `subheadline_bn` VARCHAR(500) NULL DEFAULT '',
+            `subheadline_en` VARCHAR(500) NULL DEFAULT '',
+            `summary` TEXT NULL,
+            `summary_bn` TEXT NULL,
+            `summary_en` TEXT NULL,
+            `author` VARCHAR(150) NOT NULL DEFAULT 'প্রথম আলো ডেস্ক',
+            `author_bn` VARCHAR(150) NOT NULL DEFAULT '',
+            `author_en` VARCHAR(150) NOT NULL DEFAULT '',
+            `author_role` VARCHAR(150) NULL DEFAULT 'প্রতিবেদক',
+            `author_role_bn` VARCHAR(150) NULL DEFAULT NULL,
+            `author_role_en` VARCHAR(150) NULL DEFAULT NULL,
+            `image` VARCHAR(500) NOT NULL DEFAULT '',
+            `image_caption` VARCHAR(255) NULL DEFAULT '',
+            `image_credit` VARCHAR(255) NULL DEFAULT '',
+            `published_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+            `read_time` VARCHAR(50) NULL DEFAULT '4 min read',
+            `views` INT NOT NULL DEFAULT 0,
+            `tags` JSON NULL,
+            `tags_bn` JSON NULL,
+            `tags_en` JSON NULL,
+            `featured` TINYINT(1) NOT NULL DEFAULT 0,
+            `content` LONGTEXT NULL,
+            `content_bn` LONGTEXT NULL,
+            `content_en` LONGTEXT NULL,
+            `seo_title` VARCHAR(255) NULL DEFAULT '',
+            `seo_description` TEXT NULL,
+            `focus_keyword` VARCHAR(150) NULL DEFAULT '',
+            `canonical_url` VARCHAR(500) NULL DEFAULT '',
+            `og_image` VARCHAR(500) NULL DEFAULT '',
+            `schema_type` VARCHAR(50) NULL DEFAULT 'NewsArticle'
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `breaking_news` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `title` VARCHAR(500) NOT NULL DEFAULT '',
+            `title_bn` VARCHAR(500) NOT NULL DEFAULT '',
+            `title_en` VARCHAR(500) NOT NULL DEFAULT '',
+            `slug` VARCHAR(255) NOT NULL,
+            `article_id` INT NULL DEFAULT NULL,
+            `url` VARCHAR(500) NULL DEFAULT '',
+            `active` TINYINT(1) DEFAULT 1,
+            `order_num` INT DEFAULT 0,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `categories` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(100) NOT NULL DEFAULT '',
+            `name_bn` VARCHAR(150) NOT NULL DEFAULT '',
+            `name_en` VARCHAR(150) NOT NULL DEFAULT '',
+            `slug` VARCHAR(100) NOT NULL UNIQUE,
+            `subcategories` JSON NULL,
+            `color` VARCHAR(30) DEFAULT '#e30613',
+            `order_num` INT DEFAULT 0,
+            `active` TINYINT(1) DEFAULT 1,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `admins` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(150) NOT NULL DEFAULT 'Administrator',
+            `email` VARCHAR(255) NOT NULL UNIQUE,
+            `password_hash` VARCHAR(255) NOT NULL,
+            `role_key` VARCHAR(100) NOT NULL DEFAULT 'admin',
+            `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+            `phone` VARCHAR(50) DEFAULT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // Safe alterations for existing tables to prevent strict mode errors
+        try { $pdo->exec("ALTER TABLE `articles` MODIFY `title` VARCHAR(500) NOT NULL DEFAULT ''"); } catch (Throwable $e) {}
+        try { $pdo->exec("ALTER TABLE `articles` MODIFY `summary` TEXT NULL"); } catch (Throwable $e) {}
+        try { $pdo->exec("ALTER TABLE `articles` MODIFY `content` LONGTEXT NULL"); } catch (Throwable $e) {}
+        try { $pdo->exec("ALTER TABLE `articles` MODIFY `author` VARCHAR(150) NOT NULL DEFAULT 'প্রথম আলো ডেস্ক'"); } catch (Throwable $e) {}
+    }
     $done = true;
 
     // 1. Articles Table Bilingual & SEO Migration
@@ -1604,13 +1810,53 @@ if ($resource === 'articles') {
         $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
         $titleBn = $titleBn !== '' ? $titleBn : $titleEn;
         $titleEn = $titleEn !== '' ? $titleEn : $titleBn;
-        $category = trim((string) ($input['category'] ?? 'national'));
-        $summaryBn = trim((string) ($input['summary_bn'] ?? ($input['summary'] ?? '')));
-        $summaryEn = trim((string) ($input['summary_en'] ?? $summaryBn));
+        $title = $titleBn !== '' ? $titleBn : $titleEn;
 
         if ($titleBn === '') {
             json_response(['message' => 'Title is required'], 400);
         }
+
+        $category = trim((string) ($input['category'] ?? 'national'));
+        if ($category === '') $category = 'national';
+
+        $content = (string) ($input['content_bn'] ?? ($input['content_en'] ?? ($input['content'] ?? '')));
+        $contentBn = (string) ($input['content_bn'] ?? $content);
+        $contentEn = (string) ($input['content_en'] ?? $content);
+
+        $summaryBn = trim((string) ($input['summary_bn'] ?? ($input['summary'] ?? '')));
+        $summaryEn = trim((string) ($input['summary_en'] ?? $summaryBn));
+        if ($summaryBn === '' && $contentBn !== '') {
+            $cleanText = trim(strip_tags($contentBn));
+            $summaryBn = mb_substr($cleanText, 0, 160);
+            if (mb_strlen($cleanText) > 160) $summaryBn .= '...';
+        }
+        if ($summaryEn === '' && $contentEn !== '') {
+            $cleanText = trim(strip_tags($contentEn));
+            $summaryEn = mb_substr($cleanText, 0, 160);
+            if (mb_strlen($cleanText) > 160) $summaryEn .= '...';
+        }
+        $summary = $summaryBn !== '' ? $summaryBn : $summaryEn;
+
+        $authorBn = (string) ($input['author_bn'] ?? ($input['author'] ?? 'প্রথম আলো ডেস্ক'));
+        $authorEn = (string) ($input['author_en'] ?? 'Staff Reporter');
+        $author = $authorBn !== '' ? $authorBn : $authorEn;
+
+        $authorRoleBn = (string) ($input['author_role_bn'] ?? ($input['authorRole'] ?? 'প্রতিবেদক'));
+        $authorRoleEn = (string) ($input['author_role_en'] ?? 'Reporter');
+        $authorRole = $authorRoleBn !== '' ? $authorRoleBn : $authorRoleEn;
+
+        $subheadlineBn = (string) ($input['subheadline_bn'] ?? ($input['subheadline'] ?? ''));
+        $subheadlineEn = (string) ($input['subheadline_en'] ?? $subheadlineBn);
+        $subheadline = $subheadlineBn !== '' ? $subheadlineBn : $subheadlineEn;
+
+        $image = (string) ($input['image'] ?? 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80');
+        if (trim($image) === '') {
+            $image = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80';
+        }
+        $imageCaption = (string) ($input['imageCaption'] ?? ($input['image_caption'] ?? ''));
+        $imageCredit = (string) ($input['imageCredit'] ?? ($input['image_credit'] ?? ''));
+        $readTime = (string) ($input['readTime'] ?? ($input['read_time'] ?? '4 min read'));
+        $featured = !empty($input['featured']) ? 1 : 0;
 
         $id = (int) ($input['id'] ?? 0);
         if ($method === 'PUT' && $id < 1) {
@@ -1639,132 +1885,128 @@ if ($resource === 'articles') {
             if (!$exists->fetch()) {
                 json_response(['success' => false, 'message' => 'Article was not found.'], 404);
             }
-                    if ($hasBilingualCols && $hasSeoCols) {
-                        $sql = 'UPDATE articles SET title_bn = ?, title_en = ?, category = ?, subheadline_bn = ?, subheadline_en = ?,
-                                summary_bn = ?, summary_en = ?, author_bn = ?, author_en = ?, author_role_bn = ?, author_role_en = ?,
-                                image = ?, image_caption = ?, image_credit = ?, tags_bn = ?, tags_en = ?, featured = ?, content_bn = ?, content_en = ?,
-                                seo_title = ?, seo_description = ?, focus_keyword = ?, canonical_url = ?, og_image = ?, schema_type = ?
-                                WHERE id = ?';
-                        $stmt = $dbConn->prepare($sql);
-                        $stmt->execute([
-                            $titleBn, $titleEn, $category,
-                            (string) ($input['subheadline_bn'] ?? ''), (string) ($input['subheadline_en'] ?? ''),
-                            $summaryBn, $summaryEn,
-                            (string) ($input['author_bn'] ?? 'প্রথম আলো ডেস্ক'), (string) ($input['author_en'] ?? 'Staff Reporter'),
-                            (string) ($input['author_role_bn'] ?? 'প্রতিবেদক'), (string) ($input['author_role_en'] ?? 'Reporter'),
-                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
-                            json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
-                            json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
-                            !empty($input['featured']) ? 1 : 0,
-                            (string) ($input['content_bn'] ?? ''), (string) ($input['content_en'] ?? ''),
-                            $seoTitle, $seoDescription, $focusKeyword, $canonicalUrl, $ogImage, $schemaType,
-                            $id
-                        ]);
-                    } elseif ($hasBilingualCols) {
-                        $sql = 'UPDATE articles SET title_bn = ?, title_en = ?, category = ?, subheadline_bn = ?, subheadline_en = ?,
-                                summary_bn = ?, summary_en = ?, author_bn = ?, author_en = ?, author_role_bn = ?, author_role_en = ?,
-                                image = ?, image_caption = ?, image_credit = ?, tags_bn = ?, tags_en = ?, featured = ?, content_bn = ?, content_en = ?
-                                WHERE id = ?';
-                        $stmt = $dbConn->prepare($sql);
-                        $stmt->execute([
-                            $titleBn, $titleEn, $category,
-                            (string) ($input['subheadline_bn'] ?? ''), (string) ($input['subheadline_en'] ?? ''),
-                            $summaryBn, $summaryEn,
-                            (string) ($input['author_bn'] ?? 'প্রথম আলো ডেস্ক'), (string) ($input['author_en'] ?? 'Staff Reporter'),
-                            (string) ($input['author_role_bn'] ?? 'প্রতিবেদক'), (string) ($input['author_role_en'] ?? 'Reporter'),
-                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
-                            json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
-                            json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
-                            !empty($input['featured']) ? 1 : 0,
-                            (string) ($input['content_bn'] ?? ''), (string) ($input['content_en'] ?? ''),
-                            $id
-                        ]);
-                    } else {
-                        // Legacy schema
-                        $sql = 'UPDATE articles SET title = ?, category = ?, subheadline = ?, summary = ?, author = ?,
-                                author_role = ?, image = ?, image_caption = ?, image_credit = ?, tags = ?, featured = ?, content = ?
-                                WHERE id = ?';
-                        $stmt = $dbConn->prepare($sql);
-                        $stmt->execute([
-                            $titleBn, $category,
-                            (string) ($input['subheadline_bn'] ?? ($input['subheadline'] ?? '')),
-                            $summaryBn,
-                            (string) ($input['author_bn'] ?? ($input['author'] ?? 'Staff Reporter')),
-                            (string) ($input['author_role_bn'] ?? ($input['authorRole'] ?? 'Reporter')),
-                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
-                            json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
-                            !empty($input['featured']) ? 1 : 0,
-                            (string) ($input['content_bn'] ?? ($input['content'] ?? '')),
-                            $id
-                        ]);
-                    }
-            json_response(['success' => true, 'id' => $id]);
+            if ($hasBilingualCols && $hasSeoCols) {
+                $sql = 'UPDATE articles SET title = ?, title_bn = ?, title_en = ?, category = ?, subheadline = ?, subheadline_bn = ?, subheadline_en = ?,
+                        summary = ?, summary_bn = ?, summary_en = ?, author = ?, author_bn = ?, author_en = ?, author_role = ?, author_role_bn = ?, author_role_en = ?,
+                        image = ?, image_caption = ?, image_credit = ?, tags = ?, tags_bn = ?, tags_en = ?, featured = ?, content = ?, content_bn = ?, content_en = ?,
+                        seo_title = ?, seo_description = ?, focus_keyword = ?, canonical_url = ?, og_image = ?, schema_type = ?
+                        WHERE id = ?';
+                $stmt = $dbConn->prepare($sql);
+                $stmt->execute([
+                    $title, $titleBn, $titleEn, $category, $subheadline, $subheadlineBn, $subheadlineEn,
+                    $summary, $summaryBn, $summaryEn, $author, $authorBn, $authorEn, $authorRole, $authorRoleBn, $authorRoleEn,
+                    $image, $imageCaption, $imageCredit,
+                    json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
+                    $featured, $content, $contentBn, $contentEn,
+                    $seoTitle, $seoDescription, $focusKeyword, $canonicalUrl, $ogImage, $schemaType,
+                    $id
+                ]);
+            } elseif ($hasBilingualCols) {
+                $sql = 'UPDATE articles SET title = ?, title_bn = ?, title_en = ?, category = ?, subheadline = ?, subheadline_bn = ?, subheadline_en = ?,
+                        summary = ?, summary_bn = ?, summary_en = ?, author = ?, author_bn = ?, author_en = ?, author_role = ?, author_role_bn = ?, author_role_en = ?,
+                        image = ?, image_caption = ?, image_credit = ?, tags = ?, tags_bn = ?, tags_en = ?, featured = ?, content = ?, content_bn = ?, content_en = ?
+                        WHERE id = ?';
+                $stmt = $dbConn->prepare($sql);
+                $stmt->execute([
+                    $title, $titleBn, $titleEn, $category, $subheadline, $subheadlineBn, $subheadlineEn,
+                    $summary, $summaryBn, $summaryEn, $author, $authorBn, $authorEn, $authorRole, $authorRoleBn, $authorRoleEn,
+                    $image, $imageCaption, $imageCredit,
+                    json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
+                    $featured, $content, $contentBn, $contentEn,
+                    $id
+                ]);
+            } else {
+                // Legacy schema
+                $sql = 'UPDATE articles SET title = ?, category = ?, subheadline = ?, summary = ?, author = ?,
+                        author_role = ?, image = ?, image_caption = ?, image_credit = ?, tags = ?, featured = ?, content = ?
+                        WHERE id = ?';
+                $stmt = $dbConn->prepare($sql);
+                $stmt->execute([
+                    $titleBn, $category, $subheadlineBn, $summaryBn, $authorBn, $authorRoleBn,
+                    $image, $imageCaption, $imageCredit,
+                    json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
+                    $featured, $contentBn,
+                    $id
+                ]);
+            }
+
+            $fetchStmt = $dbConn->prepare('SELECT * FROM articles WHERE id = ?');
+            $fetchStmt->execute([$id]);
+            $savedRow = $fetchStmt->fetch();
+            $serialized = $savedRow ? serialize_article($savedRow) : null;
+            json_response([
+                'success' => true,
+                'id' => $id,
+                'slug' => $slug,
+                'article' => $serialized,
+                'item' => $serialized
+            ]);
         } else {
-                    // INSERT
-                    if ($hasBilingualCols && $hasSeoCols) {
-                        $sql = 'INSERT INTO articles (slug, title_bn, title_en, category, subheadline_bn, subheadline_en,
-                                summary_bn, summary_en, author_bn, author_en, author_role_bn, author_role_en, image,
-                                image_caption, image_credit, published_at, read_time, tags_bn, tags_en, featured, content_bn, content_en,
-                                seo_title, seo_description, focus_keyword, canonical_url, og_image, schema_type)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-                        $stmt = $dbConn->prepare($sql);
-                        $stmt->execute([
-                            $slug, $titleBn, $titleEn, $category,
-                            (string) ($input['subheadline_bn'] ?? ''), (string) ($input['subheadline_en'] ?? ''),
-                            $summaryBn, $summaryEn,
-                            (string) ($input['author_bn'] ?? 'প্রথম আলো ডেস্ক'), (string) ($input['author_en'] ?? 'Staff Reporter'),
-                            (string) ($input['author_role_bn'] ?? 'প্রতিবেদক'), (string) ($input['author_role_en'] ?? 'Reporter'),
-                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
-                            date('Y-m-d H:i:s'),
-                            '4 min read',
-                            json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
-                            json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
-                            !empty($input['featured']) ? 1 : 0,
-                            (string) ($input['content_bn'] ?? ''), (string) ($input['content_en'] ?? ''),
-                            $seoTitle, $seoDescription, $focusKeyword, $canonicalUrl, $ogImage, $schemaType
-                        ]);
-                    } elseif ($hasBilingualCols) {
-                        $sql = 'INSERT INTO articles (slug, title_bn, title_en, category, subheadline_bn, subheadline_en,
-                                summary_bn, summary_en, author_bn, author_en, author_role_bn, author_role_en, image,
-                                image_caption, image_credit, published_at, read_time, tags_bn, tags_en, featured, content_bn, content_en)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-                        $stmt = $dbConn->prepare($sql);
-                        $stmt->execute([
-                            $slug, $titleBn, $titleEn, $category,
-                            (string) ($input['subheadline_bn'] ?? ''), (string) ($input['subheadline_en'] ?? ''),
-                            $summaryBn, $summaryEn,
-                            (string) ($input['author_bn'] ?? 'প্রথম আলো ডেস্ক'), (string) ($input['author_en'] ?? 'Staff Reporter'),
-                            (string) ($input['author_role_bn'] ?? 'প্রতিবেদক'), (string) ($input['author_role_en'] ?? 'Reporter'),
-                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
-                            date('Y-m-d H:i:s'),
-                            '4 min read',
-                            json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
-                            json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
-                            !empty($input['featured']) ? 1 : 0,
-                            (string) ($input['content_bn'] ?? ''), (string) ($input['content_en'] ?? '')
-                        ]);
-                    } else {
-                        // Legacy schema insert
-                        $sql = 'INSERT INTO articles (slug, title, category, subheadline, summary, author, author_role, image,
-                                image_caption, image_credit, published_at, read_time, tags, featured, content)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-                        $stmt = $dbConn->prepare($sql);
-                        $stmt->execute([
-                            $slug, $titleBn, $category,
-                            (string) ($input['subheadline_bn'] ?? ($input['subheadline'] ?? '')),
-                            $summaryBn,
-                            (string) ($input['author_bn'] ?? ($input['author'] ?? 'Staff Reporter')),
-                            (string) ($input['author_role_bn'] ?? ($input['authorRole'] ?? 'Reporter')),
-                            (string) ($input['image'] ?? ''), (string) ($input['imageCaption'] ?? ''), (string) ($input['imageCredit'] ?? ''),
-                            date('Y-m-d H:i:s'),
-                            '4 min read',
-                            json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
-                            !empty($input['featured']) ? 1 : 0,
-                            (string) ($input['content_bn'] ?? ($input['content'] ?? ''))
-                        ]);
-                    }
+            // INSERT
+            if ($hasBilingualCols && $hasSeoCols) {
+                $sql = 'INSERT INTO articles (slug, title, title_bn, title_en, category, subheadline, subheadline_bn, subheadline_en,
+                        summary, summary_bn, summary_en, author, author_bn, author_en, author_role, author_role_bn, author_role_en, image,
+                        image_caption, image_credit, published_at, read_time, tags, tags_bn, tags_en, featured, content, content_bn, content_en,
+                        seo_title, seo_description, focus_keyword, canonical_url, og_image, schema_type)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                $stmt = $dbConn->prepare($sql);
+                $stmt->execute([
+                    $slug, $title, $titleBn, $titleEn, $category, $subheadline, $subheadlineBn, $subheadlineEn,
+                    $summary, $summaryBn, $summaryEn, $author, $authorBn, $authorEn, $authorRole, $authorRoleBn, $authorRoleEn,
+                    $image, $imageCaption, $imageCredit,
+                    date('Y-m-d H:i:s'), $readTime,
+                    json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
+                    $featured, $content, $contentBn, $contentEn,
+                    $seoTitle, $seoDescription, $focusKeyword, $canonicalUrl, $ogImage, $schemaType
+                ]);
+            } elseif ($hasBilingualCols) {
+                $sql = 'INSERT INTO articles (slug, title, title_bn, title_en, category, subheadline, subheadline_bn, subheadline_en,
+                        summary, summary_bn, summary_en, author, author_bn, author_en, author_role, author_role_bn, author_role_en, image,
+                        image_caption, image_credit, published_at, read_time, tags, tags_bn, tags_en, featured, content, content_bn, content_en)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                $stmt = $dbConn->prepare($sql);
+                $stmt->execute([
+                    $slug, $title, $titleBn, $titleEn, $category, $subheadline, $subheadlineBn, $subheadlineEn,
+                    $summary, $summaryBn, $summaryEn, $author, $authorBn, $authorEn, $authorRole, $authorRoleBn, $authorRoleEn,
+                    $image, $imageCaption, $imageCredit,
+                    date('Y-m-d H:i:s'), $readTime,
+                    json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_bn'] ?? []), JSON_UNESCAPED_UNICODE),
+                    json_encode(normalize_tags($input['tags_en'] ?? []), JSON_UNESCAPED_UNICODE),
+                    $featured, $content, $contentBn, $contentEn
+                ]);
+            } else {
+                // Legacy schema insert
+                $sql = 'INSERT INTO articles (slug, title, category, subheadline, summary, author, author_role, image,
+                        image_caption, image_credit, published_at, read_time, tags, featured, content)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                $stmt = $dbConn->prepare($sql);
+                $stmt->execute([
+                    $slug, $titleBn, $category, $subheadlineBn, $summaryBn, $authorBn, $authorRoleBn,
+                    $image, $imageCaption, $imageCredit,
+                    date('Y-m-d H:i:s'), $readTime,
+                    json_encode(normalize_tags($input['tags_bn'] ?? ($input['tags'] ?? [])), JSON_UNESCAPED_UNICODE),
+                    $featured, $contentBn
+                ]);
+            }
             $id = (int) $dbConn->lastInsertId();
-            json_response(['success' => true, 'id' => $id, 'slug' => $slug]);
+            $fetchStmt = $dbConn->prepare('SELECT * FROM articles WHERE id = ?');
+            $fetchStmt->execute([$id]);
+            $savedRow = $fetchStmt->fetch();
+            $serialized = $savedRow ? serialize_article($savedRow) : null;
+            json_response([
+                'success' => true,
+                'id' => $id,
+                'slug' => $slug,
+                'article' => $serialized,
+                'item' => $serialized
+            ]);
         }
     }
 

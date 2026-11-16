@@ -174,17 +174,26 @@ export default function App() {
 
   // --- Article CRUD Handlers ---
   const handleAddArticle = (newArticle) => {
+    const currentArticles = Array.isArray(newsData.articles) ? newsData.articles : []
+    const filtered = currentArticles.filter(
+      (a) => a.id !== newArticle.id && a.slug !== newArticle.slug
+    )
     const updated = {
       ...newsData,
-      articles: [newArticle, ...newsData.articles],
+      articles: [newArticle, ...filtered],
     }
     persistData(updated)
   }
 
   const handleUpdateArticle = (updatedArticle) => {
+    const currentArticles = Array.isArray(newsData.articles) ? newsData.articles : []
     const updated = {
       ...newsData,
-      articles: newsData.articles.map((a) => (a.id === updatedArticle.id ? updatedArticle : a)),
+      articles: currentArticles.map((a) =>
+        a.id === updatedArticle.id || (updatedArticle.slug && a.slug === updatedArticle.slug)
+          ? { ...a, ...updatedArticle }
+          : a
+      ),
     }
     persistData(updated)
   }

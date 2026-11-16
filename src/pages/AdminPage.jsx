@@ -863,12 +863,14 @@ export default function AdminPage({
 
     try {
       if (isEditing && formData.id) {
+        let updatedRes = null
         try {
-          await api.saveArticle(articlePayload, true)
+          updatedRes = await api.saveArticle(articlePayload, true)
         } catch (apiErr) {
           console.warn('API update article returned error, falling back to local state:', apiErr)
         }
-        onUpdateArticle?.(articlePayload)
+        const finalArticle = updatedRes?.article || updatedRes?.item || articlePayload
+        onUpdateArticle?.(finalArticle)
         refreshStats()
         triggerToast(lang === 'bn' ? 'সংবাদ সফলভাবে আপডেট হয়েছে!' : 'Article updated successfully!')
       } else {
@@ -879,13 +881,18 @@ export default function AdminPage({
           date: new Date().toISOString(),
           views: 0,
         }
-        let saved = null
+        let savedRes = null
         try {
-          saved = await api.saveArticle(newArt)
+          savedRes = await api.saveArticle(newArt)
         } catch (apiErr) {
           console.warn('API save article returned error, falling back to local state:', apiErr)
         }
-        onAddArticle?.({ ...newArt, id: saved?.id || newArt.id, slug: saved?.slug || newArt.slug })
+        const finalArticle = savedRes?.article || savedRes?.item || {
+          ...newArt,
+          id: savedRes?.id || newArt.id,
+          slug: savedRes?.slug || newArt.slug,
+        }
+        onAddArticle?.(finalArticle)
         refreshStats()
         triggerToast(lang === 'bn' ? 'নতুন সংবাদ সফলভাবে প্রকাশিত হয়েছে!' : 'New article published successfully!')
       }
