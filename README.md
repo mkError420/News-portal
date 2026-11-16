@@ -37,4 +37,4 @@ The deployable web root is `cpanel-deploy/`. For InfinityFree, upload its conten
 4. Confirm HTTPS is enabled, then check `https://YOUR-DOMAIN/api/health`.
 5. Create an admin account with a locally generated password hash before publishing. See [CPANEL_DEPLOYMENT.md](./CPANEL_DEPLOYMENT.md) for the upload map and full checklist.
 
-Do not publish database credentials in GitHub or source control. Rotate any database password that may have been committed before deployment.
+
