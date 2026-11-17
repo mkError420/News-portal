@@ -187,7 +187,7 @@ nav .overflow-x-auto::-webkit-scrollbar {
 .ticker-track {
   display: flex;
   white-space: nowrap;
-  animation: ticker-scroll 40s linear infinite;
+  animation: ticker-scroll 13s linear infinite;
   will-change: transform;
 }
 
@@ -207,7 +207,7 @@ nav .overflow-x-auto::-webkit-scrollbar {
   display: flex;
   align-items: center;
   white-space: nowrap;
-  animation: currency-ticker-scroll 36s linear infinite;
+  animation: currency-ticker-scroll 16s linear infinite;
   will-change: transform;
 }
 
