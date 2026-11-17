@@ -3465,19 +3465,19 @@ if ($resource === 'currency') {
 
     // Official Bangladesh Bank (বাংলাদেশ ব্যাংক) & Govt Interbank Baseline Rates
     $defaultRates = [
-        ['currency' => 'USD', 'name_bn' => 'মার্কিন ডলার', 'name_en' => 'US Dollar', 'symbol' => '$', 'flag' => '🇺🇸', 'buy' => 121.80, 'sell' => 122.50, 'change' => '+0.15', 'change_type' => 'up'],
-        ['currency' => 'EUR', 'name_bn' => 'ইউরো', 'name_en' => 'Euro', 'symbol' => '€', 'flag' => '🇪🇺', 'buy' => 131.40, 'sell' => 132.20, 'change' => '+0.20', 'change_type' => 'up'],
-        ['currency' => 'GBP', 'name_bn' => 'ব্রিটিশ পাউন্ড', 'name_en' => 'British Pound', 'symbol' => '£', 'flag' => '🇬🇧', 'buy' => 155.10, 'sell' => 156.00, 'change' => '-0.10', 'change_type' => 'down'],
-        ['currency' => 'SAR', 'name_bn' => 'সৌদি রিয়াল', 'name_en' => 'Saudi Riyal', 'symbol' => '﷼', 'flag' => '🇸🇦', 'buy' => 32.45, 'sell' => 32.75, 'change' => '0.00', 'change_type' => 'neutral'],
-        ['currency' => 'AED', 'name_bn' => 'ইউএই দিরহাম', 'name_en' => 'UAE Dirham', 'symbol' => 'د.إ', 'flag' => '🇦🇪', 'buy' => 33.15, 'sell' => 33.45, 'change' => '+0.05', 'change_type' => 'up'],
-        ['currency' => 'KWD', 'name_bn' => 'কুয়েতি দিনার', 'name_en' => 'Kuwaiti Dinar', 'symbol' => 'KD', 'flag' => '🇰🇼', 'buy' => 395.50, 'sell' => 397.80, 'change' => '+0.50', 'change_type' => 'up'],
-        ['currency' => 'QAR', 'name_bn' => 'কাতারি রিয়াল', 'name_en' => 'Qatari Riyal', 'symbol' => 'QR', 'flag' => '🇶🇦', 'buy' => 33.30, 'sell' => 33.60, 'change' => '+0.05', 'change_type' => 'up'],
-        ['currency' => 'MYR', 'name_bn' => 'মালয়েশিয়ান রিঙ্গিত', 'name_en' => 'Malaysian Ringgit', 'symbol' => 'RM', 'flag' => '🇲🇾', 'buy' => 27.70, 'sell' => 28.05, 'change' => '+0.08', 'change_type' => 'up'],
-        ['currency' => 'SGD', 'name_bn' => 'সিঙ্গাপুর ডলার', 'name_en' => 'Singapore Dollar', 'symbol' => 'S$', 'flag' => '🇸🇬', 'buy' => 91.80, 'sell' => 92.60, 'change' => '+0.15', 'change_type' => 'up'],
-        ['currency' => 'CAD', 'name_bn' => 'কানাডিয়ান ডলার', 'name_en' => 'Canadian Dollar', 'symbol' => 'C$', 'flag' => '🇨🇦', 'buy' => 88.10, 'sell' => 88.90, 'change' => '-0.15', 'change_type' => 'down'],
-        ['currency' => 'AUD', 'name_bn' => 'অস্ট্রেলিয়ান ডলার', 'name_en' => 'Australian Dollar', 'symbol' => 'A$', 'flag' => '🇦🇺', 'buy' => 78.40, 'sell' => 79.20, 'change' => '+0.10', 'change_type' => 'up'],
-        ['currency' => 'INR', 'name_bn' => 'ভারতীয় রুপি', 'name_en' => 'Indian Rupee', 'symbol' => '₹', 'flag' => '🇮🇳', 'buy' => 1.42, 'sell' => 1.46, 'change' => '0.00', 'change_type' => 'neutral'],
-        ['currency' => 'GOLD', 'name_bn' => 'স্বর্ণ (২২ ক্যারেট ভরি)', 'name_en' => 'Gold (22K Bhori)', 'symbol' => 'Au', 'flag' => '🪙', 'buy' => 138500, 'sell' => 142000, 'change' => '+650', 'change_type' => 'up'],
+        ['currency' => 'USD', 'name_bn' => 'মার্কিন ডলার', 'name_en' => 'US Dollar', 'symbol' => '$', 'flag' => '🇺🇸', 'buy' => 124.25, 'sell' => 124.95, 'change' => '+0.20', 'change_type' => 'up'],
+        ['currency' => 'EUR', 'name_bn' => 'ইউরো', 'name_en' => 'Euro', 'symbol' => '€', 'flag' => '🇪🇺', 'buy' => 136.60, 'sell' => 137.50, 'change' => '+0.25', 'change_type' => 'up'],
+        ['currency' => 'GBP', 'name_bn' => 'ব্রিটিশ পাউন্ড', 'name_en' => 'British Pound', 'symbol' => '£', 'flag' => '🇬🇧', 'buy' => 163.80, 'sell' => 164.80, 'change' => '+0.30', 'change_type' => 'up'],
+        ['currency' => 'SAR', 'name_bn' => 'সৌদি রিয়াল', 'name_en' => 'Saudi Riyal', 'symbol' => '﷼', 'flag' => '🇸🇦', 'buy' => 33.05, 'sell' => 33.35, 'change' => '+0.05', 'change_type' => 'up'],
+        ['currency' => 'AED', 'name_bn' => 'ইউএই দিরহাম', 'name_en' => 'UAE Dirham', 'symbol' => 'د.إ', 'flag' => '🇦🇪', 'buy' => 33.80, 'sell' => 34.10, 'change' => '+0.05', 'change_type' => 'up'],
+        ['currency' => 'KWD', 'name_bn' => 'কুয়েতি দিনার', 'name_en' => 'Kuwaiti Dinar', 'symbol' => 'KD', 'flag' => '🇰🇼', 'buy' => 399.50, 'sell' => 402.00, 'change' => '+0.70', 'change_type' => 'up'],
+        ['currency' => 'QAR', 'name_bn' => 'কাতারি রিয়াল', 'name_en' => 'Qatari Riyal', 'symbol' => 'QR', 'flag' => '🇶🇦', 'buy' => 34.05, 'sell' => 34.35, 'change' => '+0.05', 'change_type' => 'up'],
+        ['currency' => 'MYR', 'name_bn' => 'মালয়েশিয়ান রিঙ্গিত', 'name_en' => 'Malaysian Ringgit', 'symbol' => 'RM', 'flag' => '🇲🇾', 'buy' => 30.25, 'sell' => 30.60, 'change' => '+0.10', 'change_type' => 'up'],
+        ['currency' => 'SGD', 'name_bn' => 'সিঙ্গাপুর ডলার', 'name_en' => 'Singapore Dollar', 'symbol' => 'S$', 'flag' => '🇸🇬', 'buy' => 96.60, 'sell' => 97.30, 'change' => '+0.20', 'change_type' => 'up'],
+        ['currency' => 'CAD', 'name_bn' => 'কানাডিয়ান ডলার', 'name_en' => 'Canadian Dollar', 'symbol' => 'C$', 'flag' => '🇨🇦', 'buy' => 87.20, 'sell' => 87.90, 'change' => '-0.10', 'change_type' => 'down'],
+        ['currency' => 'AUD', 'name_bn' => 'অস্ট্রেলিয়ান ডলার', 'name_en' => 'Australian Dollar', 'symbol' => 'A$', 'flag' => '🇦🇺', 'buy' => 84.10, 'sell' => 84.70, 'change' => '+0.15', 'change_type' => 'up'],
+        ['currency' => 'INR', 'name_bn' => 'ভারতীয় রুপি', 'name_en' => 'Indian Rupee', 'symbol' => '₹', 'flag' => '🇮🇳', 'buy' => 1.32, 'sell' => 1.34, 'change' => '0.00', 'change_type' => 'neutral'],
+        ['currency' => 'GOLD', 'name_bn' => 'স্বর্ণ (২২ ক্যারেট ভরি)', 'name_en' => 'Gold (22K Bhori)', 'symbol' => 'Au', 'flag' => '🪙', 'buy' => 142000, 'sell' => 145500, 'change' => '+750', 'change_type' => 'up'],
     ];
 
     if ($method === 'GET') {

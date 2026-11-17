@@ -5,7 +5,7 @@ import { api } from '../api.js'
 
 // Helper to compute Bangladesh Bank & Govt Exchange Rates from live USD/BDT feed
 export function computeGovtRates(usdBdt, apiRates = {}) {
-  const usdRate = parseFloat(usdBdt) || 122.10
+  const usdRate = parseFloat(usdBdt) || 124.50
   const currencyDefs = [
     { currency: 'USD', name_bn: 'মার্কিন ডলার', name_en: 'US Dollar', symbol: '$', flag: '🇺🇸', spread: 0.35 },
     { currency: 'EUR', name_bn: 'ইউরো', name_en: 'Euro', symbol: '€', flag: '🇪🇺', spread: 0.40 },
@@ -26,9 +26,9 @@ export function computeGovtRates(usdBdt, apiRates = {}) {
     if (item.isGold) {
       return {
         ...item,
-        buy_num: 138500,
-        sell_num: 142000,
-        change: '+৬৫০',
+        buy_num: 142000,
+        sell_num: 145500,
+        change: '+৭৫০',
         change_type: 'up',
       }
     }
@@ -39,7 +39,7 @@ export function computeGovtRates(usdBdt, apiRates = {}) {
         ...item,
         buy_num: buy,
         sell_num: sell,
-        change: '+০.১৫',
+        change: '+০.২০',
         change_type: 'up',
       }
     }
@@ -49,7 +49,7 @@ export function computeGovtRates(usdBdt, apiRates = {}) {
     if (pair && pair > 0) {
       mid = usdRate / pair
     } else {
-      const defaults = { EUR: 131.80, GBP: 155.50, SAR: 32.60, AED: 33.30, KWD: 396.50, QAR: 33.45, MYR: 27.85, SGD: 92.20, CAD: 88.50, AUD: 78.80, INR: 1.44 }
+      const defaults = { EUR: 137.10, GBP: 164.30, SAR: 33.20, AED: 33.95, KWD: 400.50, QAR: 34.20, MYR: 30.40, SGD: 97.00, CAD: 87.50, AUD: 84.40, INR: 1.33 }
       mid = defaults[item.currency] || 1.0
     }
 
@@ -59,118 +59,164 @@ export function computeGovtRates(usdBdt, apiRates = {}) {
       ...item,
       buy_num: buy,
       sell_num: sell,
-      change: '+০.০৫',
+      change: '+০.১০',
       change_type: 'up',
     }
   })
 }
 
 export default function CurrencyWidget({ lang = 'bn' }) {
-  const [rates, setRates] = useState(CURRENCY_RATES)
+  const [rates, setRates] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bd_live_currency_rates')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed?.rates && Array.isArray(parsed.rates) && parsed.rates.length > 0) {
+          return parsed.rates
+        }
+      }
+    } catch {}
+    return CURRENCY_RATES
+  })
   const [rateMode, setRateMode] = useState('buy') // 'buy' | 'sell'
   const [lastFlash, setLastFlash] = useState({}) // { [currency]: 'up' | 'down' }
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(() => new Date())
   const [isGovtSynced, setIsGovtSynced] = useState(true)
 
-  // 1. Fetch live Bangladesh Bank / Govt Currency Rates
-  const fetchGovtRates = async () => {
+  // Fetch live BD exchange rate feed across multiple redundant endpoints
+  const fetchLiveBDRates = async () => {
     setIsRefreshing(true)
+    let freshGovtRates = null
 
-    // First attempt: Server-side official rates with database sync
+    // Endpoint 1: open.er-api.com (high accuracy realtime USD/BDT base)
     try {
-      const serverRates = await api.getCurrencyRates()
-      if (serverRates && Array.isArray(serverRates) && serverRates.length > 0) {
-        setRates((prev) =>
-          prev.map((p) => {
-            const found = serverRates.find((s) => s.currency === p.currency)
-            if (found) {
-              return {
-                ...p,
-                buy_num: typeof found.buy === 'number' ? found.buy : parseFloat(found.buy) || p.buy_num,
-                sell_num: typeof found.sell === 'number' ? found.sell : parseFloat(found.sell) || p.sell_num,
-                change: found.change || p.change,
-                change_type: found.change_type || p.change_type,
-              }
-            }
-            return p
-          })
-        )
-        setLastUpdated(new Date())
-        setIsGovtSynced(true)
-      }
-    } catch {}
-
-    // Second attempt: Client-side live exchange rate verification from official API
-    try {
-      const res = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(3500) })
+      const res = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(5000) })
       if (res.ok) {
         const data = await res.json()
         if (data?.rates?.BDT) {
-          const freshGovtRates = computeGovtRates(data.rates.BDT, data.rates)
-          setRates(freshGovtRates)
-          setLastUpdated(new Date())
-          setIsGovtSynced(true)
-          // Background sync to backend MySQL so server stays permanently updated
-          api.saveCurrencyRates(freshGovtRates).catch(() => {})
+          freshGovtRates = computeGovtRates(data.rates.BDT, data.rates)
         }
       }
-    } catch {
-      // Offline fallback: keep current rates
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 500)
+    } catch {}
+
+    // Endpoint 2: api.exchangerate-api.com
+    if (!freshGovtRates) {
+      try {
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD', { signal: AbortSignal.timeout(5000) })
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.rates?.BDT) {
+            freshGovtRates = computeGovtRates(data.rates.BDT, data.rates)
+          }
+        }
+      } catch {}
     }
+
+    // Endpoint 3: CDN currency API (direct BDT basket)
+    if (!freshGovtRates) {
+      try {
+        const res = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/bdt.json', { signal: AbortSignal.timeout(5000) })
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.bdt?.usd) {
+            const usdBdt = 1 / data.bdt.usd
+            const convertedRates = {}
+            for (const [k, v] of Object.entries(data.bdt)) {
+              if (v > 0) convertedRates[k.toUpperCase()] = (1 / v) / usdBdt
+            }
+            freshGovtRates = computeGovtRates(usdBdt, convertedRates)
+          }
+        }
+      } catch {}
+    }
+
+    // Endpoint 4: Backend server database API fallback
+    if (!freshGovtRates) {
+      try {
+        const serverRates = await api.getCurrencyRates()
+        if (serverRates && Array.isArray(serverRates) && serverRates.length > 0) {
+          freshGovtRates = serverRates.map((s) => ({
+            currency: s.currency,
+            name_bn: s.name_bn,
+            name_en: s.name_en,
+            symbol: s.symbol,
+            flag: s.flag,
+            buy_num: typeof s.buy === 'number' ? s.buy : parseFloat(s.buy) || 0,
+            sell_num: typeof s.sell === 'number' ? s.sell : parseFloat(s.sell) || 0,
+            change: s.change || '+০.০৫',
+            change_type: s.change_type || 'up',
+          }))
+        }
+      } catch {}
+    }
+
+    if (freshGovtRates && freshGovtRates.length > 0) {
+      // Calculate true change by comparing against current rates
+      setRates((prevRates) => {
+        const flashes = {}
+        const merged = freshGovtRates.map((fresh) => {
+          const prev = prevRates.find((p) => p.currency === fresh.currency)
+          if (prev && typeof prev.buy_num === 'number') {
+            const diff = parseFloat((fresh.buy_num - prev.buy_num).toFixed(2))
+            if (diff !== 0) {
+              const changeType = diff > 0 ? 'up' : 'down'
+              flashes[fresh.currency] = changeType
+              return {
+                ...fresh,
+                change: (diff >= 0 ? '+' : '') + (lang === 'bn' ? toBengaliNumber(diff.toFixed(2)) : diff.toFixed(2)),
+                change_type: changeType,
+              }
+            } else {
+              return {
+                ...fresh,
+                change: prev.change || fresh.change,
+                change_type: prev.change_type || fresh.change_type,
+              }
+            }
+          }
+          return fresh
+        })
+
+        if (Object.keys(flashes).length > 0) {
+          setLastFlash(flashes)
+          setTimeout(() => setLastFlash({}), 3000)
+        }
+
+        try {
+          localStorage.setItem('bd_live_currency_rates', JSON.stringify({ rates: merged, timestamp: Date.now() }))
+        } catch {}
+
+        return merged
+      })
+
+      setLastUpdated(new Date())
+      setIsGovtSynced(true)
+
+      // Background sync to backend so server database stays permanently up to date
+      api.saveCurrencyRates(freshGovtRates).catch(() => {})
+    }
+
+    setTimeout(() => setIsRefreshing(false), 500)
   }
 
-  // Initial load and periodic auto-update every 5 minutes
+  // Initial load and auto-update every 60 seconds
   useEffect(() => {
-    fetchGovtRates()
-    const autoUpdateInterval = setInterval(fetchGovtRates, 300000)
-    return () => clearInterval(autoUpdateInterval)
-  }, [])
+    fetchLiveBDRates()
+    const autoUpdateInterval = setInterval(fetchLiveBDRates, 60000)
 
-  // 2. Realistic micro-ticks during active hours
-  useEffect(() => {
-    const marketTickTimer = setInterval(() => {
-      setRates((prevRates) => {
-        const targetIdx = Math.floor(Math.random() * prevRates.length)
-        const target = prevRates[targetIdx]
-        if (!target) return prevRates
+    // Auto-refresh when user returns to this tab
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLiveBDRates()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
 
-        const isGold = target.currency === 'GOLD'
-        const delta = isGold
-          ? (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1) * 50
-          : (Math.random() > 0.5 ? 1 : -1) * (parseFloat((Math.random() * 0.10 + 0.02).toFixed(2)))
-
-        const newBuy = Math.max(1, parseFloat((target.buy_num + delta).toFixed(2)))
-        const spread = isGold ? 3500 : 0.70
-        const newSell = parseFloat((newBuy + spread).toFixed(2))
-        const changeType = delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral'
-        const changeVal = (delta >= 0 ? '+' : '') + (isGold ? delta : delta.toFixed(2))
-
-        setLastFlash((prev) => ({ ...prev, [target.currency]: changeType }))
-        setTimeout(() => {
-          setLastFlash((prev) => {
-            const next = { ...prev }
-            delete next[target.currency]
-            return next
-          })
-        }, 1400)
-
-        const updated = [...prevRates]
-        updated[targetIdx] = {
-          ...target,
-          buy_num: newBuy,
-          sell_num: newSell,
-          change: changeVal,
-          change_type: changeType,
-        }
-        return updated
-      })
-      setLastUpdated(new Date())
-    }, 8000)
-
-    return () => clearInterval(marketTickTimer)
+    return () => {
+      clearInterval(autoUpdateInterval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [])
 
   // Format currency value based on language
@@ -267,8 +313,19 @@ export default function CurrencyWidget({ lang = 'bn' }) {
           </div>
         </div>
 
-        {/* Right Controls: Mode Toggle & Refresh */}
+        {/* Right Controls: Live Badge, Mode Toggle & Refresh */}
         <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border-l border-gray-200 z-20">
+          <span
+            className="hidden sm:inline-flex items-center gap-1 text-[10px] text-gray-600 font-medium mr-0.5"
+            title={lang === 'bn' ? 'বাংলাদেশ কারেন্সি লাইভ মার্কেট রেট (স্বয়ংক্রিয় আপডেট)' : 'BD Live Currency Exchange Rates (Auto-updating)'}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[10px] text-emerald-700 font-semibold">{lang === 'bn' ? 'লাইভ' : 'Live'}</span>
+          </span>
+
           {/* Rate Mode Toggle: Govt Buy vs Govt Sell */}
           <div className="inline-flex bg-gray-200 p-0.5 rounded text-[10px] font-semibold">
             <button
@@ -300,8 +357,8 @@ export default function CurrencyWidget({ lang = 'bn' }) {
           {/* Refresh Button */}
           <button
             type="button"
-            onClick={fetchGovtRates}
-            title={lang === 'bn' ? 'বাংলাদেশ ব্যাংক সরকারি রেট রিলোড করুন' : 'Reload Bangladesh Bank Govt Rates'}
+            onClick={fetchLiveBDRates}
+            title={lang === 'bn' ? 'মুদ্রার হার রিলোড করুন' : 'Reload Currency Rates'}
             className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800 transition-colors"
           >
             <RefreshCw size={11} className={isRefreshing ? 'animate-spin text-red-600' : ''} />
