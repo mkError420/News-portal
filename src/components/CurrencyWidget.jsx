@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, RefreshCw, Landmark, Activity, CheckCircle2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
 import { CURRENCY_RATES, toBengaliNumber } from '../utils.js'
 import { api } from '../api.js'
 
@@ -192,29 +192,7 @@ export default function CurrencyWidget({ lang = 'bn' }) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-2xs mb-4 font-bengali overflow-hidden currency-ticker-wrapper select-none">
       <div className="flex items-center">
-        {/* Left Official Govt & Bangladesh Bank Badge */}
-        <div className="flex-shrink-0 flex items-center gap-2 bg-[#1a3a5c] text-white px-3 py-2.5 z-20 shadow-md">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <Landmark size={14} className="text-yellow-400" />
-          <div className="flex flex-col leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold whitespace-nowrap">
-                {lang === 'bn' ? 'বাংলাদেশ ব্যাংক সরকারি রেট' : 'Bangladesh Bank Official Forex'}
-              </span>
-              <span className="text-[9px] bg-emerald-600/90 text-white px-1.5 py-0.2 rounded font-semibold hidden md:inline">
-                {lang === 'bn' ? 'সরকারি দর' : 'Govt Rate'}
-              </span>
-            </div>
-            <span className="text-[9px] text-gray-300 font-normal hidden sm:inline whitespace-nowrap">
-              {lang === 'bn' ? 'বাংলাদেশ ব্যাংক ও আন্তঃব্যাংক বিনিময় হার' : 'Bangladesh Bank Interbank & Treasury Rates'}
-            </span>
-          </div>
-        </div>
-
-        {/* Center: Infinite Loop Marquee News Ticker Track */}
+        {/* Infinite Loop Marquee News Ticker Track (takes full width) */}
         <div className="flex-1 overflow-hidden relative py-2 bg-slate-50">
           {/* Subtle gradient masks for smooth entry and exit */}
           <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none" />
