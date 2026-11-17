@@ -177,21 +177,31 @@ nav .overflow-x-auto::-webkit-scrollbar {
 }
 
 /* =========================================================
-   Breaking News Ticker
+   TV Broadcast News Ticker (Seamless Smooth Infinite Loop)
    ========================================================= */
-@keyframes ticker-scroll {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+@keyframes tv-ticker-scroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
 }
 
+.tv-ticker-track,
 .ticker-track {
-  display: flex;
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
-  animation: ticker-scroll 13s linear infinite;
+  width: max-content;
+  animation: tv-ticker-scroll var(--ticker-duration, 35s) linear infinite;
   will-change: transform;
 }
 
-.ticker-track:hover {
+.tv-ticker-track:hover,
+.ticker-track:hover,
+.group:hover .tv-ticker-track,
+.group:hover .ticker-track {
   animation-play-state: paused;
 }
 

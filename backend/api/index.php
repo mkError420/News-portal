@@ -5,6 +5,9 @@
  * Resilient schema handling for both legacy and bilingual MySQL databases.
  */
 
+// Set Bangladesh Standard Time (BST / UTC+6) as authoritative server timezone
+date_default_timezone_set('Asia/Dhaka');
+
 if (file_exists(__DIR__ . '/../config.php')) {
     require_once __DIR__ . '/../config.php';
 } else {
@@ -138,6 +141,9 @@ function db(): ?PDO
     }
 
     if ($pdo) {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+            try { $pdo->exec("SET time_zone = '+06:00'"); } catch (Throwable $tzErr) {}
+        }
         auto_migrate_all_tables($pdo);
     }
 
@@ -1364,7 +1370,9 @@ function serialize_article(array $row): array
         'image' => $row['image'] ?? 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=1200&q=80',
         'imageCaption' => $row['image_caption'] ?? '',
         'imageCredit' => $row['image_credit'] ?? '',
-        'date' => $row['published_at'] ?? date('c'),
+        'date' => !empty($row['published_at'])
+            ? (preg_match('/[+-]\d{2}:\d{2}$|Z$/', (string)$row['published_at']) ? $row['published_at'] : date('c', strtotime($row['published_at'])))
+            : date('c'),
         'readTime' => $row['read_time'] ?? '4 min read',
         'views' => (int) ($row['views'] ?? 0),
         'featured' => (bool) ($row['featured'] ?? 0),

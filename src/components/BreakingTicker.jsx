@@ -6,8 +6,16 @@ export default function BreakingTicker({ items = [], lang = 'bn', articles = [] 
   const activeItems = (items || []).filter((it) => it && it.active !== false && it.active !== 0)
   if (activeItems.length === 0) return null
 
-  // Duplicate list to achieve continuous infinite marquee loop
-  const marqueeItems = [...activeItems, ...activeItems, ...activeItems]
+  // Ensure enough items to span wide screens seamlessly
+  const baseItems = activeItems.length < 3
+    ? [...activeItems, ...activeItems, ...activeItems]
+    : activeItems
+
+  // Exactly two identical halves for mathematically seamless -50% infinite TV loop
+  const marqueeItems = [...baseItems, ...baseItems]
+
+  // Calculated comfortable TV reading speed: ~8-9 seconds per headline (min 30s)
+  const durationSeconds = Math.max(30, baseItems.length * 8.5)
 
   const resolveTargetUrl = (item) => {
     // 1. Explicit custom URL
@@ -58,16 +66,31 @@ export default function BreakingTicker({ items = [], lang = 'bn', articles = [] 
   }
 
   return (
-    <div className="bg-[#e30613] text-white overflow-hidden py-1.5 shadow-inner select-none font-bengali">
+    <div className="bg-[#b80010] border-y border-red-800/40 text-white overflow-hidden py-1.5 shadow-md select-none font-bengali relative">
       <div className="max-w-7xl mx-auto px-4 flex items-center">
-        {/* Badge Label */}
-        <div className="flex-shrink-0 flex items-center gap-1.5 bg-white text-[#e30613] px-2.5 py-1 rounded-sm text-xs font-bold uppercase tracking-wider shadow-sm z-10 mr-3">
-          <span>{lang === 'bn' ? 'সর্বশেষ' : 'Breaking'}</span>
+        {/* TV Style Live Badge */}
+        <div className="flex-shrink-0 flex items-center gap-2 bg-black/35 border border-white/20 text-white px-3 py-1 rounded text-xs font-black uppercase tracking-wider shadow-sm z-20 mr-3.5 backdrop-blur-xs">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,1)]"></span>
+          </span>
+          <span className="text-white font-extrabold tracking-wide">
+            {lang === 'bn' ? 'ব্রেকিং নিউজ' : 'BREAKING'}
+          </span>
         </div>
 
-        {/* Ticker Animation Strip */}
+        {/* Ticker Animation Strip with TV broadcast gradient fade on edges */}
         <div className="flex-1 overflow-hidden relative group">
-          <div className="ticker-track flex items-center whitespace-nowrap text-sm font-medium group-hover:[animation-play-state:paused]">
+          {/* Subtle edge fades for TV aesthetic */}
+          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#b80010] to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#b80010] to-transparent z-10 pointer-events-none" />
+
+          <div
+            className="tv-ticker-track ticker-track flex items-center whitespace-nowrap text-sm font-medium text-white/95"
+            style={{
+              animationDuration: `${durationSeconds}s`,
+            }}
+          >
             {marqueeItems.map((item, index) => {
               const headline = (lang === 'bn' ? item.title_bn : item.title_en) ||
                 item.title_bn ||
@@ -77,6 +100,17 @@ export default function BreakingTicker({ items = [], lang = 'bn', articles = [] 
               const targetUrl = resolveTargetUrl(item)
               const isExternal = targetUrl.startsWith('http://') || targetUrl.startsWith('https://')
 
+              const itemContent = (
+                <span className="inline-flex items-center hover:text-yellow-200 transition-colors py-0.5 group/item cursor-pointer">
+                  <span className="font-semibold text-white/95 hover:text-yellow-200 tracking-wide">
+                    {headline}
+                  </span>
+                  <span className="mx-6 text-yellow-300 text-xs font-bold inline-flex items-center justify-center opacity-85 select-none">
+                    ●
+                  </span>
+                </span>
+              )
+
               if (isExternal) {
                 return (
                   <a
@@ -84,10 +118,8 @@ export default function BreakingTicker({ items = [], lang = 'bn', articles = [] 
                     href={targetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center hover:underline hover:text-yellow-200 transition-colors mr-8 group/link cursor-pointer"
                   >
-                    <span>{headline}</span>
-                    <span className="mx-4 text-white/40 text-xs">◆</span>
+                    {itemContent}
                   </a>
                 )
               }
@@ -96,10 +128,8 @@ export default function BreakingTicker({ items = [], lang = 'bn', articles = [] 
                 <Link
                   key={`${item.id || index}-${index}`}
                   to={targetUrl}
-                  className="inline-flex items-center hover:underline hover:text-yellow-200 transition-colors mr-8 group/link cursor-pointer"
                 >
-                  <span>{headline}</span>
-                  <span className="mx-4 text-white/40 text-xs">◆</span>
+                  {itemContent}
                 </Link>
               )
             })}

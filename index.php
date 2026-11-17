@@ -4,6 +4,9 @@
  * Powers 100% Google SEO, WhatsApp, Facebook, and Twitter link previews for React SPA.
  */
 
+// Set Bangladesh Standard Time (BST / UTC+6) as authoritative timezone
+date_default_timezone_set('Asia/Dhaka');
+
 // Determine base URL
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -31,6 +34,7 @@ function get_seo_article($slug) {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_TIMEOUT => 2,
         ]);
+        try { $pdo->exec("SET time_zone = '+06:00'"); } catch (Throwable $e) {}
         $stmt = $pdo->prepare('SELECT * FROM articles WHERE slug = ? OR id = ? LIMIT 1');
         $stmt->execute([$slug, is_numeric($slug) ? (int)$slug : -1]);
         return $stmt->fetch() ?: null;

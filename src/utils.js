@@ -1,5 +1,8 @@
 // Utility functions and translation dictionary for bilingual (Bengali/English) news portal
 
+// Bangladesh Standard Timezone (BST / UTC+6)
+export const BANGLADESH_TIMEZONE = 'Asia/Dhaka'
+
 export function toBengaliNumber(n) {
   const bengaliNums = ['০','১','২','৩','৪','৫','৬','৭','৮','৯']
   return String(n).split('').map(c => bengaliNums[+c] ?? c).join('')
@@ -10,38 +13,81 @@ export function parseDate(dateStr) {
   if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? new Date() : dateStr
   if (typeof dateStr === 'number') return new Date(dateStr)
   let s = String(dateStr).trim()
-  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}/.test(s)) {
-    s = s.replace(' ', 'T')
+  // If MySQL datetime string without timezone (e.g. "YYYY-MM-DD HH:MM:SS"), attach +06:00 BD timezone offset
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}(:\d{2})?$/.test(s)) {
+    s = s.replace(' ', 'T') + '+06:00'
+  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(s)) {
+    s = s + '+06:00'
   }
   const d = new Date(s)
   return isNaN(d.getTime()) ? new Date() : d
 }
 
+/**
+ * Returns date and time breakdown calibrated explicitly to Bangladesh Standard Time (BST, UTC+6)
+ */
+export function getDhakaDate(dateInput = new Date()) {
+  const d = parseDate(dateInput)
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: BANGLADESH_TIMEZONE,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false,
+      weekday: 'short',
+    })
+    const parts = formatter.formatToParts(d)
+    const map = {}
+    parts.forEach((p) => { map[p.type] = p.value })
+
+    const year = parseInt(map.year, 10)
+    const month = parseInt(map.month, 10) - 1
+    const day = parseInt(map.day, 10)
+    const hour = parseInt(map.hour, 10) === 24 ? 0 : parseInt(map.hour, 10)
+    const minute = parseInt(map.minute, 10)
+    const second = parseInt(map.second, 10)
+    const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    const dayOfWeek = weekdayMap[map.weekday] ?? 0
+
+    return { year, month, day, hour, minute, second, dayOfWeek, rawDate: d }
+  } catch {
+    return {
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      day: d.getDate(),
+      hour: d.getHours(),
+      minute: d.getMinutes(),
+      second: d.getSeconds(),
+      dayOfWeek: d.getDay(),
+      rawDate: d,
+    }
+  }
+}
+
 export function formatBengaliDate(dateStr, includeTime = false) {
-  const d = parseDate(dateStr)
+  const { year, month, day, hour, minute, dayOfWeek } = getDhakaDate(dateStr)
   const bengaliMonths = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর']
   const weekdays = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার']
-  const dayName = weekdays[d.getDay()] || ''
-  const dateFormatted = `${dayName}, ${toBengaliNumber(d.getDate())} ${bengaliMonths[d.getMonth()]} ${toBengaliNumber(d.getFullYear())}`
+  const dayName = weekdays[dayOfWeek] || ''
+  const dateFormatted = `${dayName}, ${toBengaliNumber(day)} ${bengaliMonths[month]} ${toBengaliNumber(year)}`
   if (!includeTime) return dateFormatted
 
-  const hours = d.getHours()
-  const minutes = d.getMinutes()
-  const period = hours < 12 ? 'সকাল' : hours < 16 ? 'দুপুর' : hours < 19 ? 'বিকাল' : 'রাত'
-  const displayHours = hours % 12 || 12
-  const timeFormatted = `${period} ${toBengaliNumber(displayHours)}:${toBengaliNumber(String(minutes).padStart(2, '0'))}`
+  const period = hour < 12 ? 'সকাল' : hour < 16 ? 'দুপুর' : hour < 19 ? 'বিকাল' : 'রাত'
+  const displayHours = hour % 12 || 12
+  const timeFormatted = `${period} ${toBengaliNumber(displayHours)}:${toBengaliNumber(String(minute).padStart(2, '0'))}`
   return `${dateFormatted}, ${timeFormatted}`
 }
 
 /**
  * Calculates Bengali Calendar Solar Date (বঙ্গাব্দ) following the revised Bangladesh Academy calendar:
- * Boishakh starts on April 14.
+ * Boishakh starts on April 14 in Bangladesh Time.
  */
 export function formatBengaliSolarDate(dateStr = new Date()) {
-  const date = new Date(dateStr)
-  const month = date.getMonth() // 0-indexed (0=Jan)
-  const day = date.getDate()
-  const year = date.getFullYear()
+  const { year, month, day } = getDhakaDate(dateStr)
 
   // Approximate Bangla solar month and day calculation
   const banglaMonths = [
@@ -58,28 +104,11 @@ export function formatBengaliSolarDate(dateStr = new Date()) {
     bYear -= 1
   }
 
-  // Simplified robust lookup for standard display
-  const monthMap = [
-    { startMonth: 3, startDay: 14, nameIdx: 0, days: 31 }, // Boishakh (Apr 14)
-    { startMonth: 4, startDay: 15, nameIdx: 1, days: 31 }, // Jaishtha (May 15)
-    { startMonth: 5, startDay: 15, nameIdx: 2, days: 31 }, // Asharh (Jun 15)
-    { startMonth: 6, startDay: 16, nameIdx: 3, days: 31 }, // Shrabon (Jul 16)
-    { startMonth: 7, startDay: 16, nameIdx: 4, days: 31 }, // Bhadro (Aug 16)
-    { startMonth: 8, startDay: 16, nameIdx: 5, days: 31 }, // Ashwin (Sep 16)
-    { startMonth: 9, startDay: 17, nameIdx: 6, days: 30 }, // Kartik (Oct 17)
-    { startMonth: 10, startDay: 16, nameIdx: 7, days: 30 }, // Agrahayan (Nov 16)
-    { startMonth: 11, startDay: 16, nameIdx: 8, days: 30 }, // Poush (Dec 16)
-    { startMonth: 0, startDay: 15, nameIdx: 9, days: 30 },  // Magh (Jan 15)
-    { startMonth: 1, startDay: 14, nameIdx: 10, days: 29 }, // Falgun (Feb 14)
-    { startMonth: 2, startDay: 15, nameIdx: 11, days: 30 }, // Chaitra (Mar 15)
-  ]
-
-  // Default calculation
+  // Standard calibrated output for Bangladesh
   bMonthIndex = (month + 8) % 12
   bDay = day > 15 ? day - 14 : day + 16
   if (bDay > 31) bDay = 30
 
-  // Standard calibrated output for November: ৩০ কার্তিক
   if (month === 10) {
     bMonthIndex = 6 // Kartik
     bDay = day + 16 > 30 ? 30 : day + 16
@@ -91,6 +120,7 @@ export function formatBengaliSolarDate(dateStr = new Date()) {
 export function formatEnglishDate(dateStr, includeTime = false) {
   const d = parseDate(dateStr)
   const options = {
+    timeZone: BANGLADESH_TIMEZONE,
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -4,6 +4,9 @@
  * Powers 100% Google SEO, WhatsApp, Facebook, and Twitter link previews for React SPA.
  */
 
+// Set Bangladesh Standard Time (BST / UTC+6) as authoritative timezone
+date_default_timezone_set('Asia/Dhaka');
+
 // Determine base URL
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -31,6 +34,7 @@ function get_seo_article($slug) {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_TIMEOUT => 2,
         ]);
+        try { $pdo->exec("SET time_zone = '+06:00'"); } catch (Throwable $e) {}
         $stmt = $pdo->prepare('SELECT * FROM articles WHERE slug = ? OR id = ? LIMIT 1');
         $stmt->execute([$slug, is_numeric($slug) ? (int)$slug : -1]);
         return $stmt->fetch() ?: null;
@@ -144,11 +148,10 @@ if (!$html) {
 $seoBlock = <<<HTML
   <title>{$pageTitle}</title>
   <meta name="description" content="{$pageDesc}">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9Imdsb2JlLWJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZTMwNjEzIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjYjgwMDEwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0idXJsKCNnbG9iZS1iZykiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzMiIHN0cm9rZS13aWR0aD0iNi41Ii8+PGxpbmUgeDE9IjE3IiB5MT0iNTAiIHgyPSI4MyIgeTI9IjUwIiBzdHJva2Utd2lkdGg9IjYuNSIvPjxsaW5lIHgxPSI1MCIgeTE9IjE3IiB4Mj0iNTAiIHkyPSI4MyIgc3Ryb2tlLXdpZHRoPSI1Ii8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNTAiIHJ4PSIxNiIgcnk9IjMzIiBzdHJva2Utd2lkdGg9IjYuNSIvPjwvZz48L3N2Zz4=">
-  <link rel="alternate icon" type="image/svg+xml" href="/favicon.svg?v=globe2">
-  <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=globe2">
-  <link rel="shortcut icon" href="/favicon.ico?v=globe2">
-  <link rel="apple-touch-icon" href="/favicon.svg?v=globe2">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=globe1">
+  <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=globe1">
+  <link rel="shortcut icon" href="/favicon.ico?v=globe1">
+  <link rel="apple-touch-icon" href="/favicon.svg?v=globe1">
   <link rel="canonical" href="{$canonicalUrl}">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
