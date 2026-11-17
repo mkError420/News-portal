@@ -149,11 +149,18 @@ export const api = {
     return requireSuccess(res.data)
   },
 
-  async recordArticleView(id) {
+  async recordArticleView(idOrSlug) {
     try {
-      await client.post(`/articles?action=view&id=${encodeURIComponent(id)}`)
+      const isNum = Number.isInteger(Number(idOrSlug)) && Number(idOrSlug) > 0
+      const query = isNum ? `id=${encodeURIComponent(idOrSlug)}` : `slug=${encodeURIComponent(idOrSlug)}`
+      const res = await client.post(`/articles?action=view&${query}`, {
+        action: 'view',
+        ...(isNum ? { id: Number(idOrSlug) } : { slug: String(idOrSlug) }),
+      })
+      return res.data
     } catch {
       // view tracking is non-blocking
+      return null
     }
   },
 

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   CloudSun,
   Clock,
+  Eye,
   Flame,
   Newspaper,
   DollarSign,
@@ -20,7 +21,15 @@ import SEO from '../components/SEO.jsx'
 import CurrencyWidget from '../components/CurrencyWidget.jsx'
 import PrayerTimesWidget from '../components/PrayerTimesWidget.jsx'
 import ReaderPollWidget from '../components/ReaderPollWidget.jsx'
-import { PRAYER_TIMES, CURRENCY_RATES, formatRelativeTime } from '../utils.js'
+import {
+  PRAYER_TIMES,
+  CURRENCY_RATES,
+  formatRelativeTime,
+  formatViews,
+  formatBengaliDate,
+  formatEnglishDate,
+  toBengaliNumber,
+} from '../utils.js'
 
 export default function HomePage({
   articles = [],
@@ -120,7 +129,7 @@ export default function HomePage({
   // Latest articles (sorted by date descending)
   const latestArticles = [...articles].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 5)
   // Most Read sorted by views
-  const mostRead = [...articles].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
+  const mostRead = [...articles].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).slice(0, 5)
 
   const handleVote = (e) => {
     e.preventDefault()
@@ -543,10 +552,16 @@ export default function HomePage({
                         {lang === 'bn' ? art.title_bn : art.title_en}
                       </h4>
                     </Link>
-                    <span className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
-                      <Clock size={10} />
-                      <span>{formatRelativeTime(art.date, lang)}</span>
-                    </span>
+                    <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-2.5">
+                      <span className="flex items-center gap-1" title={lang === 'bn' ? formatBengaliDate(art.date, true) : formatEnglishDate(art.date, true)}>
+                        <Clock size={10} />
+                        <span>{formatRelativeTime(art.date, lang)}</span>
+                      </span>
+                      <span className="flex items-center gap-1" title={lang === 'bn' ? `${toBengaliNumber(parseInt(art.views, 10) || 0)} বার পড়া হয়েছে` : `${parseInt(art.views, 10) || 0} views`}>
+                        <Eye size={10} />
+                        <span>{formatViews(art.views, lang)}</span>
+                      </span>
+                    </div>
                   </article>
                 ))
               ) : (

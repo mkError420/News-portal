@@ -149,6 +149,69 @@ export default function App() {
     return () => { active = false }
   }, [])
 
+  // Live Background Poller for real-time article views and updates
+  useEffect(() => {
+    const refreshLiveArticles = async () => {
+      try {
+        const [arts, breaking] = await Promise.allSettled([
+          api.getArticles(),
+          api.getBreakingNews(),
+        ])
+        if (arts.status === 'fulfilled' && Array.isArray(arts.value) && arts.value.length > 0) {
+          setNewsData((prev) => {
+            const updated = { ...prev, articles: arts.value }
+            if (breaking.status === 'fulfilled' && Array.isArray(breaking.value)) {
+              updated.breakingNews = breaking.value
+            }
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+            } catch {}
+            return updated
+          })
+        }
+      } catch {}
+    }
+
+    const interval = setInterval(refreshLiveArticles, 25000)
+
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        refreshLiveArticles()
+      }
+    }
+    window.addEventListener('visibilitychange', onVisibilityOrFocus)
+    window.addEventListener('focus', onVisibilityOrFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('visibilitychange', onVisibilityOrFocus)
+      window.removeEventListener('focus', onVisibilityOrFocus)
+    }
+  }, [])
+
+  const handleRecordArticleView = (idOrSlug, authoritativeViews) => {
+    setNewsData((prev) => {
+      const articles = (prev.articles || []).map((art) => {
+        if (
+          art.id === idOrSlug ||
+          art.slug === idOrSlug ||
+          String(art.id) === String(idOrSlug)
+        ) {
+          const newViews = typeof authoritativeViews === 'number'
+            ? authoritativeViews
+            : (Math.max(0, parseInt(art.views, 10) || 0) + 1)
+          return { ...art, views: newViews }
+        }
+        return art
+      })
+      const updated = { ...prev, articles }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+      } catch {}
+      return updated
+    })
+  }
+
   // Sync favicon if custom setting is present, else default globe data URI
   useEffect(() => {
     const faviconHref = newsData.settings?.favicon_url?.trim() || GLOBE_FAVICON_DATA_URI
@@ -617,6 +680,7 @@ export default function App() {
                 ads={newsData.ads || []}
                 settings={newsData.settings}
                 lang={lang}
+                onRecordView={handleRecordArticleView}
               />
             }
           />

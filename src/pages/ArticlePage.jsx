@@ -34,8 +34,23 @@ import {
   toBengaliNumber,
 } from '../utils.js'
 
-export default function ArticlePage({ articles = [], breakingNews = [], categories = [], ads = [], settings = null, lang = 'bn' }) {
+export default function ArticlePage({
+  articles = [],
+  breakingNews = [],
+  categories = [],
+  ads = [],
+  settings = null,
+  lang = 'bn',
+  onRecordView = null,
+}) {
   const { slug } = useParams()
+
+  // Live timer tick every 30s so publish relative time updates dynamically
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 30000)
+    return () => clearInterval(timer)
+  }, [])
   const article = articles.find((a) => a.slug === slug || String(a.id) === String(slug)) ||
     articles.find((a) => a.slug === slug) ||
     (() => {
@@ -86,11 +101,31 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
   const [authorName, setAuthorName] = useState('')
   const [commentText, setCommentText] = useState('')
 
+  // Live Views state (instant optimistic count + server synchronization)
+  const [liveViews, setLiveViews] = useState(() => Math.max(0, parseInt(article?.views, 10) || 0))
+
+  useEffect(() => {
+    if (article?.views !== undefined && article?.views !== null) {
+      setLiveViews(Math.max(0, parseInt(article.views, 10) || 0))
+    }
+  }, [article?.id, article?.views])
+
   // Scroll to top and record view
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    if (article?.id) {
-      api.recordArticleView(article.id)
+    const target = article?.id || slug
+    if (target) {
+      // Optimistic increment so the live count immediately advances for the reader
+      setLiveViews((prev) => prev + 1)
+      onRecordView?.(target)
+
+      api.recordArticleView(target).then((res) => {
+        if (res && res.views !== undefined && res.views !== null) {
+          const finalCount = Number(res.views)
+          setLiveViews(finalCount)
+          onRecordView?.(target, finalCount)
+        }
+      }).catch(() => {})
     }
   }, [slug, article?.id])
 
@@ -120,9 +155,9 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
     ? (matchedCat?.name_bn || CATEGORIES_BN[catKey] || article.category)
     : (matchedCat?.name_en || CATEGORIES_EN[catKey] || article.category)
 
-  const pubDateStr = lang === 'bn' ? formatBengaliDate(article.date) : formatEnglishDate(article.date)
+  const pubDateStr = lang === 'bn' ? formatBengaliDate(article.date, true) : formatEnglishDate(article.date, true)
   const relativeTime = formatRelativeTime(article.date, lang)
-  const viewsStr = formatViews(article.views || 25400, lang)
+  const viewsStr = formatViews(liveViews, lang)
 
   // Font size classes
   const fontSizes = ['text-base leading-relaxed', 'text-lg leading-loose', 'text-xl leading-loose']
@@ -152,7 +187,7 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
 
   // Related stories (exclude current)
   const relatedArticles = articles.filter((a) => a.id !== article.id).slice(0, 3)
-  const mostRead = [...articles].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
+  const mostRead = [...articles].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0)).slice(0, 5)
 
   // SEO & Structured Data calculation
   const seoTitle = article.seo_title || title
@@ -283,13 +318,17 @@ export default function ArticlePage({ articles = [], breakingNews = [], categori
               </div>
             </div>
             <div className="flex items-center gap-3 text-gray-500">
-              <span className="flex items-center gap-1">
-                <Clock size={12} />
-                <span>{pubDateStr}</span>
+              <span className="flex items-center gap-1.5" title={pubDateStr}>
+                <Clock size={12} className="text-gray-400" />
+                <span>{pubDateStr} <span className="text-gray-400 font-normal">({relativeTime})</span></span>
               </span>
               <span>•</span>
-              <span className="flex items-center gap-1">
-                <Eye size={12} />
+              <span
+                className="flex items-center gap-1.5 bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full font-semibold text-xs border border-red-100"
+                title={lang === 'bn' ? `মোট ${toBengaliNumber(liveViews)} বার পড়া হয়েছে` : `Read ${liveViews} times`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                <Eye size={12} className="text-red-500" />
                 <span>{viewsStr} {lang === 'bn' ? 'বার পড়া হয়েছে' : 'views'}</span>
               </span>
             </div>

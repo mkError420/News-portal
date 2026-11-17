@@ -1,16 +1,34 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Clock, Eye, Share2 } from 'lucide-react'
-import { formatRelativeTime, formatViews, CATEGORIES_BN, CATEGORIES_EN, toBengaliNumber } from '../utils.js'
+import {
+  formatRelativeTime,
+  formatViews,
+  formatBengaliDate,
+  formatEnglishDate,
+  CATEGORIES_BN,
+  CATEGORIES_EN,
+  toBengaliNumber,
+} from '../utils.js'
 
 export default function NewsCard({ article, variant = 'grid', lang = 'bn', rank }) {
   if (!article) return null
+
+  // Live timer tick every 30s so publish time is fully functional and live updates
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 30000)
+    return () => clearInterval(timer)
+  }, [])
 
   const title = (lang === 'bn' ? article.title_bn : article.title_en) || article.title_bn || article.title
   const summary = (lang === 'bn' ? article.summary_bn : article.summary_en) || article.summary_bn || article.summary
   const catKey = (article.category || 'national').toLowerCase()
   const catLabel = lang === 'bn' ? (CATEGORIES_BN[catKey] || article.category) : (CATEGORIES_EN[catKey] || article.category)
   const timeStr = formatRelativeTime(article.date, lang)
-  const viewsStr = formatViews(article.views || 1200, lang)
+  const fullDateTooltip = lang === 'bn' ? formatBengaliDate(article.date, true) : formatEnglishDate(article.date, true)
+  const viewsCount = Math.max(0, parseInt(article.views, 10) || 0)
+  const viewsStr = formatViews(viewsCount, lang)
   const targetUrl = `/article/${article.slug}`
 
   // Category Tag Badge
@@ -27,16 +45,17 @@ export default function NewsCard({ article, variant = 'grid', lang = 'bn', rank 
   // Metadata snippet
   const MetaRow = () => (
     <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-2 font-bengali">
-      <span className="flex items-center gap-1">
+      <span className="flex items-center gap-1 hover:text-gray-700 transition-colors" title={fullDateTooltip}>
         <Clock size={11} className="text-gray-400" />
         <span>{timeStr}</span>
       </span>
-      {article.views && (
-        <span className="flex items-center gap-1">
-          <Eye size={11} className="text-gray-400" />
-          <span>{viewsStr}</span>
-        </span>
-      )}
+      <span
+        className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+        title={lang === 'bn' ? `${toBengaliNumber(viewsCount)} বার পড়া হয়েছে` : `${viewsCount} views`}
+      >
+        <Eye size={11} className="text-gray-400" />
+        <span>{viewsStr}</span>
+      </span>
     </div>
   )
 
@@ -168,7 +187,19 @@ export default function NewsCard({ article, variant = 'grid', lang = 'bn', rank 
               {title}
             </h4>
           </Link>
-          <span className="text-[11px] text-gray-400 mt-1 block">{timeStr}</span>
+          <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-2.5">
+            <span className="flex items-center gap-1" title={fullDateTooltip}>
+              <Clock size={10} className="text-gray-400" />
+              <span>{timeStr}</span>
+            </span>
+            <span
+              className="flex items-center gap-1"
+              title={lang === 'bn' ? `${toBengaliNumber(viewsCount)} বার পড়া হয়েছে` : `${viewsCount} views`}
+            >
+              <Eye size={10} className="text-gray-400" />
+              <span>{viewsStr}</span>
+            </span>
+          </div>
         </div>
         {article.image && (
           <Link to={targetUrl} className="w-14 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-100">

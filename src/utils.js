@@ -5,12 +5,32 @@ export function toBengaliNumber(n) {
   return String(n).split('').map(c => bengaliNums[+c] ?? c).join('')
 }
 
-export function formatBengaliDate(dateStr) {
-  const d = new Date(dateStr)
+export function parseDate(dateStr) {
+  if (!dateStr) return new Date()
+  if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? new Date() : dateStr
+  if (typeof dateStr === 'number') return new Date(dateStr)
+  let s = String(dateStr).trim()
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}/.test(s)) {
+    s = s.replace(' ', 'T')
+  }
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? new Date() : d
+}
+
+export function formatBengaliDate(dateStr, includeTime = false) {
+  const d = parseDate(dateStr)
   const bengaliMonths = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর']
   const weekdays = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার']
-  const dayName = weekdays[d.getDay()]
-  return `${dayName}, ${toBengaliNumber(d.getDate())} ${bengaliMonths[d.getMonth()]} ${toBengaliNumber(d.getFullYear())}`
+  const dayName = weekdays[d.getDay()] || ''
+  const dateFormatted = `${dayName}, ${toBengaliNumber(d.getDate())} ${bengaliMonths[d.getMonth()]} ${toBengaliNumber(d.getFullYear())}`
+  if (!includeTime) return dateFormatted
+
+  const hours = d.getHours()
+  const minutes = d.getMinutes()
+  const period = hours < 12 ? 'সকাল' : hours < 16 ? 'দুপুর' : hours < 19 ? 'বিকাল' : 'রাত'
+  const displayHours = hours % 12 || 12
+  const timeFormatted = `${period} ${toBengaliNumber(displayHours)}:${toBengaliNumber(String(minutes).padStart(2, '0'))}`
+  return `${dateFormatted}, ${timeFormatted}`
 }
 
 /**
@@ -68,32 +88,46 @@ export function formatBengaliSolarDate(dateStr = new Date()) {
   return `${toBengaliNumber(bDay)} ${banglaMonths[bMonthIndex]} ${toBengaliNumber(bYear)} বঙ্গাব্দ`
 }
 
-export function formatEnglishDate(dateStr) {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-GB', {
+export function formatEnglishDate(dateStr, includeTime = false) {
+  const d = parseDate(dateStr)
+  const options = {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    year: 'numeric'
-  })
+    year: 'numeric',
+    ...(includeTime ? { hour: 'numeric', minute: '2-digit', hour12: true } : {})
+  }
+  return d.toLocaleDateString('en-GB', options)
 }
 
 export function formatRelativeTime(dateStr, lang = 'bn') {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  if (!dateStr) return lang === 'bn' ? 'এইমাত্র' : 'Just now'
+  const d = parseDate(dateStr)
+  const diff = Date.now() - d.getTime()
+  // Guard against server clock skew (slight future timestamp)
+  if (diff <= 30000) {
+    return lang === 'bn' ? 'এইমাত্র' : 'Just now'
+  }
   const mins = Math.floor(diff / 60000)
   const hrs = Math.floor(mins / 60)
   const days = Math.floor(hrs / 24)
+  const months = Math.floor(days / 30)
+  const years = Math.floor(days / 365)
 
   if (lang === 'bn') {
     if (mins < 1) return 'এইমাত্র'
     if (mins < 60) return `${toBengaliNumber(mins)} মিনিট আগে`
     if (hrs < 24) return `${toBengaliNumber(hrs)} ঘণ্টা আগে`
-    return `${toBengaliNumber(days)} দিন আগে`
+    if (days < 30) return `${toBengaliNumber(days)} দিন আগে`
+    if (months < 12) return `${toBengaliNumber(months)} মাস আগে`
+    return `${toBengaliNumber(years)} বছর আগে`
   } else {
     if (mins < 1) return 'Just now'
     if (mins < 60) return `${mins}m ago`
     if (hrs < 24) return `${hrs}h ago`
-    return `${days}d ago`
+    if (days < 30) return `${days}d ago`
+    if (months < 12) return `${months}mo ago`
+    return `${years}y ago`
   }
 }
 
@@ -113,14 +147,25 @@ export function truncate(text, maxLen = 120) {
 }
 
 export function formatViews(n, lang = 'bn') {
+  const num = Math.max(0, parseInt(n, 10) || 0)
   if (lang === 'bn') {
-    if (n >= 100000) return toBengaliNumber(Math.floor(n / 100000)) + ' লক্ষ'
-    if (n >= 1000) return toBengaliNumber(Math.floor(n / 1000)) + ' হাজার'
-    return toBengaliNumber(n)
+    if (num >= 10000000) {
+      const cr = (num / 10000000).toFixed(1).replace(/\.0$/, '')
+      return `${toBengaliNumber(cr)} কোটি`
+    }
+    if (num >= 100000) {
+      const lakh = (num / 100000).toFixed(1).replace(/\.0$/, '')
+      return `${toBengaliNumber(lakh)} লক্ষ`
+    }
+    if (num >= 1000) {
+      const k = (num / 1000).toFixed(1).replace(/\.0$/, '')
+      return `${toBengaliNumber(k)} হাজার`
+    }
+    return toBengaliNumber(num)
   }
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
-  return String(n)
+  if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+  return String(num)
 }
 
 export const CATEGORIES_BN = {

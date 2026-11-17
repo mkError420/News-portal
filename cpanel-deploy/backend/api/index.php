@@ -2303,6 +2303,42 @@ if ($resource === 'breaking-news') {
 if ($resource === 'articles') {
     $dbConn = require_db();
 
+    // Parse request body if available
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true) ?: [];
+
+    // INCREMENT ARTICLE VIEW COUNT (Live public tracking)
+    $actionParam = trim((string) ($_GET['action'] ?? ($input['action'] ?? '')));
+    $isViewAction = ($subResource === 'view') || ($actionParam === 'view');
+
+    if ($isViewAction) {
+        $id = (int) ($_GET['id'] ?? ($input['id'] ?? 0));
+        $slug = trim((string) ($_GET['slug'] ?? ($input['slug'] ?? '')));
+
+        if ($id <= 0 && $slug !== '') {
+            $lookupStmt = $dbConn->prepare('SELECT id FROM articles WHERE slug = ? LIMIT 1');
+            $lookupStmt->execute([$slug]);
+            $id = (int) $lookupStmt->fetchColumn();
+        }
+
+        $currentViews = 0;
+        if ($id > 0) {
+            $updateStmt = $dbConn->prepare('UPDATE articles SET views = COALESCE(views, 0) + 1 WHERE id = ?');
+            $updateStmt->execute([$id]);
+
+            $viewStmt = $dbConn->prepare('SELECT views FROM articles WHERE id = ?');
+            $viewStmt->execute([$id]);
+            $currentViews = (int) $viewStmt->fetchColumn();
+        }
+
+        json_response([
+            'success' => true,
+            'id' => $id,
+            'slug' => $slug,
+            'views' => $currentViews,
+        ]);
+    }
+
     // GET ALL ARTICLES
     if ($method === 'GET') {
         $stmt = $dbConn->query('SELECT * FROM articles ORDER BY published_at DESC');
@@ -2310,21 +2346,9 @@ if ($resource === 'articles') {
         json_response(['articles' => $items]);
     }
 
-    // INCREMENT ARTICLE VIEW COUNT
-    if ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'view') {
-        $id = (int) ($_GET['id'] ?? 0);
-        if ($id > 0) {
-            $stmt = $dbConn->prepare('UPDATE articles SET views = views + 1 WHERE id = ?');
-            $stmt->execute([$id]);
-        }
-        json_response(['success' => true]);
-    }
-
     // CREATE OR UPDATE ARTICLE
     if ($method === 'POST' || $method === 'PUT') {
         if (!is_admin()) json_response(['message' => 'Unauthorized'], 401);
-
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $titleBn = trim((string) ($input['title_bn'] ?? ($input['title'] ?? '')));
         $titleEn = trim((string) ($input['title_en'] ?? $titleBn));
         $titleBn = $titleBn !== '' ? $titleBn : $titleEn;
@@ -2486,6 +2510,12 @@ if ($resource === 'articles') {
                 }
             } catch (Throwable $e) {}
 
+            if (isset($input['views']) && is_numeric($input['views']) && $id > 0) {
+                try {
+                    $dbConn->prepare('UPDATE articles SET views = ? WHERE id = ?')->execute([(int)$input['views'], $id]);
+                } catch (Throwable $e) {}
+            }
+
             $fetchStmt = $dbConn->prepare('SELECT * FROM articles WHERE id = ?');
             $fetchStmt->execute([$id]);
             $savedRow = $fetchStmt->fetch();
@@ -2561,6 +2591,12 @@ if ($resource === 'articles') {
                     $upCat->execute([$categoriesJson, $id]);
                 }
             } catch (Throwable $e) {}
+
+            if (isset($input['views']) && is_numeric($input['views']) && $id > 0) {
+                try {
+                    $dbConn->prepare('UPDATE articles SET views = ? WHERE id = ?')->execute([(int)$input['views'], $id]);
+                } catch (Throwable $e) {}
+            }
 
             $fetchStmt = $dbConn->prepare('SELECT * FROM articles WHERE id = ?');
             $fetchStmt->execute([$id]);

@@ -896,6 +896,7 @@ export default function AdminPage({
     imageCredit: siteForm.site_name_bn ? `ছবি: ${siteForm.site_name_bn}` : 'ছবি: সংগৃহীত',
     content_bn: '',
     content_en: '',
+    views: 0,
     featured: false,
     tags_bn: 'বাংলাদেশ, সংবাদ',
     tags_en: 'Bangladesh, News',
@@ -1273,6 +1274,7 @@ export default function AdminPage({
 
     const articlePayload = {
       ...formData,
+      views: Math.max(0, parseInt(formData.views, 10) || 0),
       category: primaryCat,
       categories: selectedCats,
       tags_bn: tagsArrayBn,
@@ -1297,7 +1299,7 @@ export default function AdminPage({
           id: Date.now(),
           slug: formData.slug || `news-${Date.now()}`,
           date: new Date().toISOString(),
-          views: 0,
+          views: Math.max(0, parseInt(formData.views, 10) || 0),
         }
         let savedRes = null
         try {
@@ -1345,6 +1347,7 @@ export default function AdminPage({
 
     setFormData({
       ...article,
+      views: Math.max(0, parseInt(article.views, 10) || 0),
       category: articleCats[0] || article.category || 'national',
       categories: articleCats,
       seo_title: article.seo_title || '',
@@ -3869,8 +3872,8 @@ export default function AdminPage({
                 </div>
               </div>
 
-              {/* Author and Role */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Author, Role & Views Count */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
                     প্রতিবেদক / লেখকের নাম
@@ -3893,6 +3896,21 @@ export default function AdminPage({
                     value={formData.author_role_bn}
                     onChange={(e) => setFormData({ ...formData, author_role_bn: e.target.value })}
                     placeholder="স্টাফ রিপোর্টার"
+                    className="w-full text-sm p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                    <span>পাঠক ভিউ সংখ্যা (Views)</span>
+                    <span className="text-[10px] text-gray-400 font-normal">লাইভ কাউন্ট</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.views !== undefined ? formData.views : 0}
+                    onChange={(e) => setFormData({ ...formData, views: parseInt(e.target.value, 10) || 0 })}
+                    placeholder="0"
                     className="w-full text-sm p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                   />
                 </div>
