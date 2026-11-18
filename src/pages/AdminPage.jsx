@@ -1846,7 +1846,7 @@ export default function AdminPage({
       // Re-fetch roles from server to ensure 100% database sync
       api.getRoles().then((r) => {
         if (Array.isArray(r) && r.length > 0) setLocalRoles(r)
-      }).catch(() => {})
+      }).catch(() => { })
 
       refreshStats()
     } catch (err) {
@@ -1937,8 +1937,8 @@ export default function AdminPage({
         setLocalStaff((prev) =>
           prev.map((item) =>
             String(item.id) === String(editingStaffId) ||
-            String(item.id) === String(savedStaff.id) ||
-            (item.email && item.email.toLowerCase() === payload.email)
+              String(item.id) === String(savedStaff.id) ||
+              (item.email && item.email.toLowerCase() === payload.email)
               ? { ...item, ...savedStaff }
               : item
           )
@@ -1968,7 +1968,7 @@ export default function AdminPage({
           if (exists) {
             return prev.map((item) =>
               String(item.id) === String(savedStaff.id) ||
-              (item.email && item.email.toLowerCase() === savedStaff.email?.toLowerCase())
+                (item.email && item.email.toLowerCase() === savedStaff.email?.toLowerCase())
                 ? { ...item, ...savedStaff }
                 : item
             )
@@ -1985,7 +1985,7 @@ export default function AdminPage({
       // Re-fetch staff from server to ensure 100% database sync
       api.getStaff().then((s) => {
         if (Array.isArray(s) && s.length > 0) setLocalStaff(s)
-      }).catch(() => {})
+      }).catch(() => { })
 
       refreshStats()
     } catch (err) {
@@ -2461,11 +2461,10 @@ export default function AdminPage({
               <button
                 type="button"
                 onClick={() => handleToggleLang('bn')}
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  lang === 'bn'
-                    ? 'bg-[#e30613] text-white shadow-xs ring-1 ring-white/30'
-                    : 'text-gray-300 hover:text-white hover:bg-white/10'
-                }`}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${lang === 'bn'
+                  ? 'bg-[#e30613] text-white shadow-xs ring-1 ring-white/30'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
                 title="বাংলায় দেখুন (Switch to Bengali)"
               >
                 <span>🇧🇩</span>
@@ -2475,11 +2474,10 @@ export default function AdminPage({
               <button
                 type="button"
                 onClick={() => handleToggleLang('en')}
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  lang === 'en'
-                    ? 'bg-[#e30613] text-white shadow-xs ring-1 ring-white/30'
-                    : 'text-gray-300 hover:text-white hover:bg-white/10'
-                }`}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${lang === 'en'
+                  ? 'bg-[#e30613] text-white shadow-xs ring-1 ring-white/30'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
                 title="Switch to English"
               >
                 <span>🌐</span>
@@ -2625,27 +2623,25 @@ export default function AdminPage({
                             }
                             setActiveTab(tab.id)
                           }}
-                          className={`w-full group flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all text-left cursor-pointer ${
-                            isSpecialAdd
-                              ? isActive
-                                ? 'bg-[#e30613] text-white font-bold shadow-sm'
-                                : 'bg-red-50/70 hover:bg-red-100/80 text-[#e30613] font-bold border border-red-200/60'
-                              : isActive
+                          className={`w-full group flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all text-left cursor-pointer ${isSpecialAdd
+                            ? isActive
+                              ? 'bg-[#e30613] text-white font-bold shadow-sm'
+                              : 'bg-red-50/70 hover:bg-red-100/80 text-[#e30613] font-bold border border-red-200/60'
+                            : isActive
                               ? 'bg-red-50 text-[#e30613] font-bold border-l-4 border-l-[#e30613] shadow-2xs'
                               : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900 font-medium'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-2.5">
                             <span
-                              className={`transition-colors ${
-                                isSpecialAdd
-                                  ? isActive
-                                    ? 'text-white'
-                                    : 'text-[#e30613]'
-                                  : isActive
+                              className={`transition-colors ${isSpecialAdd
+                                ? isActive
+                                  ? 'text-white'
+                                  : 'text-[#e30613]'
+                                : isActive
                                   ? 'text-[#e30613]'
                                   : 'text-gray-400 group-hover:text-gray-600'
-                              }`}
+                                }`}
                             >
                               {tab.icon}
                             </span>
@@ -2654,11 +2650,10 @@ export default function AdminPage({
 
                           {tab.count !== null && (
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono transition-colors ${
-                                isActive
-                                  ? 'bg-[#e30613] text-white'
-                                  : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
-                              }`}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono transition-colors ${isActive
+                                ? 'bg-[#e30613] text-white'
+                                : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
+                                }`}
                             >
                               {toBengaliNumber(tab.count)}
                             </span>
@@ -5416,11 +5411,10 @@ export default function AdminPage({
                           document.getElementById('role-form-section')?.scrollIntoView({ behavior: 'smooth' })
                         }, 50)
                       }}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                        roleSubTab === 'roles' && !editingRoleId
-                          ? 'bg-[#e30613] hover:bg-red-700 text-white'
-                          : 'bg-red-50 hover:bg-red-100 text-[#e30613] border border-red-200'
-                      }`}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${roleSubTab === 'roles' && !editingRoleId
+                        ? 'bg-[#e30613] hover:bg-red-700 text-white'
+                        : 'bg-red-50 hover:bg-red-100 text-[#e30613] border border-red-200'
+                        }`}
                     >
                       <PlusCircle size={14} />
                       <span>নতুন রোল তৈরি করুন</span>
@@ -5435,11 +5429,10 @@ export default function AdminPage({
                           document.getElementById('staff-form-section')?.scrollIntoView({ behavior: 'smooth' })
                         }, 50)
                       }}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                        roleSubTab === 'staff' && !editingStaffId
-                          ? 'bg-[#e30613] hover:bg-red-700 text-white'
-                          : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200'
-                      }`}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${roleSubTab === 'staff' && !editingStaffId
+                        ? 'bg-[#e30613] hover:bg-red-700 text-white'
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200'
+                        }`}
                     >
                       <UserPlus size={14} />
                       <span>নতুন টিম সদস্য</span>
@@ -6483,11 +6476,10 @@ export default function AdminPage({
                       key={filterItem.id}
                       type="button"
                       onClick={() => setAdFilter(filterItem.id)}
-                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                        adFilter === filterItem.id
-                          ? 'bg-[#e30613] text-white shadow-xs'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${adFilter === filterItem.id
+                        ? 'bg-[#e30613] text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
                     >
                       {lang === 'bn' ? filterItem.bn : filterItem.en}
                     </button>
@@ -6527,9 +6519,8 @@ export default function AdminPage({
                   return (
                     <div
                       key={ad.id || ad.slot_key}
-                      className={`bg-white rounded-xl border transition-all duration-200 shadow-xs flex flex-col justify-between overflow-hidden ${
-                        isActive ? 'border-gray-200 hover:shadow-md' : 'border-gray-200 bg-gray-50/50 opacity-90'
-                      }`}
+                      className={`bg-white rounded-xl border transition-all duration-200 shadow-xs flex flex-col justify-between overflow-hidden ${isActive ? 'border-gray-200 hover:shadow-md' : 'border-gray-200 bg-gray-50/50 opacity-90'
+                        }`}
                     >
                       {/* Slot Header */}
                       <div className="p-4 border-b border-gray-100">
@@ -6543,10 +6534,10 @@ export default function AdminPage({
                                 {ad.size === 'leaderboard'
                                   ? '728×90 Leaderboard'
                                   : ad.size === 'halfpage'
-                                  ? '300×600 Skyscraper'
-                                  : ad.size === 'rectangle'
-                                  ? '300×250 Rectangle'
-                                  : 'ইন-ফিড ব্যানার'}
+                                    ? '300×600 Skyscraper'
+                                    : ad.size === 'rectangle'
+                                      ? '300×250 Rectangle'
+                                      : 'ইন-ফিড ব্যানার'}
                               </span>
                             </div>
                             <h4 className="text-sm font-bold text-gray-900 leading-snug">
@@ -6562,15 +6553,13 @@ export default function AdminPage({
                             <button
                               type="button"
                               onClick={() => handleToggleAdStatus(ad)}
-                              className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                                isActive ? 'bg-emerald-500' : 'bg-gray-300'
-                              }`}
+                              className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${isActive ? 'bg-emerald-500' : 'bg-gray-300'
+                                }`}
                               title={lang === 'bn' ? (isActive ? 'বিজ্ঞাপন নিষ্ক্রিয় করতে ক্লিক করুন' : 'বিজ্ঞাপন সক্রিয় করতে ক্লিক করুন') : 'Toggle active status'}
                             >
                               <span
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                  isActive ? 'translate-x-5' : 'translate-x-0'
-                                }`}
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-5' : 'translate-x-0'
+                                  }`}
                               />
                             </button>
                             <span className={`text-[10px] font-bold ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>
@@ -6822,11 +6811,10 @@ export default function AdminPage({
                           <button
                             type="button"
                             onClick={() => setAdForm({ ...adForm, ad_type: 'image' })}
-                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                              adForm.ad_type === 'image'
-                                ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
-                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
-                            }`}
+                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${adForm.ad_type === 'image'
+                              ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
+                              : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                              }`}
                           >
                             <ImageIcon size={20} className="mx-auto mb-1 text-inherit" />
                             <span className="text-xs block">{lang === 'bn' ? 'ব্যানার ছবি ও লিংক' : 'Image Banner & Link'}</span>
@@ -6835,11 +6823,10 @@ export default function AdminPage({
                           <button
                             type="button"
                             onClick={() => setAdForm({ ...adForm, ad_type: 'code' })}
-                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                              adForm.ad_type === 'code'
-                                ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
-                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
-                            }`}
+                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${adForm.ad_type === 'code'
+                              ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
+                              : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                              }`}
                           >
                             <Code size={20} className="mx-auto mb-1 text-inherit" />
                             <span className="text-xs block">{lang === 'bn' ? 'HTML / Script কোড' : 'Custom Code'}</span>
@@ -6848,11 +6835,10 @@ export default function AdminPage({
                           <button
                             type="button"
                             onClick={() => setAdForm({ ...adForm, ad_type: 'adsense' })}
-                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                              adForm.ad_type === 'adsense'
-                                ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
-                                : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
-                            }`}
+                            className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${adForm.ad_type === 'adsense'
+                              ? 'border-[#e30613] bg-red-50/50 text-[#e30613] font-bold shadow-2xs ring-1 ring-[#e30613]'
+                              : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                              }`}
                           >
                             <Globe size={20} className="mx-auto mb-1 text-inherit" />
                             <span className="text-xs block">Google AdSense</span>
@@ -6879,9 +6865,8 @@ export default function AdminPage({
                               />
                               <label
                                 htmlFor="ad-banner-file-input"
-                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold cursor-pointer transition-all ${
-                                  adUploadingImage ? 'opacity-50 pointer-events-none' : 'text-gray-700 hover:border-gray-400'
-                                }`}
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold cursor-pointer transition-all ${adUploadingImage ? 'opacity-50 pointer-events-none' : 'text-gray-700 hover:border-gray-400'
+                                  }`}
                               >
                                 <Upload size={15} className="text-[#e30613]" />
                                 <span>{adUploadingImage ? (lang === 'bn' ? 'আপলোড হচ্ছে...' : 'Uploading...') : (lang === 'bn' ? 'কম্পিউটার/মোবাইল থেকে ছবি নির্বাচন করুন' : 'Browse image from device')}</span>
@@ -7002,11 +6987,10 @@ export default function AdminPage({
                         <select
                           value={adForm.status}
                           onChange={(e) => setAdForm({ ...adForm, status: e.target.value })}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-lg border focus:outline-hidden ${
-                            adForm.status === 'active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                              : 'bg-gray-100 text-gray-600 border-gray-300'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg border focus:outline-hidden ${adForm.status === 'active'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : 'bg-gray-100 text-gray-600 border-gray-300'
+                            }`}
                         >
                           <option value="active">{lang === 'bn' ? '✓ সক্রিয় (Active)' : 'Active'}</option>
                           <option value="inactive">{lang === 'bn' ? '✕ নিষ্ক্রিয় (Inactive)' : 'Inactive'}</option>
@@ -7223,7 +7207,7 @@ export default function AdminPage({
                         type="text"
                         value={siteForm.editor_bn}
                         onChange={(e) => setSiteForm({ ...siteForm, editor_bn: e.target.value })}
-                        placeholder="সম্পাদক ও প্রকাশক: মতিউর রহমান"
+                        placeholder="সম্পাদক ও প্রকাশক: "
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
                     </div>
@@ -7235,7 +7219,7 @@ export default function AdminPage({
                         type="text"
                         value={siteForm.editor_en}
                         onChange={(e) => setSiteForm({ ...siteForm, editor_en: e.target.value })}
-                        placeholder="Editor & Publisher: Matiur Rahman"
+                        placeholder="Editor & Publisher: "
                         className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
                       />
                     </div>

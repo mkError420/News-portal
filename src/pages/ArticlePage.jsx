@@ -21,6 +21,8 @@ import {
   Pause,
   Square,
   RotateCcw,
+  SkipBack,
+  SkipForward,
   X,
 } from 'lucide-react'
 import { FacebookIcon, TwitterIcon } from '../components/SocialIcons.jsx'
@@ -46,13 +48,14 @@ function stripHtmlToPlainText(html) {
     const parser = new DOMParser()
     const doc = parser.parseFromString(html, 'text/html')
     doc.querySelectorAll('script, style, figure, figcaption, img, audio, video, iframe, svg').forEach((el) => el.remove())
-    return (doc.body.textContent || doc.body.innerText || '').trim()
+    const text = doc.body.textContent || doc.body.innerText || ''
+    return text.replace(/[\u00a0\u1680\u180e\u2000-\u200b\u202f\u205f\u3000\ufeff]/g, ' ').replace(/\s+/g, ' ').trim()
   } catch {
     return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   }
 }
 
-// Split into clean sentence chunks for seamless TTS without browser cutoffs
+// Split into clean, natural sentence chunks (<110 chars) for seamless playback
 function extractSpeechChunks(title, subhead, content) {
   const chunks = []
   if (title && title.trim()) chunks.push(title.trim())
@@ -60,31 +63,28 @@ function extractSpeechChunks(title, subhead, content) {
 
   const plain = stripHtmlToPlainText(content)
   if (plain) {
-    const parts = plain.split(/([।?!.\n\r]+)/)
-    for (let i = 0; i < parts.length; i += 2) {
-      const sentence = (parts[i] || '').trim()
-      const punctuation = (parts[i + 1] || '').trim()
-      const combined = `${sentence} ${punctuation}`.replace(/\s+/g, ' ').trim()
-      if (combined.length > 2) {
-        if (combined.length > 180) {
-          // Subdivide overly long sentences by commas/semicolons
-          const subParts = combined.split(/([,;،]+)/)
-          let currentSub = ''
-          for (let j = 0; j < subParts.length; j += 2) {
-            const seg = (subParts[j] || '').trim()
-            const punc = (subParts[j + 1] || '').trim()
-            const piece = `${seg} ${punc}`.trim()
-            if ((currentSub + ' ' + piece).length > 160 && currentSub.length > 0) {
-              chunks.push(currentSub.trim())
-              currentSub = piece
-            } else {
-              currentSub = currentSub ? `${currentSub} ${piece}` : piece
-            }
+    const rawSentences = plain.split(/([।?!.\n\r]+)/)
+    for (let i = 0; i < rawSentences.length; i += 2) {
+      const sentence = (rawSentences[i] || '').trim()
+      const punctuation = (rawSentences[i + 1] || '').trim()
+      const full = `${sentence} ${punctuation}`.replace(/\s+/g, ' ').trim()
+      if (!full || full.length < 2) continue
+
+      if (full.length <= 110) {
+        chunks.push(full)
+      } else {
+        // Break long sentences at natural word boundaries
+        const words = full.split(/\s+/)
+        let curr = ''
+        for (const w of words) {
+          if ((curr + ' ' + w).trim().length > 100 && curr) {
+            chunks.push(curr.trim())
+            curr = w
+          } else {
+            curr = (curr + ' ' + w).trim()
           }
-          if (currentSub.trim()) chunks.push(currentSub.trim())
-        } else {
-          chunks.push(combined)
         }
+        if (curr.trim()) chunks.push(curr.trim())
       }
     }
   }
@@ -101,6 +101,13 @@ function selectBestVoice(voices, lang) {
       return c.startsWith('bn') || c.includes('bangla') || c.includes('bengali') || n.includes('bangla') || n.includes('bengali')
     })
     if (bnVoice) return bnVoice
+
+    // Fallback to Indic voice if available (pronounces Bengali phonetics well)
+    const hiVoice = voices.find((v) => {
+      const c = (v.lang || '').toLowerCase()
+      return c.startsWith('hi') || c.includes('hindi')
+    })
+    if (hiVoice) return hiVoice
   } else {
     const enVoice = voices.find((v) => {
       const c = (v.lang || '').toLowerCase()
@@ -108,7 +115,7 @@ function selectBestVoice(voices, lang) {
     })
     if (enVoice) return enVoice
   }
-  return null
+  return voices.find((v) => v.default) || voices[0] || null
 }
 
 export default function ArticlePage({
@@ -200,46 +207,63 @@ export default function ArticlePage({
     try { localStorage.setItem('news_article_font_scale', '100') } catch {}
   }
 
-  // Audio Reader state
+  // Audio Reader state (Dual-Engine: High-quality TTS Audio stream + Web Speech API fallback)
+  const audioRef = useRef(null)
   const [audioStatus, setAudioStatus] = useState('idle') // 'idle' | 'playing' | 'paused'
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0)
   const [totalChunksCount, setTotalChunksCount] = useState(0)
   const [speechSpeed, setSpeechSpeed] = useState(1) // 0.9, 1.0, 1.25
+  const [activeSentenceText, setActiveSentenceText] = useState('')
+  const [engineMode, setEngineMode] = useState('cloud') // 'cloud' | 'native'
 
   const chunksRef = useRef([])
   const currentChunkIndexRef = useRef(0)
   const isSpeakingRef = useRef(false)
   const isPausedRef = useRef(false)
   const speechSpeedRef = useRef(1)
+  const currentUtteranceRef = useRef(null)
 
   const handleStopAudio = useCallback(() => {
     isSpeakingRef.current = false
     isPausedRef.current = false
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause()
+        audioRef.current.removeAttribute('src')
+        audioRef.current.load()
+      } catch {}
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel() } catch {}
+    }
+    currentUtteranceRef.current = null
+    try { window.__agyCurrentUtterance = null } catch {}
     setAudioStatus('idle')
     setCurrentChunkIndex(0)
     currentChunkIndexRef.current = 0
+    setActiveSentenceText('')
   }, [])
 
-  const speakChunkAtIndex = useCallback((index) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+  const playWithNativeSpeech = useCallback((index) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      handleStopAudio()
+      return
+    }
+
     const chunks = chunksRef.current
     if (!chunks || index >= chunks.length || !isSpeakingRef.current) {
       handleStopAudio()
       return
     }
 
-    currentChunkIndexRef.current = index
-    setCurrentChunkIndex(index)
+    try { window.speechSynthesis.cancel() } catch {}
 
     const text = chunks[index]
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = speechSpeedRef.current || 1
     utterance.pitch = 1
 
-    const voices = window.speechSynthesis.getVoices()
+    const voices = window.speechSynthesis.getVoices() || []
     const bestVoice = selectBestVoice(voices, lang)
     if (bestVoice) {
       utterance.voice = bestVoice
@@ -248,39 +272,117 @@ export default function ArticlePage({
       utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US'
     }
 
+    // Keep reference so Chrome garbage collector does not kill active speech
+    currentUtteranceRef.current = utterance
+    try { window.__agyCurrentUtterance = utterance } catch {}
+
     utterance.onend = () => {
       if (isSpeakingRef.current && !isPausedRef.current) {
-        speakChunkAtIndex(index + 1)
+        // Advance to next chunk
+        const nextIndex = index + 1
+        if (nextIndex < chunksRef.current.length) {
+          currentChunkIndexRef.current = nextIndex
+          setCurrentChunkIndex(nextIndex)
+          setActiveSentenceText(chunksRef.current[nextIndex])
+          playWithNativeSpeech(nextIndex)
+        } else {
+          handleStopAudio()
+        }
       }
     }
 
     utterance.onerror = (e) => {
       if (e.error === 'interrupted' || e.error === 'canceled') return
-      console.warn('Speech synthesis warning:', e)
-      if (isSpeakingRef.current && !isPausedRef.current) {
-        speakChunkAtIndex(index + 1)
+      console.warn('Native speech warning:', e)
+      if (isSpeakingRef.current && !isPausedRef.current && index + 1 < chunks.length) {
+        const nextIndex = index + 1
+        currentChunkIndexRef.current = nextIndex
+        setCurrentChunkIndex(nextIndex)
+        setActiveSentenceText(chunksRef.current[nextIndex])
+        playWithNativeSpeech(nextIndex)
       } else {
         handleStopAudio()
       }
     }
 
-    window.speechSynthesis.speak(utterance)
+    // Short timeout to guarantee cancel finished in Chrome
+    setTimeout(() => {
+      if (isSpeakingRef.current && !isPausedRef.current) {
+        window.speechSynthesis.speak(utterance)
+        setAudioStatus('playing')
+      }
+    }, 25)
   }, [lang, handleStopAudio])
 
+  const playChunk = useCallback((index) => {
+    const chunks = chunksRef.current
+    if (!chunks || index >= chunks.length || !isSpeakingRef.current) {
+      handleStopAudio()
+      return
+    }
+
+    currentChunkIndexRef.current = index
+    setCurrentChunkIndex(index)
+    setActiveSentenceText(chunks[index])
+
+    const text = chunks[index]
+
+    // 1. Try High-Quality Audio Stream First
+    if (audioRef.current && engineMode !== 'native') {
+      try {
+        const langCode = lang === 'bn' ? 'bn' : 'en'
+        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${langCode}&q=${encodeURIComponent(text)}`
+        
+        const audio = audioRef.current
+        audio.src = audioUrl
+        audio.playbackRate = speechSpeedRef.current || 1
+        
+        const playPromise = audio.play()
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setAudioStatus('playing')
+            })
+            .catch((err) => {
+              console.warn('HTML5 Audio playback error, switching to SpeechSynthesis:', err)
+              setEngineMode('native')
+              playWithNativeSpeech(index)
+            })
+        }
+        return
+      } catch (err) {
+        console.warn('Audio stream error, switching to SpeechSynthesis:', err)
+        setEngineMode('native')
+        playWithNativeSpeech(index)
+        return
+      }
+    }
+
+    // 2. Fallback to Web Speech API
+    playWithNativeSpeech(index)
+  }, [engineMode, lang, handleStopAudio, playWithNativeSpeech])
+
+  const handleAudioEnded = () => {
+    if (isSpeakingRef.current && !isPausedRef.current) {
+      playChunk(currentChunkIndexRef.current + 1)
+    }
+  }
+
+  const handleAudioError = () => {
+    console.warn('HTML5 Audio onError, falling back to Native Web Speech')
+    setEngineMode('native')
+    playWithNativeSpeech(currentChunkIndexRef.current)
+  }
+
   const handleStartAudio = (articleTitle, articleSubhead, articleContent) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert(lang === 'bn' ? 'আপনার ব্রাউজারে অডিও স্পিচ সুবিধাটি সমর্থিত নয়।' : 'Speech synthesis is not supported in your browser.')
-      return
-    }
-
     if (audioStatus === 'paused') {
-      isPausedRef.current = false
-      window.speechSynthesis.resume()
-      setAudioStatus('playing')
+      handleResumeAudio()
       return
     }
 
-    window.speechSynthesis.cancel()
+    // Stop any existing playback
+    handleStopAudio()
+
     const chunks = extractSpeechChunks(articleTitle, articleSubhead, articleContent)
     if (!chunks.length) return
 
@@ -292,31 +394,77 @@ export default function ArticlePage({
     isPausedRef.current = false
     setAudioStatus('playing')
 
-    speakChunkAtIndex(0)
+    playChunk(0)
   }
 
   const handlePauseAudio = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      isPausedRef.current = true
-      window.speechSynthesis.pause()
-      setAudioStatus('paused')
+    isPausedRef.current = true
+    if (audioRef.current && !audioRef.current.paused) {
+      try { audioRef.current.pause() } catch {}
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try { window.speechSynthesis.pause() } catch {}
+    }
+    setAudioStatus('paused')
   }
 
   const handleResumeAudio = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      isPausedRef.current = false
-      window.speechSynthesis.resume()
-      setAudioStatus('playing')
+    isPausedRef.current = false
+    if (audioRef.current && audioRef.current.src && engineMode !== 'native') {
+      audioRef.current.play().then(() => {
+        setAudioStatus('playing')
+      }).catch(() => {
+        playChunk(currentChunkIndexRef.current)
+      })
+      return
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume()
+      } else {
+        playWithNativeSpeech(currentChunkIndexRef.current)
+      }
+    }
+    setAudioStatus('playing')
+  }
+
+  const handleNextSentence = () => {
+    const nextIdx = currentChunkIndexRef.current + 1
+    if (nextIdx < chunksRef.current.length) {
+      if (audioRef.current) {
+        try { audioRef.current.pause() } catch {}
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel() } catch {}
+      }
+      playChunk(nextIdx)
+    } else {
+      handleStopAudio()
+    }
+  }
+
+  const handlePrevSentence = () => {
+    const prevIdx = Math.max(0, currentChunkIndexRef.current - 1)
+    if (audioRef.current) {
+      try { audioRef.current.pause() } catch {}
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel() } catch {}
+    }
+    playChunk(prevIdx)
   }
 
   const handleSpeedChange = (newSpeed) => {
     speechSpeedRef.current = newSpeed
     setSpeechSpeed(newSpeed)
-    if (audioStatus === 'playing') {
-      window.speechSynthesis.cancel()
-      speakChunkAtIndex(currentChunkIndexRef.current)
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.playbackRate = newSpeed
+    }
+    if (audioStatus === 'playing' && engineMode === 'native') {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+        playWithNativeSpeech(currentChunkIndexRef.current)
+      }
     }
   }
 
@@ -704,96 +852,144 @@ export default function ArticlePage({
             </div>
           </div>
 
+          {/* Hidden HTML5 Audio Element for High Quality Cloud TTS */}
+          <audio
+            ref={audioRef}
+            referrerPolicy="no-referrer"
+            onEnded={handleAudioEnded}
+            onError={handleAudioError}
+            preload="auto"
+            className="hidden"
+          />
+
           {/* Active Audio Player Floating / Inline Bar */}
           {audioStatus !== 'idle' && (
-            <div className="my-2.5 p-3 bg-red-50/90 border border-red-200 rounded-lg flex flex-wrap items-center justify-between gap-3 shadow-sm transition-all animate-fadeIn">
-              {/* Left: Wave animation & Reading status */}
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center gap-0.5 h-4">
-                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-4 animate-bounce' : 'h-2'}`}></span>
-                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-3 animate-bounce [animation-delay:0.15s]' : 'h-2'}`}></span>
-                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-4 animate-bounce [animation-delay:0.3s]' : 'h-2'}`}></span>
-                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-2 animate-bounce [animation-delay:0.45s]' : 'h-2'}`}></span>
+            <div className="my-2.5 p-3.5 bg-gradient-to-r from-red-50 via-white to-red-50/70 border border-red-200 rounded-lg shadow-sm transition-all animate-fadeIn">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                {/* Left: Wave animation & Reading status */}
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-0.5 h-4">
+                    <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-4 animate-bounce' : 'h-2'}`}></span>
+                    <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-3 animate-bounce [animation-delay:0.15s]' : 'h-2'}`}></span>
+                    <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-4 animate-bounce [animation-delay:0.3s]' : 'h-2'}`}></span>
+                    <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-2 animate-bounce [animation-delay:0.45s]' : 'h-2'}`}></span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <span>{lang === 'bn' ? 'অডিও সংবাদ পাঠ চলছে' : 'Audio Article Player'}</span>
+                      {audioStatus === 'paused' && (
+                        <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-normal">
+                          {lang === 'bn' ? 'স্থগিত' : 'Paused'}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      {lang === 'bn'
+                        ? `বাক্য ${toBengaliNumber(currentChunkIndex + 1)} / ${toBengaliNumber(totalChunksCount || 1)}`
+                        : `Sentence ${currentChunkIndex + 1} of ${totalChunksCount || 1}`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                    <span>{lang === 'bn' ? 'অডিও সংবাদ পাঠ চলছে' : 'Audio Article Player'}</span>
-                    {audioStatus === 'paused' && (
-                      <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-normal">
-                        {lang === 'bn' ? 'স্থগিত' : 'Paused'}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    {lang === 'bn'
-                      ? `অগ্রগতি: বাক্য ${toBengaliNumber(currentChunkIndex + 1)} / ${toBengaliNumber(totalChunksCount || 1)}`
-                      : `Progress: Sentence ${currentChunkIndex + 1} of ${totalChunksCount || 1}`}
-                  </p>
+
+                {/* Right: Sentence skip, Play/Pause, Stop, Speed */}
+                <div className="flex items-center gap-1.5">
+                  {/* Previous Sentence */}
+                  <button
+                    type="button"
+                    onClick={handlePrevSentence}
+                    disabled={currentChunkIndex <= 0}
+                    className="p-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    title={lang === 'bn' ? 'পূর্ববর্তী বাক্য' : 'Previous sentence'}
+                  >
+                    <SkipBack size={13} />
+                  </button>
+
+                  {/* Play / Pause Toggle */}
+                  {audioStatus === 'playing' ? (
+                    <button
+                      type="button"
+                      onClick={handlePauseAudio}
+                      className="flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
+                      title={lang === 'bn' ? 'বিরতি দিন' : 'Pause'}
+                    >
+                      <Pause size={12} className="text-red-600" />
+                      <span>{lang === 'bn' ? 'বিরতি' : 'Pause'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResumeAudio}
+                      className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 transition-colors shadow-sm"
+                      title={lang === 'bn' ? 'চালিয়ে যান' : 'Resume'}
+                    >
+                      <Play size={12} className="fill-current" />
+                      <span>{lang === 'bn' ? 'চালান' : 'Resume'}</span>
+                    </button>
+                  )}
+
+                  {/* Next Sentence */}
+                  <button
+                    type="button"
+                    onClick={handleNextSentence}
+                    disabled={currentChunkIndex >= totalChunksCount - 1}
+                    className="p-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    title={lang === 'bn' ? 'পরবর্তী বাক্য' : 'Next sentence'}
+                  >
+                    <SkipForward size={13} />
+                  </button>
+
+                  {/* Stop */}
+                  <button
+                    type="button"
+                    onClick={handleStopAudio}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs font-semibold text-gray-700 transition-colors"
+                    title={lang === 'bn' ? 'বন্ধ করুন' : 'Stop'}
+                  >
+                    <Square size={10} className="fill-current text-gray-600" />
+                    <span>{lang === 'bn' ? 'থামান' : 'Stop'}</span>
+                  </button>
+
+                  {/* Speed Controls */}
+                  <div className="flex items-center gap-0.5 text-[11px] bg-white border border-gray-200 rounded px-1 py-0.5 ml-1">
+                    {[1, 1.25, 0.9].map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => handleSpeedChange(rate)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                          speechSpeed === rate ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {rate === 1 ? '1x' : `${rate}x`}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Close Button */}
+                  <button
+                    type="button"
+                    onClick={handleStopAudio}
+                    className="p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-200 transition-colors ml-1"
+                    title={lang === 'bn' ? 'বন্ধ' : 'Close'}
+                  >
+                    <X size={13} />
+                  </button>
                 </div>
               </div>
 
-              {/* Right: Speed buttons, Play/Pause, Stop */}
-              <div className="flex items-center gap-2">
-                {/* Speed Controls */}
-                <div className="flex items-center gap-1 text-[11px] bg-white border border-gray-200 rounded px-1.5 py-0.5">
-                  <span className="text-gray-400 font-medium">{lang === 'bn' ? 'গতি:' : 'Speed:'}</span>
-                  {[1, 1.25, 0.9].map((rate) => (
-                    <button
-                      key={rate}
-                      type="button"
-                      onClick={() => handleSpeedChange(rate)}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
-                        speechSpeed === rate ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {rate === 1 ? '1x' : `${rate}x`}
-                    </button>
-                  ))}
+              {/* Progress Bar & Current Sentence Preview */}
+              <div className="space-y-1.5 pt-1.5 border-t border-red-100">
+                <div className="w-full bg-red-100 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-red-600 h-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, (((currentChunkIndex + 1) / Math.max(1, totalChunksCount)) * 100))}%` }}
+                  ></div>
                 </div>
-
-                {/* Play / Pause Toggle */}
-                {audioStatus === 'playing' ? (
-                  <button
-                    type="button"
-                    onClick={handlePauseAudio}
-                    className="flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
-                    title={lang === 'bn' ? 'বিরতি দিন' : 'Pause'}
-                  >
-                    <Pause size={12} className="text-red-600" />
-                    <span>{lang === 'bn' ? 'বিরতি' : 'Pause'}</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResumeAudio}
-                    className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 transition-colors shadow-sm"
-                    title={lang === 'bn' ? 'চালিয়ে যান' : 'Resume'}
-                  >
-                    <Play size={12} className="fill-current" />
-                    <span>{lang === 'bn' ? 'চালান' : 'Resume'}</span>
-                  </button>
+                {activeSentenceText && (
+                  <p className="text-[11px] text-gray-700 italic truncate" title={activeSentenceText}>
+                    &ldquo;{activeSentenceText}&rdquo;
+                  </p>
                 )}
-
-                {/* Stop */}
-                <button
-                  type="button"
-                  onClick={handleStopAudio}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs font-semibold text-gray-700 transition-colors"
-                  title={lang === 'bn' ? 'বন্ধ করুন' : 'Stop'}
-                >
-                  <Square size={10} className="fill-current text-gray-600" />
-                  <span>{lang === 'bn' ? 'থামান' : 'Stop'}</span>
-                </button>
-
-                {/* Close Button */}
-                <button
-                  type="button"
-                  onClick={handleStopAudio}
-                  className="p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
-                  title={lang === 'bn' ? 'বন্ধ' : 'Close'}
-                >
-                  <X size={13} />
-                </button>
               </div>
             </div>
           )}
