@@ -231,12 +231,15 @@ nav .overflow-x-auto::-webkit-scrollbar {
    ========================================================= */
 .news-prose {
   font-family: 'Noto Sans Bengali', 'SolaimanLipi', 'Kalpurush', Arial, Helvetica, sans-serif;
-  font-size: 1.0625rem;
+  font-size: var(--article-font-size, 1.0625rem);
   line-height: 2.0;
   color: var(--brand-text);
+  transition: font-size 0.15s ease-out;
 }
 
 .news-prose p {
+  font-size: inherit;
+  line-height: inherit;
   margin-top: 0;
   margin-bottom: 1.25rem;
 }

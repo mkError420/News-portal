@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Home,
@@ -17,6 +17,11 @@ import {
   Send,
   User,
   Heart,
+  Play,
+  Pause,
+  Square,
+  RotateCcw,
+  X,
 } from 'lucide-react'
 import { FacebookIcon, TwitterIcon } from '../components/SocialIcons.jsx'
 import NewsCard from '../components/NewsCard.jsx'
@@ -33,6 +38,78 @@ import {
   CATEGORIES_EN,
   toBengaliNumber,
 } from '../utils.js'
+
+// Helper to extract clean plain text from HTML content
+function stripHtmlToPlainText(html) {
+  if (!html) return ''
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    doc.querySelectorAll('script, style, figure, figcaption, img, audio, video, iframe, svg').forEach((el) => el.remove())
+    return (doc.body.textContent || doc.body.innerText || '').trim()
+  } catch {
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+}
+
+// Split into clean sentence chunks for seamless TTS without browser cutoffs
+function extractSpeechChunks(title, subhead, content) {
+  const chunks = []
+  if (title && title.trim()) chunks.push(title.trim())
+  if (subhead && subhead.trim()) chunks.push(subhead.trim())
+
+  const plain = stripHtmlToPlainText(content)
+  if (plain) {
+    const parts = plain.split(/([।?!.\n\r]+)/)
+    for (let i = 0; i < parts.length; i += 2) {
+      const sentence = (parts[i] || '').trim()
+      const punctuation = (parts[i + 1] || '').trim()
+      const combined = `${sentence} ${punctuation}`.replace(/\s+/g, ' ').trim()
+      if (combined.length > 2) {
+        if (combined.length > 180) {
+          // Subdivide overly long sentences by commas/semicolons
+          const subParts = combined.split(/([,;،]+)/)
+          let currentSub = ''
+          for (let j = 0; j < subParts.length; j += 2) {
+            const seg = (subParts[j] || '').trim()
+            const punc = (subParts[j + 1] || '').trim()
+            const piece = `${seg} ${punc}`.trim()
+            if ((currentSub + ' ' + piece).length > 160 && currentSub.length > 0) {
+              chunks.push(currentSub.trim())
+              currentSub = piece
+            } else {
+              currentSub = currentSub ? `${currentSub} ${piece}` : piece
+            }
+          }
+          if (currentSub.trim()) chunks.push(currentSub.trim())
+        } else {
+          chunks.push(combined)
+        }
+      }
+    }
+  }
+  return chunks
+}
+
+// Select best voice for language
+function selectBestVoice(voices, lang) {
+  if (!voices || !voices.length) return null
+  if (lang === 'bn') {
+    const bnVoice = voices.find((v) => {
+      const c = (v.lang || '').toLowerCase()
+      const n = (v.name || '').toLowerCase()
+      return c.startsWith('bn') || c.includes('bangla') || c.includes('bengali') || n.includes('bangla') || n.includes('bengali')
+    })
+    if (bnVoice) return bnVoice
+  } else {
+    const enVoice = voices.find((v) => {
+      const c = (v.lang || '').toLowerCase()
+      return c.startsWith('en') && (c.includes('us') || c.includes('gb') || c === 'en')
+    })
+    if (enVoice) return enVoice
+  }
+  return null
+}
 
 export default function ArticlePage({
   articles = [],
@@ -90,9 +167,173 @@ export default function ArticlePage({
   const siteName = (lang === 'bn' ? settings?.site_name_bn : settings?.site_name_en) ||
     (lang === 'bn' ? 'আলোর পথে' : 'Prothom kalo')
 
-  // Reader state
-  const [fontSizeLevel, setFontSizeLevel] = useState(1) // 0: small, 1: normal, 2: large
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+  // Font scale (default 100%, restored from localStorage if valid)
+  const [fontScale, setFontScale] = useState(() => {
+    try {
+      const saved = localStorage.getItem('news_article_font_scale')
+      if (saved) {
+        const num = parseInt(saved, 10)
+        if (!isNaN(num) && num >= 80 && num <= 160) return num
+      }
+    } catch {}
+    return 100
+  })
+
+  const handleDecreaseFont = () => {
+    setFontScale((prev) => {
+      const next = Math.max(80, prev - 10)
+      try { localStorage.setItem('news_article_font_scale', String(next)) } catch {}
+      return next
+    })
+  }
+
+  const handleIncreaseFont = () => {
+    setFontScale((prev) => {
+      const next = Math.min(160, prev + 10)
+      try { localStorage.setItem('news_article_font_scale', String(next)) } catch {}
+      return next
+    })
+  }
+
+  const handleResetFont = () => {
+    setFontScale(100)
+    try { localStorage.setItem('news_article_font_scale', '100') } catch {}
+  }
+
+  // Audio Reader state
+  const [audioStatus, setAudioStatus] = useState('idle') // 'idle' | 'playing' | 'paused'
+  const [currentChunkIndex, setCurrentChunkIndex] = useState(0)
+  const [totalChunksCount, setTotalChunksCount] = useState(0)
+  const [speechSpeed, setSpeechSpeed] = useState(1) // 0.9, 1.0, 1.25
+
+  const chunksRef = useRef([])
+  const currentChunkIndexRef = useRef(0)
+  const isSpeakingRef = useRef(false)
+  const isPausedRef = useRef(false)
+  const speechSpeedRef = useRef(1)
+
+  const handleStopAudio = useCallback(() => {
+    isSpeakingRef.current = false
+    isPausedRef.current = false
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    setAudioStatus('idle')
+    setCurrentChunkIndex(0)
+    currentChunkIndexRef.current = 0
+  }, [])
+
+  const speakChunkAtIndex = useCallback((index) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+    const chunks = chunksRef.current
+    if (!chunks || index >= chunks.length || !isSpeakingRef.current) {
+      handleStopAudio()
+      return
+    }
+
+    currentChunkIndexRef.current = index
+    setCurrentChunkIndex(index)
+
+    const text = chunks[index]
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.rate = speechSpeedRef.current || 1
+    utterance.pitch = 1
+
+    const voices = window.speechSynthesis.getVoices()
+    const bestVoice = selectBestVoice(voices, lang)
+    if (bestVoice) {
+      utterance.voice = bestVoice
+      utterance.lang = bestVoice.lang
+    } else {
+      utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US'
+    }
+
+    utterance.onend = () => {
+      if (isSpeakingRef.current && !isPausedRef.current) {
+        speakChunkAtIndex(index + 1)
+      }
+    }
+
+    utterance.onerror = (e) => {
+      if (e.error === 'interrupted' || e.error === 'canceled') return
+      console.warn('Speech synthesis warning:', e)
+      if (isSpeakingRef.current && !isPausedRef.current) {
+        speakChunkAtIndex(index + 1)
+      } else {
+        handleStopAudio()
+      }
+    }
+
+    window.speechSynthesis.speak(utterance)
+  }, [lang, handleStopAudio])
+
+  const handleStartAudio = (articleTitle, articleSubhead, articleContent) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert(lang === 'bn' ? 'আপনার ব্রাউজারে অডিও স্পিচ সুবিধাটি সমর্থিত নয়।' : 'Speech synthesis is not supported in your browser.')
+      return
+    }
+
+    if (audioStatus === 'paused') {
+      isPausedRef.current = false
+      window.speechSynthesis.resume()
+      setAudioStatus('playing')
+      return
+    }
+
+    window.speechSynthesis.cancel()
+    const chunks = extractSpeechChunks(articleTitle, articleSubhead, articleContent)
+    if (!chunks.length) return
+
+    chunksRef.current = chunks
+    setTotalChunksCount(chunks.length)
+    currentChunkIndexRef.current = 0
+    setCurrentChunkIndex(0)
+    isSpeakingRef.current = true
+    isPausedRef.current = false
+    setAudioStatus('playing')
+
+    speakChunkAtIndex(0)
+  }
+
+  const handlePauseAudio = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      isPausedRef.current = true
+      window.speechSynthesis.pause()
+      setAudioStatus('paused')
+    }
+  }
+
+  const handleResumeAudio = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      isPausedRef.current = false
+      window.speechSynthesis.resume()
+      setAudioStatus('playing')
+    }
+  }
+
+  const handleSpeedChange = (newSpeed) => {
+    speechSpeedRef.current = newSpeed
+    setSpeechSpeed(newSpeed)
+    if (audioStatus === 'playing') {
+      window.speechSynthesis.cancel()
+      speakChunkAtIndex(currentChunkIndexRef.current)
+    }
+  }
+
+  // Cancel audio on unmount
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [])
+
+  // Cancel audio on article change
+  useEffect(() => {
+    handleStopAudio()
+  }, [slug, article?.id, handleStopAudio])
+
   const [copied, setCopied] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
 
@@ -158,9 +399,6 @@ export default function ArticlePage({
   const pubDateStr = lang === 'bn' ? formatBengaliDate(article.date, true) : formatEnglishDate(article.date, true)
   const relativeTime = formatRelativeTime(article.date, lang)
   const viewsStr = formatViews(liveViews, lang)
-
-  // Font size classes
-  const fontSizes = ['text-base leading-relaxed', 'text-lg leading-loose', 'text-xl leading-loose']
 
   // Copy URL
   const handleCopyLink = () => {
@@ -337,45 +575,99 @@ export default function ArticlePage({
           {/* Reader Controls & Social Share Toolbar */}
           <div className="py-2.5 my-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs bg-gray-50/70 px-3 rounded">
             {/* Left: Font size adjuster & Audio preview */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="text-gray-500 font-medium">{lang === 'bn' ? 'হরফ:' : 'Font:'}</span>
               <button
-                onClick={() => setFontSizeLevel(Math.max(0, fontSizeLevel - 1))}
-                className="px-2 py-0.5 bg-white border rounded text-xs hover:bg-gray-100 font-bold"
-                title="Decrease font"
+                type="button"
+                onClick={handleDecreaseFont}
+                disabled={fontScale <= 80}
+                className={`px-2 py-0.5 bg-white border rounded text-xs font-bold transition-colors ${
+                  fontScale <= 80
+                    ? 'opacity-40 cursor-not-allowed text-gray-400 border-gray-200'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-red-600 border-gray-300'
+                }`}
+                title={lang === 'bn' ? 'হরফ ছোট করুন (A-)' : 'Decrease font size (A-)'}
               >
                 A-
               </button>
               <button
-                onClick={() => setFontSizeLevel(1)}
-                className="px-2 py-0.5 bg-white border rounded text-xs hover:bg-gray-100 font-semibold"
-                title="Default font"
+                type="button"
+                onClick={handleResetFont}
+                className={`px-2 py-0.5 rounded text-xs font-semibold transition-all ${
+                  fontScale === 100
+                    ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                    : 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 font-bold'
+                }`}
+                title={lang === 'bn' ? 'স্বাভাবিক আকার (১০০%)' : 'Reset to default size (100%)'}
               >
-                100%
+                {lang === 'bn' ? `${toBengaliNumber(fontScale)}%` : `${fontScale}%`}
               </button>
               <button
-                onClick={() => setFontSizeLevel(Math.min(2, fontSizeLevel + 1))}
-                className="px-2 py-0.5 bg-white border rounded text-xs hover:bg-gray-100 font-bold"
-                title="Increase font"
+                type="button"
+                onClick={handleIncreaseFont}
+                disabled={fontScale >= 160}
+                className={`px-2 py-0.5 bg-white border rounded text-xs font-bold transition-colors ${
+                  fontScale >= 160
+                    ? 'opacity-40 cursor-not-allowed text-gray-400 border-gray-200'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-red-600 border-gray-300'
+                }`}
+                title={lang === 'bn' ? 'হরফ বড় করুন (A+)' : 'Increase font size (A+)'}
               >
                 A+
               </button>
 
-              <button
-                onClick={() => setIsPlayingAudio(!isPlayingAudio)}
-                className={`ml-3 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${isPlayingAudio ? 'bg-red-600 text-white' : 'bg-white border text-gray-700 hover:bg-gray-100'
-                  }`}
-              >
-                {isPlayingAudio ? <VolumeX size={13} /> : <Volume2 size={13} />}
-                <span>{isPlayingAudio ? (lang === 'bn' ? 'থামান' : 'Stop') : (lang === 'bn' ? 'শুনুন' : 'Listen')}</span>
-              </button>
+              {/* Audio Listen / Player Controls */}
+              {audioStatus === 'idle' ? (
+                <button
+                  type="button"
+                  onClick={() => handleStartAudio(title, subhead, content)}
+                  className="ml-2 sm:ml-3 flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors shadow-sm"
+                  title={lang === 'bn' ? 'সংবাদটি অডিও শুনুন' : 'Listen to this article'}
+                >
+                  <Volume2 size={13} className="text-red-600" />
+                  <span>{lang === 'bn' ? 'শুনুন' : 'Listen'}</span>
+                </button>
+              ) : (
+                <div className="ml-2 sm:ml-3 flex items-center gap-1">
+                  {audioStatus === 'playing' ? (
+                    <button
+                      type="button"
+                      onClick={handlePauseAudio}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm animate-pulse"
+                      title={lang === 'bn' ? 'বিরতি দিন' : 'Pause audio'}
+                    >
+                      <Pause size={12} />
+                      <span>{lang === 'bn' ? 'বিরতি' : 'Pause'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResumeAudio}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+                      title={lang === 'bn' ? 'চালিয়ে যান' : 'Resume audio'}
+                    >
+                      <Play size={12} className="fill-current" />
+                      <span>{lang === 'bn' ? 'চালান' : 'Resume'}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleStopAudio}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                    title={lang === 'bn' ? 'বন্ধ করুন' : 'Stop audio'}
+                  >
+                    <Square size={10} className="fill-current text-gray-600" />
+                    <span>{lang === 'bn' ? 'থামান' : 'Stop'}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Right: Social Share Buttons */}
             <div className="flex items-center gap-1.5">
               <span className="text-gray-500 font-medium mr-1">{lang === 'bn' ? 'শেয়ার:' : 'Share:'}</span>
               <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-7 h-7 rounded-full bg-[#1877f2] text-white flex items-center justify-center hover:opacity-90"
@@ -384,7 +676,7 @@ export default function ArticlePage({
                 <FacebookIcon size={13} />
               </a>
               <a
-                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(title)}`}
+                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&text=${encodeURIComponent(title)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-7 h-7 rounded-full bg-[#1da1f2] text-white flex items-center justify-center hover:opacity-90"
@@ -393,7 +685,7 @@ export default function ArticlePage({
                 <TwitterIcon size={13} />
               </a>
               <a
-                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(title + ' ' + window.location.href)}`}
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(title + ' ' + (typeof window !== 'undefined' ? window.location.href : ''))}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-7 h-7 rounded-full bg-[#25d366] text-white flex items-center justify-center hover:opacity-90"
@@ -412,6 +704,100 @@ export default function ArticlePage({
             </div>
           </div>
 
+          {/* Active Audio Player Floating / Inline Bar */}
+          {audioStatus !== 'idle' && (
+            <div className="my-2.5 p-3 bg-red-50/90 border border-red-200 rounded-lg flex flex-wrap items-center justify-between gap-3 shadow-sm transition-all animate-fadeIn">
+              {/* Left: Wave animation & Reading status */}
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-0.5 h-4">
+                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-4 animate-bounce' : 'h-2'}`}></span>
+                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-3 animate-bounce [animation-delay:0.15s]' : 'h-2'}`}></span>
+                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-4 animate-bounce [animation-delay:0.3s]' : 'h-2'}`}></span>
+                  <span className={`w-1 bg-red-600 rounded-full transition-all ${audioStatus === 'playing' ? 'h-2 animate-bounce [animation-delay:0.45s]' : 'h-2'}`}></span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                    <span>{lang === 'bn' ? 'অডিও সংবাদ পাঠ চলছে' : 'Audio Article Player'}</span>
+                    {audioStatus === 'paused' && (
+                      <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-normal">
+                        {lang === 'bn' ? 'স্থগিত' : 'Paused'}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[11px] text-gray-500">
+                    {lang === 'bn'
+                      ? `অগ্রগতি: বাক্য ${toBengaliNumber(currentChunkIndex + 1)} / ${toBengaliNumber(totalChunksCount || 1)}`
+                      : `Progress: Sentence ${currentChunkIndex + 1} of ${totalChunksCount || 1}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right: Speed buttons, Play/Pause, Stop */}
+              <div className="flex items-center gap-2">
+                {/* Speed Controls */}
+                <div className="flex items-center gap-1 text-[11px] bg-white border border-gray-200 rounded px-1.5 py-0.5">
+                  <span className="text-gray-400 font-medium">{lang === 'bn' ? 'গতি:' : 'Speed:'}</span>
+                  {[1, 1.25, 0.9].map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      onClick={() => handleSpeedChange(rate)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                        speechSpeed === rate ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {rate === 1 ? '1x' : `${rate}x`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Play / Pause Toggle */}
+                {audioStatus === 'playing' ? (
+                  <button
+                    type="button"
+                    onClick={handlePauseAudio}
+                    className="flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
+                    title={lang === 'bn' ? 'বিরতি দিন' : 'Pause'}
+                  >
+                    <Pause size={12} className="text-red-600" />
+                    <span>{lang === 'bn' ? 'বিরতি' : 'Pause'}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResumeAudio}
+                    className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 transition-colors shadow-sm"
+                    title={lang === 'bn' ? 'চালিয়ে যান' : 'Resume'}
+                  >
+                    <Play size={12} className="fill-current" />
+                    <span>{lang === 'bn' ? 'চালান' : 'Resume'}</span>
+                  </button>
+                )}
+
+                {/* Stop */}
+                <button
+                  type="button"
+                  onClick={handleStopAudio}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs font-semibold text-gray-700 transition-colors"
+                  title={lang === 'bn' ? 'বন্ধ করুন' : 'Stop'}
+                >
+                  <Square size={10} className="fill-current text-gray-600" />
+                  <span>{lang === 'bn' ? 'থামান' : 'Stop'}</span>
+                </button>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={handleStopAudio}
+                  className="p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                  title={lang === 'bn' ? 'বন্ধ' : 'Close'}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Featured Image with Caption */}
           <div className="my-5">
             <div className="rounded overflow-hidden bg-gray-100 aspect-[16/10]">
@@ -425,7 +811,12 @@ export default function ArticlePage({
 
           {/* Main Article Body Text */}
           <div
-            className={`news-prose text-gray-900 ${fontSizes[fontSizeLevel]} my-6 space-y-4 font-bengali`}
+            className="news-prose text-gray-900 my-6 space-y-4 font-bengali transition-all duration-150"
+            style={{
+              '--article-font-size': `${(fontScale / 100) * 1.0625}rem`,
+              fontSize: `${(fontScale / 100) * 1.0625}rem`,
+              lineHeight: fontScale >= 130 ? '2.1' : '1.95',
+            }}
             dangerouslySetInnerHTML={{ __html: content }}
           />
 
