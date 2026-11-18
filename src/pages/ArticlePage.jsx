@@ -95,19 +95,11 @@ function extractSpeechChunks(title, subhead, content) {
 function selectBestVoice(voices, lang) {
   if (!voices || !voices.length) return null
   if (lang === 'bn') {
-    const bnVoice = voices.find((v) => {
-      const c = (v.lang || '').toLowerCase()
-      const n = (v.name || '').toLowerCase()
-      return c.startsWith('bn') || c.includes('bangla') || c.includes('bengali') || n.includes('bangla') || n.includes('bengali')
-    })
-    if (bnVoice) return bnVoice
-
-    // Fallback to Indic voice if available (pronounces Bengali phonetics well)
-    const hiVoice = voices.find((v) => {
-      const c = (v.lang || '').toLowerCase()
-      return c.startsWith('hi') || c.includes('hindi')
-    })
-    if (hiVoice) return hiVoice
+    const bengaliVoices = voices.filter((v) => /^(bn-|bn$)/i.test(v.lang || ''))
+    return bengaliVoices.find((v) => (v.lang || '').toLowerCase() === 'bn-bd') ||
+      bengaliVoices.find((v) => (v.lang || '').toLowerCase() === 'bn-in') ||
+      bengaliVoices[0] ||
+      null
   } else {
     const enVoice = voices.find((v) => {
       const c = (v.lang || '').toLowerCase()
@@ -330,7 +322,7 @@ export default function ArticlePage({
     // 1. Try High-Quality Audio Stream First
     if (audioRef.current && engineMode !== 'native') {
       try {
-        const langCode = lang === 'bn' ? 'bn' : 'en'
+        const langCode = lang === 'bn' ? 'bn-BD' : 'en'
         const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${langCode}&q=${encodeURIComponent(text)}`
         
         const audio = audioRef.current
